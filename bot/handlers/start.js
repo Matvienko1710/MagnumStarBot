@@ -1,11 +1,9 @@
 const { inlineKeyboard } = require('../keyboards/inline');
+const { generateUserProfile } = require('../utils/profile');
 
 module.exports = (bot) => {
   bot.start(async (ctx) => {
-    const userName = ctx.from.first_name || 'пользователь';
-    await ctx.reply(
-      `Привет, ${userName}! Добро пожаловать в Magnum Star Bot.`,
-      inlineKeyboard()
-    );
+    const welcomeMessage = generateUserProfile(ctx.from);
+    await ctx.reply(welcomeMessage, inlineKeyboard());
   });
 };

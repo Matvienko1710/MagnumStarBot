@@ -1,4 +1,5 @@
 const { inlineKeyboard, inlineKeyboardWithBack } = require('../keyboards/inline');
+const { generateUserProfile } = require('../utils/profile');
 
 module.exports = (bot) => {
   // Обработка колбэков от инлайн-кнопок
@@ -55,11 +56,8 @@ module.exports = (bot) => {
       
       case 'main_menu':
         await ctx.answerCbQuery();
-        const userName = ctx.from.first_name || 'пользователь';
-        await ctx.editMessageText(
-          `Привет, ${userName}! Добро пожаловать в Magnum Star Bot.`,
-          inlineKeyboard()
-        );
+        const welcomeMessage = generateUserProfile(ctx.from);
+        await ctx.editMessageText(welcomeMessage, inlineKeyboard());
         break;
       
       default:
