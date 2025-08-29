@@ -1,5 +1,7 @@
 const { inlineKeyboard, inlineKeyboardWithBack } = require('../keyboards/inline');
 const { generateUserProfile } = require('../utils/profile');
+const { getUserBalance, getUserStats, getTransactionHistory } = require('../utils/currency');
+const { getTaskStats, getAvailableTasks } = require('../utils/tasks');
 
 module.exports = (bot) => {
   // Обработка колбэков от инлайн-кнопок
@@ -12,10 +14,11 @@ module.exports = (bot) => {
         const user = ctx.from;
         const userName = user.first_name || 'пользователь';
         const userId = user.id;
-        const userStars = 0; // Пока ставим 0, потом можно подключить БД
-        const userCoins = 0; // Пока ставим 0, потом можно подключить БД
-        const referrals = 0; // Пока ставим 0, потом можно подключить БД
-        const earnedFromRefs = 0; // Пока ставим 0, потом можно подключить БД
+        
+        // Получаем данные из системы валюты
+        const balance = getUserBalance(userId);
+        const currencyStats = getUserStats(userId);
+        const taskStats = getTaskStats(userId);
         
         const profileMessage = `👤 Профиль пользователя:
 
@@ -26,17 +29,18 @@ module.exports = (bot) => {
 └ Дата регистрации: ${new Date().toLocaleDateString('ru-RU')}
 
 💎 Баланс
-├ ⭐ Stars: ${userStars}
-└ 🪙 Magnum Coins: ${userCoins}
+├ ⭐ Stars: ${balance.stars}
+└ 🪙 Magnum Coins: ${balance.coins}
 
 👥 Реферальная система
-├ Рефералы: ${referrals}
-├ Заработано: ${earnedFromRefs} Stars
+├ Рефералы: 0
+├ Заработано: 0 Stars
 └ Уровень: Новичок
 
 📊 Статистика
-├ Заданий выполнено: 0
-├ Время в боте: 0 мин
+├ Заданий выполнено: ${taskStats.completedTasks}/${taskStats.totalTasks}
+├ Доступно заданий: ${taskStats.availableTasks}
+├ Всего транзакций: ${currencyStats.totalTransactions}
 └ Последний вход: Сегодня
 
 🎯 Достижения
