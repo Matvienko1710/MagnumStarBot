@@ -59,10 +59,17 @@ module.exports = (bot) => {
         );
         break;
       
-      case 'main_menu':
+      case 'back':
         await ctx.answerCbQuery();
+        // Возвращаемся к предыдущему меню (в данном случае к главному)
         const welcomeMessage = generateUserProfile(ctx.from);
         await ctx.editMessageText(welcomeMessage, inlineKeyboard());
+        break;
+      
+      case 'main_menu':
+        await ctx.answerCbQuery();
+        const mainMenuMessage = generateUserProfile(ctx.from);
+        await ctx.editMessageText(mainMenuMessage, inlineKeyboard());
         break;
       
       default:
