@@ -2,8 +2,10 @@ const { Markup } = require('telegraf');
 
 const inlineKeyboard = () => {
   return Markup.inlineKeyboard([
-    [Markup.button.webApp('Открыть WebApp', process.env.WEBAPP_URL)],
-    [Markup.button.callback('О боте', 'about')]
+    [Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL)],
+    [Markup.button.callback('📊 Статистика', 'statistics')],
+    [Markup.button.callback('ℹ️ Информация', 'about')],
+    [Markup.button.callback('⚙️ Настройки', 'settings')]
   ]);
 };
 
