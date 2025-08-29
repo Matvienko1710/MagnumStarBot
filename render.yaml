@@ -10,6 +10,8 @@ services:
         sync: false
       - key: WEBAPP_URL
         value: https://magnumstarbot.onrender.com
+      - key: ADMIN_IDS
+        sync: false
       - key: PORT
         value: 10000
     autoDeploy: true
