@@ -10,7 +10,7 @@ const inlineKeyboard = (isAdmin = false) => {
     [Markup.button.callback('👤 Профиль', 'profile')]
   ];
   
-  // Добавляем кнопку WebApp только если пользователь является администратором
+  // Добавляем кнопки админа только если пользователь является администратором
   if (isAdmin) {
     buttons.push([Markup.button.webApp('🌐 WebApp', webappUrl)]);
     buttons.push([Markup.button.callback('🔧 Админ панель', 'admin_panel')]);
@@ -23,16 +23,18 @@ const inlineKeyboardWithBack = (isAdmin = false) => {
   const webappUrl = process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com';
   
   const buttons = [
-    [Markup.button.callback('👤 Профиль', 'profile')],
-    [Markup.button.callback('🔙 Назад', 'back')],
-    [Markup.button.callback('🏠 В главное меню', 'main_menu')]
+    [Markup.button.callback('👤 Профиль', 'profile')]
   ];
   
   // Добавляем кнопки админа только если пользователь является администратором
   if (isAdmin) {
-    buttons.splice(1, 0, [Markup.button.webApp('🌐 WebApp', webappUrl)]);
-    buttons.splice(2, 0, [Markup.button.callback('🔧 Админ панель', 'admin_panel')]);
+    buttons.push([Markup.button.webApp('🌐 WebApp', webappUrl)]);
+    buttons.push([Markup.button.callback('🔧 Админ панель', 'admin_panel')]);
   }
+  
+  // Добавляем кнопки навигации в конце
+  buttons.push([Markup.button.callback('🔙 Назад', 'back')]);
+  buttons.push([Markup.button.callback('🏠 В главное меню', 'main_menu')]);
   
   return Markup.inlineKeyboard(buttons);
 };
