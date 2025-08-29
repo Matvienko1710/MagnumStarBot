@@ -165,40 +165,6 @@ const getUserStats = (userId) => {
   return stats;
 };
 
-// Система наград за действия
-const REWARDS = {
-  DAILY_LOGIN: { stars: 1, coins: 0 },
-  REFERRAL_INVITE: { stars: 5, coins: 0 },
-  WEBAPP_USAGE: { stars: 2, coins: 0 },
-  FIRST_TASK: { stars: 3, coins: 10 },
-  WEEKLY_BONUS: { stars: 10, coins: 50 }
-};
-
-// Выдача награды
-const giveReward = (userId, rewardType) => {
-  const reward = REWARDS[rewardType];
-  if (!reward) {
-    throw new Error('Неизвестный тип награды');
-  }
-  
-  const results = {};
-  
-  if (reward.stars > 0) {
-    results.stars = updateStars(userId, reward.stars, `reward_${rewardType}`);
-  }
-  
-  if (reward.coins > 0) {
-    results.coins = updateCoins(userId, reward.coins, `reward_${rewardType}`);
-  }
-  
-  return {
-    rewardType,
-    reward,
-    newBalance: getUserBalance(userId),
-    results
-  };
-};
-
 module.exports = {
   // Основные функции баланса
   getUserBalance,
@@ -212,10 +178,6 @@ module.exports = {
   // Функции истории и статистики
   getTransactionHistory,
   getUserStats,
-  
-  // Система наград
-  giveReward,
-  REWARDS,
   
   // Константы
   EXCHANGE_RATES

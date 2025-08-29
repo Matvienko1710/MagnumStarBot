@@ -1,5 +1,4 @@
 const { getUserBalance, getUserStats } = require('./currency');
-const { getTaskStats } = require('./tasks');
 
 // Функция для генерации профиля пользователя
 const generateUserProfile = (user) => {
@@ -9,7 +8,6 @@ const generateUserProfile = (user) => {
   // Получаем данные из системы валюты
   const balance = getUserBalance(userId);
   const currencyStats = getUserStats(userId);
-  const taskStats = getTaskStats(userId);
   
   return `👋 Привет, ${userName}! Рады видеть тебя в Magnum Stars!
 Начни зарабатывать Звезды и MagnumCoin прямо сейчас.
@@ -28,14 +26,10 @@ const generateUserProfile = (user) => {
 └ Уровень: Новичок
 
 📊 Статистика
-├ Заданий выполнено: ${taskStats.completedTasks}/${taskStats.totalTasks}
-├ Доступно заданий: ${taskStats.availableTasks}
 ├ Всего транзакций: ${currencyStats.totalTransactions}
+├ Всего заработано Stars: ${currencyStats.totalEarned.stars}
+├ Всего заработано Coins: ${currencyStats.totalEarned.coins}
 └ Последний вход: Сегодня
-
-🎯 Достижения
-├ 🏆 Первые шаги (зарегистрировался)
-└ 🔄 В процессе: Ежедневный вход (0/7 дней)
 
 🎯 Выберите действие:`;
 };

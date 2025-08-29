@@ -1,7 +1,6 @@
 const { inlineKeyboard, inlineKeyboardWithBack } = require('../keyboards/inline');
 const { generateUserProfile } = require('../utils/profile');
 const { getUserBalance, getUserStats, getTransactionHistory } = require('../utils/currency');
-const { getTaskStats, getAvailableTasks } = require('../utils/tasks');
 
 module.exports = (bot) => {
   // Обработка колбэков от инлайн-кнопок
@@ -18,7 +17,6 @@ module.exports = (bot) => {
         // Получаем данные из системы валюты
         const balance = getUserBalance(userId);
         const currencyStats = getUserStats(userId);
-        const taskStats = getTaskStats(userId);
         
         const profileMessage = `👤 Профиль пользователя:
 
@@ -38,14 +36,10 @@ module.exports = (bot) => {
 └ Уровень: Новичок
 
 📊 Статистика
-├ Заданий выполнено: ${taskStats.completedTasks}/${taskStats.totalTasks}
-├ Доступно заданий: ${taskStats.availableTasks}
 ├ Всего транзакций: ${currencyStats.totalTransactions}
-└ Последний вход: Сегодня
-
-🎯 Достижения
-├ 🏆 Первые шаги (зарегистрировался)
-└ 🔄 В процессе: Ежедневный вход (0/7 дней)`;
+├ Всего заработано Stars: ${currencyStats.totalEarned.stars}
+├ Всего заработано Coins: ${currencyStats.totalEarned.coins}
+└ Последний вход: Сегодня`;
         
         await ctx.editMessageText(profileMessage, inlineKeyboardWithBack());
         break;
