@@ -9,7 +9,7 @@ services:
       - key: BOT_TOKEN
         sync: false
       - key: WEBAPP_URL
-        value: https://magnum-star-bot.onrender.com
+        value: https://magnumstarbot.onrender.com
       - key: PORT
         value: 10000
     autoDeploy: true
