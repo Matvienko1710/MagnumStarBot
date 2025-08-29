@@ -14,6 +14,19 @@ const inlineKeyboard = () => {
   ]);
 };
 
+const inlineKeyboardWithBack = () => {
+  const webappUrl = process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com';
+  
+  return Markup.inlineKeyboard([
+    [Markup.button.webApp('🌐 WebApp', webappUrl)],
+    [Markup.button.callback('📊 Статистика', 'statistics')],
+    [Markup.button.callback('ℹ️ Информация', 'about')],
+    [Markup.button.callback('⚙️ Настройки', 'settings')],
+    [Markup.button.callback('🔙 Главное меню', 'main_menu')]
+  ]);
+};
+
 module.exports = {
-  inlineKeyboard
+  inlineKeyboard,
+  inlineKeyboardWithBack
 };

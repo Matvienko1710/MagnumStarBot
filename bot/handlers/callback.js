@@ -1,4 +1,4 @@
-const { inlineKeyboard } = require('../keyboards/inline');
+const { inlineKeyboard, inlineKeyboardWithBack } = require('../keyboards/inline');
 
 module.exports = (bot) => {
   // Обработка колбэков от инлайн-кнопок
@@ -8,24 +8,27 @@ module.exports = (bot) => {
     switch (callbackData) {
       case 'webapp':
         await ctx.answerCbQuery();
-        await ctx.reply('Открываем WebApp', inlineKeyboard());
+        await ctx.editMessageText(
+          'Открываем WebApp',
+          inlineKeyboardWithBack()
+        );
         break;
       
       case 'statistics':
         await ctx.answerCbQuery();
-        await ctx.reply(
+        await ctx.editMessageText(
           '📊 Статистика бота:\n\n' +
           '👥 Всего пользователей: 0\n' +
           '📱 Активных сессий: 0\n' +
           '🔄 Запросов сегодня: 0\n' +
           '⭐ Рейтинг: 5.0/5.0',
-          inlineKeyboard()
+          inlineKeyboardWithBack()
         );
         break;
       
       case 'about':
         await ctx.answerCbQuery();
-        await ctx.reply(
+        await ctx.editMessageText(
           'ℹ️ О боте:\n\n' +
           'Magnum Star Bot - многофункциональный Telegram бот.\n\n' +
           '🔧 Возможности:\n' +
@@ -33,19 +36,28 @@ module.exports = (bot) => {
           '• WebApp интерфейс\n' +
           '• Статистика и настройки\n' +
           '• Удобная навигация',
-          inlineKeyboard()
+          inlineKeyboardWithBack()
         );
         break;
       
       case 'settings':
         await ctx.answerCbQuery();
-        await ctx.reply(
+        await ctx.editMessageText(
           '⚙️ Настройки:\n\n' +
           '🔔 Уведомления: Включены\n' +
           '🌙 Тема: Авто\n' +
           '🌍 Язык: Русский\n' +
           '📱 Версия: 1.0.0\n\n' +
           'Настройки пока не доступны для изменения.',
+          inlineKeyboardWithBack()
+        );
+        break;
+      
+      case 'main_menu':
+        await ctx.answerCbQuery();
+        const userName = ctx.from.first_name || 'пользователь';
+        await ctx.editMessageText(
+          `Привет, ${userName}! Добро пожаловать в Magnum Star Bot.`,
           inlineKeyboard()
         );
         break;
