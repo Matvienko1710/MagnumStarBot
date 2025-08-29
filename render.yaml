@@ -1,0 +1,15 @@
+services:
+  # Веб-сервис для бота
+  - type: web
+    name: magnum-star-bot
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBAPP_URL
+        value: https://magnum-star-bot.onrender.com
+      - key: PORT
+        value: 10000
+    autoDeploy: true
