@@ -170,8 +170,7 @@ async function handleProfile(ctx) {
             
             const subscriptionKeyboard = Markup.inlineKeyboard([
                 [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
-                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
-                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')]
             ]);
             
             await ctx.editMessageText(subscriptionMessage, {
@@ -906,8 +905,7 @@ async function handleMainMenu(ctx) {
             
             const subscriptionKeyboard = Markup.inlineKeyboard([
                 [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
-                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
-                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')]
             ]);
             
             await ctx.editMessageText(subscriptionMessage, {
@@ -1781,19 +1779,14 @@ async function handleCheckSubscription(ctx) {
             logger.info('Подписка пользователя подтверждена, показано главное меню', { userId });
             
         } else {
-            // Подписка не подтверждена - показываем сообщение об ошибке
-            const errorMessage = `❌ **Подписка не подтверждена**\n\n` +
-                `📢 Вы не подписаны на канал **@magnumtap**\n\n` +
-                `📋 **Что нужно сделать:**\n` +
-                `1️⃣ Нажмите кнопку "📢 Подписаться на канал"\n` +
-                `2️⃣ Подпишитесь на канал @magnumtap\n` +
-                `3️⃣ Вернитесь в бот и нажмите "✅ Проверить подписку"\n\n` +
-                `💡 После подписки на канал вы получите доступ ко всем функциям бота!`;
+            // Подписка не подтверждена - показываем мотивирующее сообщение
+            const errorMessage = `🚀 **Перед началом использования Magnum Stars подпишись на наших спонсоров!**\n\n` +
+                `📢 Это обязательное условие для доступа к функциям бота.\n\n` +
+                `✅ **После подписки жми «Проверить» и продолжай игру!**`;
             
             const subscriptionKeyboard = Markup.inlineKeyboard([
                 [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
-                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
-                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')]
             ]);
             
             await ctx.editMessageText(errorMessage, {
