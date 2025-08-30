@@ -14,45 +14,22 @@ app.use(express.static('webapp'));
 // Переменная для отслеживания состояния базы данных
 let isDatabaseConnected = false;
 
-// Функция инициализации базы данных с повторными попытками
+// Простая инициализация базы данных
 async function initializeDatabase() {
-    const maxRetries = 5; // Увеличиваем количество попыток
-    let retryCount = 0;
-    
-    while (retryCount < maxRetries) {
-        try {
-            logger.info('Попытка подключения к MongoDB Atlas...', { 
-                attempt: retryCount + 1, 
-                maxRetries 
-            });
-            
-            await database.connect();
-            await database.initializeCollections();
-            await database.createDefaultData();
-            
-            isDatabaseConnected = true;
-            logger.info('База данных успешно инициализирована');
-            return true;
-            
-        } catch (error) {
-            retryCount++;
-            logger.error('Ошибка подключения к MongoDB Atlas', error, { 
-                attempt: retryCount, 
-                maxRetries,
-                errorMessage: error.message,
-                errorCode: error.code
-            });
-            
-            if (retryCount < maxRetries) {
-                const delay = Math.pow(2, retryCount) * 1000; // Экспоненциальная задержка
-                logger.info(`Повторная попытка через ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
+    try {
+        logger.info('Подключение к MongoDB Atlas...');
+        
+        await database.connect();
+        isDatabaseConnected = true;
+        
+        logger.info('✅ База данных успешно подключена');
+        return true;
+        
+    } catch (error) {
+        logger.error('❌ Ошибка подключения к MongoDB Atlas', error);
+        isDatabaseConnected = false;
+        return false;
     }
-    
-    logger.warn('Не удалось подключиться к MongoDB Atlas после всех попыток. Бот будет работать в режиме fallback.');
-    return false;
 }
 
 // Функция запуска бота

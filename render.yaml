@@ -14,6 +14,9 @@ services:
         # Key: BOT_TOKEN, Value: ваш_токен_от_botfather
         sync: false
       - key: MONGODB_URI
-        value: mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/
+        # ⚠️ ВАЖНО: Установите URI MongoDB в настройках Render вручную!
+        # Перейдите в Environment -> Add Environment Variable
+        # Key: MONGODB_URI, Value: ваш_uri_от_mongodb_atlas
+        sync: false
     healthCheckPath: /api/health
     autoDeploy: true
