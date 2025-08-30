@@ -60,7 +60,6 @@ class Database {
                     tls: true,
                     tlsAllowInvalidCertificates: true,
                     tlsAllowInvalidHostnames: true,
-                    tlsInsecure: true,
                     maxPoolSize: 5,
                     connectTimeoutMS: 60000,
                     socketTimeoutMS: 60000,
@@ -231,10 +230,17 @@ class Database {
             for (const collectionName of collections) {
                 const collection = this.db.collection(collectionName);
                 
-                // Создаем коллекцию если её нет
-                await collection.createIndex({}, { background: true });
+                // Проверяем, существует ли коллекция
+                const collectionExists = await this.db.listCollections({ name: collectionName }).hasNext();
                 
-                console.log(`✅ Коллекция ${collectionName} инициализирована`);
+                if (!collectionExists) {
+                    // Создаем коллекцию с одним документом и сразу удаляем его
+                    await collection.insertOne({ _temp: true });
+                    await collection.deleteOne({ _temp: true });
+                    console.log(`✅ Коллекция ${collectionName} создана`);
+                } else {
+                    console.log(`✅ Коллекция ${collectionName} уже существует`);
+                }
             }
 
             // Создаем специальные индексы
