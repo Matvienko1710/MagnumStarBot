@@ -1,14 +1,519 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Magnum Stars</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .user-details h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .user-details p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .balance-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .balance-card {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .balance-card.coins {
+            background: linear-gradient(45deg, #8a2be2, #a855f7);
+            color: white;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+        }
+
+        .balance-card .icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .balance-card .label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .balance-card .amount {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .main-button {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border: none;
+            border-radius: 50%;
+            margin: 30px auto;
+            display: block;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(255, 215, 0, 0.6);
+        }
+
+        .main-button:active {
+            transform: scale(0.95);
+        }
+
+        .main-button .star {
+            font-size: 80px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .stats h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .navigation {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .nav-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .click-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: clickAnimation 0.6s ease-out;
+        }
+
+        @keyframes clickAnimation {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        .telegram-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .main-button {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .main-button .star {
+                font-size: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="telegram-status" id="telegram-status">
+        Проверяем Telegram...
+    </div>
+
+    <div class="container">
+        <!-- Заголовок с информацией о пользователе -->
+        <div class="header">
+            <div class="user-info">
+                <div class="avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <h2 id="user-name">Пользователь</h2>
+                    <p id="user-id">ID: Загрузка...</p>
+                </div>
+            </div>
+            
+            <div class="balance-cards">
+                <div class="balance-card">
+                    <div class="icon">⭐</div>
+                    <div class="label">Stars</div>
+                    <div class="amount" id="stars-balance">100</div>
+                </div>
+                <div class="balance-card coins">
+                    <div class="icon">🪙</div>
+                    <div class="label">Coins</div>
+                    <div class="amount" id="coins-balance">500</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Главная кнопка клика -->
+        <div class="stats">
+            <h3>🎯 Кликни и заработай!</h3>
+            <p>Каждый клик = +1 ⭐</p>
+        </div>
+
+        <button class="main-button" id="click-button" onclick="handleClick()">
+            <span class="star">⭐</span>
+        </button>
+
+        <!-- Статистика -->
+        <div class="stats">
+            <h3>📊 Статистика</h3>
+            <div class="stat-item">
+                <span class="stat-label">Всего кликов:</span>
+                <span class="stat-value" id="total-clicks">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Последний клик:</span>
+                <span class="stat-value" id="last-click">Никогда</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Сегодня кликов:</span>
+                <span class="stat-value" id="today-clicks">0</span>
+            </div>
+        </div>
+
+        <!-- Навигация -->
+        <div class="navigation">
+            <div class="nav-buttons">
+                <button class="nav-button" onclick="showTasks()">
+                    📋 Задания
+                </button>
+                <button class="nav-button" onclick="showEarn()">
+                    💰 Заработать
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let clickCount = 0;
+        let starsBalance = 100;
+        let coinsBalance = 500;
+        let todayClicks = 0;
+        let lastClickTime = null;
+
+        // Инициализация при загрузке страницы
+        window.onload = function() {
+            initializeTelegram();
+            loadSavedData();
+            updateUI();
+            console.log('Magnum Stars WebApp загружен!');
+        };
+
+        // Инициализация Telegram WebApp
+        function initializeTelegram() {
+            const statusElement = document.getElementById('telegram-status');
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                
+                // Инициализируем WebApp
+                tg.ready();
+                tg.expand();
+                
+                // Получаем данные пользователя
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    const user = tg.initDataUnsafe.user;
+                    document.getElementById('user-name').textContent = user.first_name || 'Пользователь';
+                    document.getElementById('user-id').textContent = `ID: ${user.id}`;
+                    document.getElementById('user-avatar').textContent = user.first_name ? user.first_name.charAt(0).toUpperCase() : 'U';
+                    
+                    // Загружаем баланс пользователя
+                    loadUserBalance(user.id);
+                }
+                
+                statusElement.textContent = '✅ Telegram WebApp';
+                statusElement.style.background = 'rgba(0, 255, 0, 0.8)';
+                
+                console.log('Telegram WebApp инициализирован:', tg.version);
+            } else {
+                statusElement.textContent = '🌐 Браузер';
+                statusElement.style.background = 'rgba(255, 165, 0, 0.8)';
+                
+                // Для разработки - тестовые данные
+                document.getElementById('user-name').textContent = 'Тестовый Пользователь';
+                document.getElementById('user-id').textContent = 'ID: 123456789';
+                document.getElementById('user-avatar').textContent = 'T';
+                
+                console.log('Запущено в браузере (режим разработки)');
+            }
+        }
+
+        // Обработка клика по кнопке
+        function handleClick() {
+            // Увеличиваем счетчики
+            clickCount++;
+            starsBalance++;
+            todayClicks++;
+            lastClickTime = new Date();
+
+            // Обновляем UI
+            updateUI();
+
+            // Сохраняем данные
+            saveData();
+
+            // Анимация клика
+            showClickEffect();
+
+            // Логируем
+            console.log(`Клик! Баланс: ${starsBalance} ⭐, Всего кликов: ${clickCount}`);
+
+            // Уведомление в Telegram (если доступно)
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+            }
+        }
+
+        // Показать эффект клика
+        function showClickEffect() {
+            const button = document.getElementById('click-button');
+            const effect = document.createElement('div');
+            effect.className = 'click-effect';
+            button.appendChild(effect);
+
+            setTimeout(() => {
+                button.removeChild(effect);
+            }, 600);
+        }
+
+        // Обновление UI
+        function updateUI() {
+            document.getElementById('stars-balance').textContent = starsBalance;
+            document.getElementById('coins-balance').textContent = coinsBalance;
+            document.getElementById('total-clicks').textContent = clickCount;
+            document.getElementById('today-clicks').textContent = todayClicks;
+            
+            if (lastClickTime) {
+                document.getElementById('last-click').textContent = lastClickTime.toLocaleTimeString();
+            }
+        }
+
+        // Сохранение данных в localStorage
+        function saveData() {
+            try {
+                const data = {
+                    clickCount,
+                    starsBalance,
+                    coinsBalance,
+                    todayClicks,
+                    lastClickTime: lastClickTime ? lastClickTime.toISOString() : null,
+                    lastSaveDate: new Date().toDateString()
+                };
+                
+                localStorage.setItem('magnum_stars_data', JSON.stringify(data));
+                console.log('Данные сохранены в localStorage');
+            } catch (error) {
+                console.error('Ошибка сохранения данных:', error);
+            }
+        }
+
+        // Загрузка сохраненных данных
+        function loadSavedData() {
+            try {
+                const savedData = localStorage.getItem('magnum_stars_data');
+                
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    
+                    // Проверяем, не устарели ли данные (новый день)
+                    const lastSaveDate = data.lastSaveDate;
+                    const today = new Date().toDateString();
+                    
+                    if (lastSaveDate === today) {
+                        // Данные за сегодня - загружаем
+                        clickCount = data.clickCount || 0;
+                        starsBalance = data.starsBalance || 100;
+                        coinsBalance = data.coinsBalance || 500;
+                        todayClicks = data.todayClicks || 0;
+                        
+                        if (data.lastClickTime) {
+                            lastClickTime = new Date(data.lastClickTime);
+                        }
+                        
+                        console.log('Данные загружены из localStorage');
+                    } else {
+                        // Новый день - сбрасываем дневной счетчик
+                        todayClicks = 0;
+                        console.log('Новый день - счетчик кликов сброшен');
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+            }
+        }
+
+        // Загрузка баланса пользователя (заглушка для будущего API)
+        function loadUserBalance(userId) {
+            // Здесь будет API запрос к боту
+            console.log(`Загрузка баланса для пользователя ${userId}`);
+        }
+
+        // Показать задания (заглушка)
+        function showTasks() {
+            alert('📋 Задания\n\nЭта функция находится в разработке.\nСкоро здесь появятся интересные задания для заработка!');
+        }
+
+        // Показать способы заработка (заглушка)
+        function showEarn() {
+            alert('💰 Заработать ⭐️\n\nЭта функция находится в разработке.\nСкоро здесь появятся новые способы заработка!');
+        }
+
+        // Автосохранение каждые 30 секунд
+        setInterval(saveData, 30000);
+
+        // Сброс дневного счетчика в полночь
+        function resetDailyCounter() {
+            const now = new Date();
+            const today = now.toDateString();
+            const lastSave = localStorage.getItem('magnum_stars_last_date');
+            
+            if (lastSave !== today) {
+                todayClicks = 0;
+                localStorage.setItem('magnum_stars_last_date', today);
+                updateUI();
+                console.log('Дневной счетчик сброшен');
+            }
+        }
+
+        // Проверяем каждый час
+        setInterval(resetDailyCounter, 3600000);
+    </script>
+</body>
 </html>

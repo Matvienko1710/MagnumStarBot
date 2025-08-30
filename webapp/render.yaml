@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: magnum-stars-webapp
+    env: static
+    buildCommand: npm run render-build
+    staticPublishPath: ./
+    envVars:
+      - key: NODE_VERSION
+        value: 18
