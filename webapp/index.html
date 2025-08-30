@@ -317,6 +317,13 @@
                     💰 Заработать
                 </button>
             </div>
+            
+            <!-- Кнопка для тестирования API -->
+            <div style="margin-top: 15px; text-align: center;">
+                <button class="nav-button" onclick="testAPI()" style="width: 100%; background: linear-gradient(45deg, #ff6b6b, #ee5a24);">
+                    🧪 Тест API
+                </button>
+            </div>
         </div>
     </div>
 
@@ -330,15 +337,15 @@
         let currentUserId = null;
 
         // Инициализация при загрузке страницы
-        window.onload = function() {
-            initializeTelegram();
+        window.onload = async function() {
+            await initializeTelegram();
             loadSavedData();
             updateUI();
             console.log('Magnum Stars WebApp загружен!');
         };
 
-        // Инициализация Telegram WebApp
-        function initializeTelegram() {
+                // Инициализация Telegram WebApp
+        async function initializeTelegram() {
             const statusElement = document.getElementById('telegram-status');
             
             if (window.Telegram && window.Telegram.WebApp) {
@@ -355,16 +362,20 @@
                     document.getElementById('user-id').textContent = `ID: ${user.id}`;
                     document.getElementById('user-avatar').textContent = user.first_name ? user.first_name.charAt(0).toUpperCase() : 'U';
                     
-                                    // Загружаем баланс пользователя
-                currentUserId = user.id;
-                await loadUserBalance(user.id);
-                await loadUserStats(user.id);
+                    // Загружаем баланс пользователя
+                    currentUserId = user.id;
+                    await loadUserBalance(user.id);
+                    await loadUserStats(user.id);
+                    
+                    statusElement.textContent = '✅ Telegram WebApp';
+                    statusElement.style.background = 'rgba(0, 255, 0, 0.8)';
+                    
+                    console.log('Telegram WebApp инициализирован:', tg.version);
+                } else {
+                    statusElement.textContent = '❌ Данные пользователя не найдены';
+                    statusElement.style.background = 'rgba(255, 0, 0, 0.8)';
+                    console.error('Данные пользователя не найдены в Telegram WebApp');
                 }
-                
-                statusElement.textContent = '✅ Telegram WebApp';
-                statusElement.style.background = 'rgba(0, 255, 0, 0.8)';
-                
-                console.log('Telegram WebApp инициализирован:', tg.version);
             } else {
                 statusElement.textContent = '🌐 Браузер';
                 statusElement.style.background = 'rgba(255, 165, 0, 0.8)';
@@ -373,6 +384,7 @@
                 document.getElementById('user-name').textContent = 'Тестовый Пользователь';
                 document.getElementById('user-id').textContent = 'ID: 123456789';
                 document.getElementById('user-avatar').textContent = 'T';
+                currentUserId = 123456789;
                 
                 console.log('Запущено в браузере (режим разработки)');
             }
@@ -385,6 +397,8 @@
                 return;
             }
 
+            console.log('Обрабатываем клик для пользователя:', currentUserId);
+
             try {
                 // Отправляем запрос к API
                 const response = await fetch(`/api/user/click/${currentUserId}`, {
@@ -394,7 +408,14 @@
                     }
                 });
 
+                console.log('Ответ API клика:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
+                console.log('Данные ответа клика:', data);
 
                 if (data.success) {
                     // Обновляем локальные данные
@@ -422,17 +443,73 @@
                     }
                 } else {
                     console.error('Ошибка API при клике:', data.error);
+                    // Fallback к локальному обновлению
+                    fallbackClick();
                 }
             } catch (error) {
                 console.error('Ошибка при обработке клика:', error);
                 // Fallback к локальному обновлению
-                clickCount++;
-                    starsBalance++;
-                    todayClicks++;
-                    lastClickTime = new Date();
-                    updateUI();
-                    saveData();
-                    showClickEffect();
+                fallbackClick();
+            }
+        }
+
+        // Fallback функция для локального обновления
+        function fallbackClick() {
+            console.log('Используем fallback - локальное обновление');
+            clickCount++;
+            starsBalance++;
+            todayClicks++;
+            lastClickTime = new Date();
+            updateUI();
+            saveData();
+            showClickEffect();
+        }
+
+        // Функция тестирования API
+        async function testAPI() {
+            if (!currentUserId) {
+                alert('ID пользователя не установлен!');
+                return;
+            }
+
+            console.log('🧪 Тестируем API для пользователя:', currentUserId);
+
+            try {
+                // Тест 1: Проверка здоровья API
+                console.log('1️⃣ Тестируем /api/health');
+                const healthResponse = await fetch('/api/health');
+                const healthData = await healthResponse.json();
+                console.log('Health API:', healthData);
+
+                // Тест 2: Получение баланса
+                console.log('2️⃣ Тестируем /api/user/balance/' + currentUserId);
+                const balanceResponse = await fetch(`/api/user/balance/${currentUserId}`);
+                const balanceData = await balanceResponse.json();
+                console.log('Balance API:', balanceData);
+
+                // Тест 3: Получение статистики
+                console.log('3️⃣ Тестируем /api/user/stats/' + currentUserId);
+                const statsResponse = await fetch(`/api/user/stats/${currentUserId}`);
+                const statsData = await statsResponse.json();
+                console.log('Stats API:', statsData);
+
+                // Показываем результаты
+                let resultMessage = '🧪 Результаты тестирования API:\n\n';
+                resultMessage += `1️⃣ Health: ${healthResponse.ok ? '✅' : '❌'} ${healthResponse.status}\n`;
+                resultMessage += `2️⃣ Balance: ${balanceResponse.ok ? '✅' : '❌'} ${balanceResponse.status}\n`;
+                resultMessage += `3️⃣ Stats: ${statsResponse.ok ? '✅' : '❌'} ${statsResponse.status}\n\n`;
+
+                if (healthResponse.ok && balanceResponse.ok && statsResponse.ok) {
+                    resultMessage += '🎉 Все API работают корректно!';
+                } else {
+                    resultMessage += '⚠️ Есть проблемы с API. Проверьте консоль браузера.';
+                }
+
+                alert(resultMessage);
+
+            } catch (error) {
+                console.error('Ошибка тестирования API:', error);
+                alert(`❌ Ошибка тестирования API:\n${error.message}`);
             }
         }
 
@@ -517,8 +594,16 @@
         // Загрузка баланса пользователя из API
         async function loadUserBalance(userId) {
             try {
+                console.log('Загружаем баланс для пользователя:', userId);
                 const response = await fetch(`/api/user/balance/${userId}`);
+                console.log('Ответ API баланса:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('Данные баланса:', data);
                 
                 if (data.success) {
                     starsBalance = data.balance.stars;
@@ -527,6 +612,8 @@
                     console.log('Баланс загружен из API:', data.balance);
                 } else {
                     console.error('Ошибка загрузки баланса:', data.error);
+                    // Fallback к LocalStorage
+                    loadSavedData();
                 }
             } catch (error) {
                 console.error('Ошибка API запроса баланса:', error);
