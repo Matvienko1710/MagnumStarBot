@@ -40,7 +40,7 @@ Value: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 ### **Шаг 4: Проверьте MONGODB_URI**
 ```
 Key: MONGODB_URI
-Value: mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/?retryWrites=true&w=majority
+Value: mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/
 ```
 
 ### **Шаг 5: Сохраните и перезапустите**

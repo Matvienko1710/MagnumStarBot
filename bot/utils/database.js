@@ -21,8 +21,8 @@ class Database {
             // Создаем альтернативные URI для тестирования
             const alternativeUris = [
                 uri, // Оригинальный URI
-                uri.replace('?retryWrites=true&w=majority', ''), // Без параметров
-                uri.replace('?retryWrites=true&w=majority', '?retryWrites=false&w=1'), // Минимальные параметры
+                uri.split('?')[0], // Без параметров вообще
+                uri.split('?')[0] + '?retryWrites=false', // Только retryWrites
                 uri.replace('mongodb+srv://', 'mongodb://'), // Попробуем обычный MongoDB протокол
             ];
 
