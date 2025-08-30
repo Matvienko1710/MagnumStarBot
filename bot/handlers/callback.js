@@ -1630,12 +1630,23 @@ async function handleCheckSubscription(ctx) {
                 `🎉 Теперь вы можете использовать все функции бота!\n\n` +
                 `🚀 Добро пожаловать в Magnum Stars!`;
             
-            const mainMenu = Markup.inlineKeyboard([
+            // Проверяем, является ли пользователь админом
+            const user = await dataManager.getUser(userId);
+            const isAdmin = user.isAdmin;
+            
+            // Создаем основное меню
+            const mainMenuButtons = [
                 [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
                 [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
-                [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
-                [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
-            ]);
+                [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
+            ];
+            
+            // Добавляем кнопку админ панели только для админов
+            if (isAdmin) {
+                mainMenuButtons.push([Markup.button.callback('⚙️ Админ панель', 'admin_panel')]);
+            }
+            
+            const mainMenu = Markup.inlineKeyboard(mainMenuButtons);
             
             await ctx.editMessageText(successMessage, {
                 parse_mode: 'Markdown',

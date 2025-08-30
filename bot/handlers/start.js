@@ -108,12 +108,23 @@ async function startHandler(ctx) {
             `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
-        const mainMenu = Markup.inlineKeyboard([
+        // Проверяем, является ли пользователь админом
+        const user = await dataManager.getUser(userId);
+        const isAdmin = user.isAdmin;
+        
+        // Создаем основное меню
+        const mainMenuButtons = [
             [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
-            [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
-            [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
-        ]);
+            [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
+        ];
+        
+        // Добавляем кнопку админ панели только для админов
+        if (isAdmin) {
+            mainMenuButtons.push([Markup.button.callback('⚙️ Админ панель', 'admin_panel')]);
+        }
+        
+        const mainMenu = Markup.inlineKeyboard(mainMenuButtons);
         
         // Удаляем старое сообщение бота, если оно есть
         const lastMessageId = lastBotMessages.get(userId);
