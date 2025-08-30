@@ -59,6 +59,14 @@ async function callbackHandler(ctx) {
                 await handleCacheStats(ctx);
                 break;
                 
+            case 'titles':
+                await handleTitles(ctx);
+                break;
+                
+            case 'my_titles':
+                await handleMyTitles(ctx);
+                break;
+                
             default:
                 await ctx.reply('❌ Неизвестная команда');
                 break;
@@ -226,7 +234,9 @@ async function handleMainMenu(ctx) {
         [Markup.button.callback('👤 Профиль', 'profile')],
         [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
         [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-        [Markup.button.callback('👥 Рефералы', 'referrals')]
+        [Markup.button.callback('👥 Рефералы', 'referrals')],
+        [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
+        [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
     ]);
     
     await ctx.reply(mainMenuMessage, {
@@ -423,6 +433,64 @@ async function handleCacheStats(ctx) {
     await ctx.reply(statsMessage, {
         parse_mode: 'Markdown',
         reply_markup: statsKeyboard.reply_markup
+    });
+}
+
+// Обработка титулов
+async function handleTitles(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка титулов', { userId });
+    
+    const titlesMessage = `👑 **Доступные титулы**\n\n` +
+        `🎯 Выберите титул для просмотра:\n\n` +
+        `🆕 **Новичок**\n` +
+        `├ 📝 Описание: Первый титул для новых пользователей\n` +
+        `├ 🎯 Требования: Уровень 1\n` +
+        `└ ✅ Статус: Разблокирован\n\n` +
+        `👑 **Владелец**\n` +
+        `├ 📝 Описание: Титул для владельцев бота\n` +
+        `├ 🎯 Требования: Уровень 10\n` +
+        `└ 🔒 Статус: Заблокирован`;
+    
+    const titlesKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('📊 Мои титулы', 'my_titles')],
+        [Markup.button.callback('👤 Профиль', 'profile')],
+        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+    ]);
+    
+    await ctx.reply(titlesMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: titlesKeyboard.reply_markup
+    });
+}
+
+// Обработка моих титулов
+async function handleMyTitles(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка моих титулов', { userId });
+    
+    const myTitlesMessage = `👑 **Мои титулы**\n\n` +
+        `🎯 Текущий активный титул:\n\n` +
+        `🆕 **Новичок**\n` +
+        `├ 📝 Описание: Первый титул для новых пользователей\n` +
+        `├ 🎯 Требования: Уровень 1\n` +
+        `└ ✅ Статус: Активен\n\n` +
+        `📊 **Статистика титулов:**\n` +
+        `├ 🎯 Всего титулов: 1\n` +
+        `├ ✅ Разблокировано: 1\n` +
+        `└ 🔒 Заблокировано: 1`;
+    
+    const myTitlesKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('👑 Доступные титулы', 'titles')],
+        [Markup.button.callback('👤 Профиль', 'profile')],
+        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+    ]);
+    
+    await ctx.reply(myTitlesMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: myTitlesKeyboard.reply_markup
     });
 }
 
