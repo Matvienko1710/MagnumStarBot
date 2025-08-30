@@ -62,7 +62,7 @@ async function autoDeleteUserMessage(ctx) {
 }
 
 // Функция для автоматического планирования удаления ответного сообщения
-async function autoDeleteReplyMessage(ctx, messageId) {
+async function autoDeleteReplyMessage(ctx, messageId, isActiveMenu = false) {
     try {
         const chatId = ctx.chat.id;
         const userId = ctx.from.id;
@@ -72,7 +72,17 @@ async function autoDeleteReplyMessage(ctx, messageId) {
             return;
         }
 
-        // Планируем удаление ответного сообщения через 15 секунд
+        // Если это активное меню с кнопками - НЕ планируем удаление
+        if (isActiveMenu) {
+            logger.info('Активное меню не планируется на удаление', { 
+                messageId, 
+                chatId, 
+                userId 
+            });
+            return;
+        }
+
+        // Планируем удаление обычного сообщения через 15 секунд
         await messageCleaner.scheduleMessageDeletion(messageId, chatId, userId, 'bot');
         
         logger.info('Ответное сообщение запланировано на автоматическое удаление', { 
@@ -111,9 +121,58 @@ function autoDeleteUserMessageMiddleware() {
     };
 }
 
+// Функция для отправки сообщений с умным планированием удаления
+async function sendSmartMessage(ctx, message, options = {}, isActiveMenu = false) {
+    try {
+        let sentMessage;
+        
+        if (options.reply_markup) {
+            // Если есть клавиатура - это активное меню, не планируем удаление
+            sentMessage = await ctx.reply(message, options);
+            if (!isActiveMenu) {
+                await autoDeleteReplyMessage(ctx, sentMessage.message_id, false);
+            }
+        } else {
+            // Обычное сообщение без кнопок - планируем удаление
+            sentMessage = await ctx.reply(message, options);
+            await autoDeleteReplyMessage(ctx, sentMessage.message_id, false);
+        }
+        
+        return sentMessage;
+    } catch (error) {
+        logger.error('Ошибка отправки умного сообщения', error, { 
+            chatId: ctx.chat?.id, 
+            userId: ctx.from?.id 
+        });
+        throw error;
+    }
+}
+
+// Функция для редактирования сообщений с умным планированием удаления
+async function editSmartMessage(ctx, messageId, message, options = {}, isActiveMenu = false) {
+    try {
+        if (!isActiveMenu) {
+            // Если это не активное меню - планируем удаление через 15 секунд
+            await autoDeleteReplyMessage(ctx, messageId, false);
+        }
+        
+        await ctx.editMessageText(message, options);
+        
+    } catch (error) {
+        logger.error('Ошибка редактирования умного сообщения', error, { 
+            chatId: ctx.chat?.id, 
+            userId: ctx.from?.id,
+            messageId 
+        });
+        throw error;
+    }
+}
+
 module.exports = {
     autoDeleteBotMessage,
     autoDeleteUserMessage,
     autoDeleteReplyMessage,
-    autoDeleteUserMessageMiddleware
+    autoDeleteUserMessageMiddleware,
+    sendSmartMessage,
+    editSmartMessage
 };

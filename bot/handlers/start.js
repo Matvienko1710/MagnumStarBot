@@ -1,7 +1,7 @@
 const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
 const dataManager = require('../utils/dataManager');
-const { autoDeleteReplyMessage } = require('../utils/autoDelete');
+const { sendSmartMessage } = require('../utils/autoDelete');
 
 // Хранилище последних сообщений бота для каждого пользователя
 const lastBotMessages = new Map();
@@ -43,17 +43,14 @@ async function startHandler(ctx) {
                 }
             }
             
-            // Отправляем сообщение о необходимости подписки
-            const newMessage = await ctx.reply(subscriptionMessage, {
+            // Отправляем сообщение о необходимости подписки (активное меню - не удаляем)
+            const newMessage = await sendSmartMessage(ctx, subscriptionMessage, {
                 parse_mode: 'Markdown',
                 reply_markup: subscriptionKeyboard.reply_markup
-            });
+            }, true);
             
             // Сохраняем ID нового сообщения
             lastBotMessages.set(userId, newMessage.message_id);
-            
-            // Планируем автоматическое удаление через 15 секунд
-            await autoDeleteReplyMessage(ctx, newMessage.message_id);
             
             logger.info('Сообщение о подписке отправлено', { userId, messageId: newMessage.message_id });
             
@@ -75,14 +72,11 @@ async function startHandler(ctx) {
                         `👥 Ваш реферер получил: **5 ⭐ Stars**\n\n` +
                         `🎯 Продолжайте зарабатывать вместе!`;
                     
-                    // Отправляем сообщение о реферальной награде
-                    const referralMessage = await ctx.reply(referralBonusMessage, { parse_mode: 'Markdown' });
+                    // Отправляем сообщение о реферальной награде (обычное сообщение - удаляем через 15 сек)
+                    const referralMessage = await sendSmartMessage(ctx, referralBonusMessage, { parse_mode: 'Markdown' });
                     
                     // Сохраняем ID сообщения о реферальной награде
                     lastBotMessages.set(userId, referralMessage.message_id);
-                    
-                    // Планируем автоматическое удаление через 15 секунд
-                    await autoDeleteReplyMessage(ctx, referralMessage.message_id);
                     
                     logger.info('Сообщение о реферальной награде отправлено и сохранено', { userId, messageId: referralMessage.message_id });
                 }
@@ -145,17 +139,14 @@ async function startHandler(ctx) {
             }
         }
         
-        // Отправляем новое сообщение
-        const newMessage = await ctx.reply(welcomeMessage, {
+        // Отправляем новое сообщение (главное меню - не удаляем)
+        const newMessage = await sendSmartMessage(ctx, welcomeMessage, {
             parse_mode: 'Markdown',
             reply_markup: mainMenu.reply_markup
-        });
+        }, true);
         
         // Сохраняем ID нового сообщения
         lastBotMessages.set(userId, newMessage.message_id);
-        
-        // Планируем автоматическое удаление через 15 секунд
-        await autoDeleteReplyMessage(ctx, newMessage.message_id);
         
         logger.info('Новое сообщение бота отправлено и сохранено', { userId, messageId: newMessage.message_id });
         
@@ -183,17 +174,14 @@ async function startHandler(ctx) {
             }
         }
         
-        // Отправляем новое сообщение об ошибке
-        const newMessage = await ctx.reply(errorMessage, {
+        // Отправляем новое сообщение об ошибке (с кнопками - не удаляем)
+        const newMessage = await sendSmartMessage(ctx, errorMessage, {
             parse_mode: 'Markdown',
             reply_markup: errorKeyboard.reply_markup
-        });
+        }, true);
         
         // Сохраняем ID нового сообщения
         lastBotMessages.set(userId, newMessage.message_id);
-        
-        // Планируем автоматическое удаление через 15 секунд
-        await autoDeleteReplyMessage(ctx, newMessage.message_id);
         
         logger.info('Новое сообщение об ошибке отправлено и сохранено', { userId, messageId: newMessage.message_id });
     }
