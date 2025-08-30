@@ -323,10 +323,11 @@
     <script>
         // Глобальные переменные
         let clickCount = 0;
-        let starsBalance = 100;
-        let coinsBalance = 500;
+        let starsBalance = 0;
+        let coinsBalance = 0;
         let todayClicks = 0;
         let lastClickTime = null;
+        let currentUserId = null;
 
         // Инициализация при загрузке страницы
         window.onload = function() {
@@ -354,8 +355,10 @@
                     document.getElementById('user-id').textContent = `ID: ${user.id}`;
                     document.getElementById('user-avatar').textContent = user.first_name ? user.first_name.charAt(0).toUpperCase() : 'U';
                     
-                    // Загружаем баланс пользователя
-                    loadUserBalance(user.id);
+                                    // Загружаем баланс пользователя
+                currentUserId = user.id;
+                await loadUserBalance(user.id);
+                await loadUserStats(user.id);
                 }
                 
                 statusElement.textContent = '✅ Telegram WebApp';
@@ -376,28 +379,60 @@
         }
 
         // Обработка клика по кнопке
-        function handleClick() {
-            // Увеличиваем счетчики
-            clickCount++;
-            starsBalance++;
-            todayClicks++;
-            lastClickTime = new Date();
+        async function handleClick() {
+            if (!currentUserId) {
+                console.error('ID пользователя не установлен');
+                return;
+            }
 
-            // Обновляем UI
-            updateUI();
+            try {
+                // Отправляем запрос к API
+                const response = await fetch(`/api/user/click/${currentUserId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-            // Сохраняем данные
-            saveData();
+                const data = await response.json();
 
-            // Анимация клика
-            showClickEffect();
+                if (data.success) {
+                    // Обновляем локальные данные
+                    starsBalance = data.balance.stars;
+                    coinsBalance = data.balance.coins;
+                    clickCount++;
+                    todayClicks++;
+                    lastClickTime = new Date();
 
-            // Логируем
-            console.log(`Клик! Баланс: ${starsBalance} ⭐, Всего кликов: ${clickCount}`);
+                    // Обновляем UI
+                    updateUI();
 
-            // Уведомление в Telegram (если доступно)
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                    // Сохраняем в LocalStorage как backup
+                    saveData();
+
+                    // Анимация клика
+                    showClickEffect();
+
+                    // Логируем
+                    console.log(`Клик! Баланс: ${starsBalance} ⭐, Всего кликов: ${clickCount}`);
+
+                    // Уведомление в Telegram (если доступно)
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                    }
+                } else {
+                    console.error('Ошибка API при клике:', data.error);
+                }
+            } catch (error) {
+                console.error('Ошибка при обработке клика:', error);
+                // Fallback к локальному обновлению
+                clickCount++;
+                    starsBalance++;
+                    todayClicks++;
+                    lastClickTime = new Date();
+                    updateUI();
+                    saveData();
+                    showClickEffect();
             }
         }
 
@@ -479,10 +514,51 @@
             }
         }
 
-        // Загрузка баланса пользователя (заглушка для будущего API)
-        function loadUserBalance(userId) {
-            // Здесь будет API запрос к боту
-            console.log(`Загрузка баланса для пользователя ${userId}`);
+        // Загрузка баланса пользователя из API
+        async function loadUserBalance(userId) {
+            try {
+                const response = await fetch(`/api/user/balance/${userId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    starsBalance = data.balance.stars;
+                    coinsBalance = data.balance.coins;
+                    updateUI();
+                    console.log('Баланс загружен из API:', data.balance);
+                } else {
+                    console.error('Ошибка загрузки баланса:', data.error);
+                }
+            } catch (error) {
+                console.error('Ошибка API запроса баланса:', error);
+                // Fallback к LocalStorage для разработки
+                loadSavedData();
+            }
+        }
+
+        // Загрузка статистики пользователя из API
+        async function loadUserStats(userId) {
+            try {
+                const response = await fetch(`/api/user/stats/${userId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    clickCount = data.stats.totalTransactions;
+                    todayClicks = data.stats.todayClicks;
+                    
+                    if (data.stats.lastTransaction) {
+                        lastClickTime = new Date(data.stats.lastTransaction.timestamp);
+                    }
+                    
+                    updateUI();
+                    console.log('Статистика загружена из API:', data.stats);
+                } else {
+                    console.error('Ошибка загрузки статистики:', data.error);
+                }
+            } catch (error) {
+                console.error('Ошибка API запроса статистики:', error);
+                // Fallback к LocalStorage для разработки
+                loadSavedData();
+            }
         }
 
         // Показать задания (заглушка)

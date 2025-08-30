@@ -1,4 +1,3 @@
-node_modules/
 src/
 dist/
 *.log
@@ -9,4 +8,3 @@ dist/
 .idea/
 *.swp
 *.swo
-package-lock.json

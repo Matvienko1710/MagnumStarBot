@@ -1,9 +1,13 @@
 services:
   - type: web
     name: magnum-stars-webapp
-    env: static
-    buildCommand: npm run render-build
-    staticPublishPath: ./
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: 18
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false

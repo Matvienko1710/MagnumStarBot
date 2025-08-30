@@ -5,11 +5,11 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "render-build": "echo 'HTML WebApp - сборка не требуется'"
+    "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "mongodb": "^6.19.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.14",
