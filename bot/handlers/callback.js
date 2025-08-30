@@ -132,6 +132,10 @@ async function callbackHandler(ctx) {
                 await handleManageTitles(ctx);
                 break;
                 
+            case 'check_missed_rewards':
+                await handleCheckMissedRewards(ctx);
+                break;
+                
             default:
                 await ctx.reply('❌ Неизвестная команда');
                 break;
@@ -1020,6 +1024,7 @@ async function handleAdminPanel(ctx) {
         const adminKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔑 Создать ключ', 'create_key')],
             [Markup.button.callback('👑 Выдать/забрать титул', 'manage_titles')],
+            [Markup.button.callback('⛏️ Проверить пропущенные награды', 'check_missed_rewards')],
             [Markup.button.callback('📊 Статистика кэша', 'cache_stats')],
             [Markup.button.callback('🗑️ Очистить кэш', 'clear_cache')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
@@ -1872,6 +1877,91 @@ async function handleManageTitles(ctx) {
         
         const errorKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔄 Попробовать снова', 'manage_titles')],
+            [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
+// Обработка проверки пропущенных наград за майнинг
+async function handleCheckMissedRewards(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка проверки пропущенных наград', { userId });
+    
+    try {
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            await ctx.answerCbQuery('❌ У вас нет прав для проверки пропущенных наград');
+            return;
+        }
+        
+        // Показываем сообщение о начале проверки
+        const startMessage = `⛏️ **Проверка пропущенных наград за майнинг**\n\n` +
+            `🔄 Начинаем проверку всех пользователей...\n` +
+            `⏳ Это может занять некоторое время\n\n` +
+            `💡 Проверяются награды за последние 4 часа майнинга`;
+        
+        await ctx.editMessageText(startMessage, {
+            parse_mode: 'Markdown'
+        });
+        
+        // Запускаем проверку пропущенных наград
+        const result = await dataManager.processAllMissedMiningRewards();
+        
+        if (result.success) {
+            const successMessage = `✅ **Проверка пропущенных наград завершена!**\n\n` +
+                `📊 **Результаты:**\n` +
+                `├ 👥 Пользователей обработано: ${result.totalUsersProcessed}\n` +
+                `├ 🪙 Magnum Coins начислено: ${result.totalCoinsAwarded}\n` +
+                `├ ⭐ Stars начислено: ${result.totalStarsAwarded}\n` +
+                `└ ⏰ Минут обработано: ${result.totalMinutesProcessed}\n\n` +
+                `🎉 Все пропущенные награды успешно начислены!`;
+            
+            const successKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('🔙 Админ панель', 'admin_panel')],
+                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+            ]);
+            
+            await ctx.editMessageText(successMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: successKeyboard.reply_markup
+            });
+            
+            logger.info('Проверка пропущенных наград завершена успешно', { userId, result });
+            
+        } else {
+            const errorMessage = `❌ **Ошибка проверки пропущенных наград**\n\n` +
+                `🚫 Не удалось выполнить проверку\n` +
+                `🔍 Ошибка: ${result.error}\n\n` +
+                `💡 Попробуйте позже или обратитесь к администратору`;
+            
+            const errorKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('🔄 Попробовать снова', 'check_missed_rewards')],
+                [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+            ]);
+            
+            await ctx.editMessageText(errorMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: errorKeyboard.reply_markup
+            });
+            
+            logger.error('Ошибка проверки пропущенных наград', { userId, error: result.error });
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка обработки проверки пропущенных наград', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка проверки пропущенных наград**\n\n` +
+            `🚫 Не удалось выполнить проверку\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'check_missed_rewards')],
             [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
         ]);
         

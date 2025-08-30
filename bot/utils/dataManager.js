@@ -22,6 +22,19 @@ class DataManager {
             // Создаем начальные данные
             await this.createDefaultData();
             
+            // Проверяем и начисляем пропущенные награды за майнинг (после редеплоя)
+            logger.info('Начинаем проверку пропущенных наград за майнинг...');
+            try {
+                const missedRewardsResult = await this.processAllMissedMiningRewards();
+                if (missedRewardsResult.success) {
+                    logger.info('Проверка пропущенных наград завершена успешно', missedRewardsResult);
+                } else {
+                    logger.error('Ошибка проверки пропущенных наград', missedRewardsResult.error);
+                }
+            } catch (missedRewardsError) {
+                logger.error('Ошибка при проверке пропущенных наград', missedRewardsError);
+            }
+            
             logger.info('DataManager успешно инициализирован');
             
         } catch (error) {
@@ -804,6 +817,153 @@ class DataManager {
         } catch (error) {
             logger.error('Ошибка автоматического начисления дохода', error, { userId });
             return { coins: 0, stars: 0 };
+        }
+    }
+    
+    // Проверка и начисление пропущенных наград за майнинг (после редеплоя)
+    async processMissedMiningRewards(userId) {
+        try {
+            const user = await this.getUser(userId);
+            const miners = user.miners || [];
+            
+            if (miners.length === 0) {
+                return { coins: 0, stars: 0, minutesProcessed: 0 };
+            }
+            
+            let totalCoins = 0;
+            let totalStars = 0;
+            let totalMinutesProcessed = 0;
+            const now = new Date();
+            
+            logger.info('Проверяем пропущенные награды за майнинг', { userId, minersCount: miners.length });
+            
+            // Проверяем каждого майнера
+            for (const miner of miners) {
+                if (!miner.isActive || !miner.lastMiningStart) continue;
+                
+                const miningStartTime = new Date(miner.lastMiningStart);
+                const timeSinceStart = now - miningStartTime;
+                const hoursSinceStart = timeSinceStart / (1000 * 60 * 60);
+                
+                // Если майнинг был запущен менее 4 часов назад
+                if (hoursSinceStart < 4) {
+                    // Рассчитываем количество пропущенных минут
+                    const minutesSinceStart = Math.floor(timeSinceStart / (1000 * 60));
+                    const minutesToProcess = Math.min(minutesSinceStart, 240); // Максимум 4 часа (240 минут)
+                    
+                    if (minutesToProcess > 0) {
+                        // Начисляем награды за пропущенные минуты
+                        const coinsEarned = miner.speed.coins * minutesToProcess;
+                        const starsEarned = miner.speed.stars * minutesToProcess;
+                        
+                        totalCoins += coinsEarned;
+                        totalStars += starsEarned;
+                        totalMinutesProcessed += minutesToProcess;
+                        
+                        logger.info('Начислены пропущенные награды за майнер', { 
+                            userId, 
+                            minerId: miner.id, 
+                            minerType: miner.type,
+                            minutesProcessed: minutesToProcess,
+                            coinsEarned,
+                            starsEarned
+                        });
+                    }
+                }
+            }
+            
+            // Начисляем общие пропущенные награды
+            if (totalCoins > 0 || totalStars > 0) {
+                if (totalCoins > 0) {
+                    await this.updateBalance(userId, 'coins', totalCoins, 'mining_income_missed');
+                    logger.info('Начислены пропущенные награды за майнинг (Coins)', { userId, totalCoins });
+                }
+                if (totalStars > 0) {
+                    await this.updateBalance(userId, 'stars', totalStars, 'mining_income_missed');
+                    logger.info('Начислены пропущенные награды за майнинг (Stars)', { userId, totalStars });
+                }
+                
+                logger.info('Пропущенные награды за майнинг успешно начислены', { 
+                    userId, 
+                    totalCoins, 
+                    totalStars, 
+                    totalMinutesProcessed 
+                });
+            }
+            
+            return { 
+                coins: totalCoins, 
+                stars: totalStars, 
+                minutesProcessed: totalMinutesProcessed 
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка обработки пропущенных наград за майнинг', error, { userId });
+            return { coins: 0, stars: 0, minutesProcessed: 0 };
+        }
+    }
+    
+    // Массовая проверка и начисление пропущенных наград для всех пользователей
+    async processAllMissedMiningRewards() {
+        try {
+            logger.info('Начинаем массовую проверку пропущенных наград за майнинг');
+            
+            // Получаем всех пользователей с майнерами
+            const usersWithMiners = await this.db.collection('users').find({
+                'miners.0': { $exists: true } // У пользователя есть хотя бы один майнер
+            }).toArray();
+            
+            let totalUsersProcessed = 0;
+            let totalCoinsAwarded = 0;
+            let totalStarsAwarded = 0;
+            let totalMinutesProcessed = 0;
+            
+            logger.info(`Найдено пользователей с майнерами: ${usersWithMiners.length}`);
+            
+            // Обрабатываем каждого пользователя
+            for (const user of usersWithMiners) {
+                try {
+                    const result = await this.processMissedMiningRewards(user.userId);
+                    
+                    if (result.minutesProcessed > 0) {
+                        totalUsersProcessed++;
+                        totalCoinsAwarded += result.coins;
+                        totalStarsAwarded += result.stars;
+                        totalMinutesProcessed += result.minutesProcessed;
+                        
+                        logger.info('Пользователь обработан', { 
+                            userId: user.userId, 
+                            coins: result.coins, 
+                            stars: result.stars, 
+                            minutes: result.minutesProcessed 
+                        });
+                    }
+                } catch (userError) {
+                    logger.error('Ошибка обработки пользователя', userError, { userId: user.userId });
+                }
+            }
+            
+            logger.info('Массовая проверка пропущенных наград завершена', {
+                totalUsersProcessed,
+                totalCoinsAwarded,
+                totalStarsAwarded,
+                totalMinutesProcessed
+            });
+            
+            return {
+                success: true,
+                totalUsersProcessed,
+                totalCoinsAwarded,
+                totalStarsAwarded,
+                totalMinutesProcessed
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка массовой проверки пропущенных наград', error);
+            return {
+                success: false,
+                error: error.message
+            };
         }
     }
     
