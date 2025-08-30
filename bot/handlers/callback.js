@@ -658,9 +658,12 @@ async function handleReferrals(ctx) {
         // Получаем реферальную статистику
         const referralStats = await getReferralStats(userId);
         
+        // Убеждаемся, что referralId существует, иначе используем userId
+        const referralId = referralStats.referralId || ctx.from.id;
+        
         const referralsMessage = `👥 **Реферальная система**\n\n` +
             `🔗 Ваша реферальная ссылка:\n` +
-            `\`https://t.me/MagnumStarBot?start=${referralStats.referralId}\`\n\n` +
+            `\`https://t.me/MagnumStarBot?start=${referralId}\`\n\n` +
             `📊 Статистика:\n` +
             `├ 👥 Всего рефералов: ${referralStats.totalReferrals}\n` +
             `├ ⭐ Заработано: ${referralStats.totalEarned.stars}\n` +

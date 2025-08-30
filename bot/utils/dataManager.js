@@ -381,9 +381,12 @@ class DataManager {
             const user = await this.getUser(userId);
             const referrals = user.referral.referrals;
             
+            // Убеждаемся, что userId - это число
+            const numericUserId = Number(userId);
+            
             return {
                 referralCode: user.referral.code,
-                referralId: userId, // ID пользователя для реферальной ссылки
+                referralId: numericUserId, // ID пользователя для реферальной ссылки
                 totalReferrals: referrals.length,
                 activeReferrals: referrals.length, // Пока упрощенно
                 totalEarned: user.referral.totalEarned,
