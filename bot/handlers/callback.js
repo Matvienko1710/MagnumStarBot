@@ -19,6 +19,9 @@ async function callbackHandler(ctx) {
         
         // Обрабатываем различные callback'и
         switch (callbackData) {
+            case 'check_subscription':
+                await handleCheckSubscription(ctx);
+                break;
             case 'profile':
                 await handleProfile(ctx);
                 break;
@@ -57,6 +60,18 @@ async function callbackHandler(ctx) {
                 
             case 'withdraw':
                 await handleWithdraw(ctx);
+                break;
+            case 'create_withdrawal':
+                await handleCreateWithdrawal(ctx);
+                break;
+            case 'my_withdrawals':
+                await handleMyWithdrawals(ctx);
+                break;
+            case (action) => action.startsWith('approve_withdrawal_'):
+                await handleApproveWithdrawal(ctx, action);
+                break;
+            case (action) => action.startsWith('reject_withdrawal_'):
+                await handleRejectWithdrawal(ctx, action);
                 break;
                 
             case 'activate_key':
@@ -130,6 +145,31 @@ async function handleProfile(ctx) {
     logger.info('Обработка профиля', { userId });
     
     try {
+        // Проверяем подписку пользователя
+        const canUseBot = await dataManager.canUserUseBot(userId);
+        if (!canUseBot) {
+            const subscriptionMessage = `🔒 **Требуется подписка на канал**\n\n` +
+                `📢 Для использования бота необходимо подписаться на канал **@magnumtap**\n\n` +
+                `📋 **Что нужно сделать:**\n` +
+                `1️⃣ Нажмите кнопку "📢 Подписаться на канал"\n` +
+                `2️⃣ Подпишитесь на канал @magnumtap\n` +
+                `3️⃣ Вернитесь в бот и нажмите "✅ Проверить подписку"\n\n` +
+                `💡 После подтверждения подписки вы получите доступ ко всем функциям бота!`;
+            
+            const subscriptionKeyboard = Markup.inlineKeyboard([
+                [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
+                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+            ]);
+            
+            await ctx.editMessageText(subscriptionMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: subscriptionKeyboard.reply_markup
+            });
+            
+            return;
+        }
+        
         // Получаем баланс пользователя
         const userBalance = await getUserBalance(userId);
         
@@ -400,15 +440,23 @@ async function handleWithdraw(ctx) {
     
     try {
         // Получаем баланс пользователя
-        const userBalance = await getUserBalance(userId);
+        const userBalance = await dataManager.getUserBalance(userId);
         
         const withdrawMessage = `⭐ **Вывод звезд**\n\n` +
-            `💰 Ваш баланс: ${userBalance.stars} ⭐ Stars\n\n` +
-            `💳 Для вывода звезд обратитесь к администратору\n` +
-            `📧 Email: admin@magnumstar.com\n` +
-            `💬 Telegram: @admin`;
+            `💰 **Ваш баланс:** ${userBalance.stars} ⭐ Stars\n\n` +
+            `📋 **Условия вывода:**\n` +
+            `├ 💰 Минимальная сумма: 50 ⭐ Stars\n` +
+            `├ ⏰ Обработка: 24-48 часов\n` +
+            `└ 💳 Способ: По заявке\n\n` +
+            `💡 **Как вывести:**\n` +
+            `1️⃣ Нажмите "💳 Создать заявку"\n` +
+            `2️⃣ Введите сумму для вывода\n` +
+            `3️⃣ Отправьте заявку\n` +
+            `4️⃣ Ожидайте одобрения админа`;
         
         const withdrawKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('💳 Создать заявку', 'create_withdrawal')],
+            [Markup.button.callback('📋 Мои заявки', 'my_withdrawals')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
         
@@ -710,6 +758,31 @@ async function handleMainMenu(ctx) {
     logger.info('Обработка главного меню', { userId });
     
     try {
+        // Проверяем подписку пользователя
+        const canUseBot = await dataManager.canUserUseBot(userId);
+        if (!canUseBot) {
+            const subscriptionMessage = `🔒 **Требуется подписка на канал**\n\n` +
+                `📢 Для использования бота необходимо подписаться на канал **@magnumtap**\n\n` +
+                `📋 **Что нужно сделать:**\n` +
+                `1️⃣ Нажмите кнопку "📢 Подписаться на канал"\n` +
+                `2️⃣ Подпишитесь на канал @magnumtap\n` +
+                `3️⃣ Вернитесь в бот и нажмите "✅ Проверить подписку"\n\n` +
+                `💡 После подтверждения подписки вы получите доступ ко всем функциям бота!`;
+            
+            const subscriptionKeyboard = Markup.inlineKeyboard([
+                [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
+                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+            ]);
+            
+            await ctx.editMessageText(subscriptionMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: subscriptionKeyboard.reply_markup
+            });
+            
+            return;
+        }
+        
         // Получаем баланс пользователя
         const userBalance = await getUserBalance(userId);
         
@@ -1206,3 +1279,367 @@ async function handleTitleKeyCreation(ctx, text) {
         userStates.delete(userId);
     }
 }
+
+// Обработка создания заявки на вывод
+async function handleCreateWithdrawal(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка создания заявки на вывод', { userId });
+    
+    try {
+        // Получаем баланс пользователя
+        const userBalance = await dataManager.getUserBalance(userId);
+        
+        if (userBalance.stars < 50) {
+            const insufficientMessage = `❌ **Недостаточно звезд**\n\n` +
+                `💰 Ваш баланс: ${userBalance.stars} ⭐ Stars\n` +
+                `📋 Минимальная сумма для вывода: 50 ⭐ Stars\n\n` +
+                `💡 Заработайте больше звезд, чтобы создать заявку на вывод`;
+            
+            const insufficientKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('💰 Майнеры', 'miners')],
+                [Markup.button.callback('🔙 Назад к выводу', 'withdraw')]
+            ]);
+            
+            await ctx.editMessageText(insufficientMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: insufficientKeyboard.reply_markup
+            });
+            return;
+        }
+        
+        // Устанавливаем состояние ожидания суммы
+        userStates.set(userId, {
+            state: 'waiting_for_withdrawal_amount',
+            timestamp: Date.now()
+        });
+        
+        const createMessage = `💳 **Создание заявки на вывод**\n\n` +
+            `💰 **Ваш баланс:** ${userBalance.stars} ⭐ Stars\n` +
+            `📋 **Минимальная сумма:** 50 ⭐ Stars\n\n` +
+            `📝 **Введите сумму для вывода:**\n` +
+            `💡 Пример: 100 (для вывода 100 ⭐ Stars)`;
+        
+        const createKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔙 Отмена', 'withdraw')]
+        ]);
+        
+        await ctx.editMessageText(createMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: createKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка создания заявки на вывод', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка создания заявки**\n\n` +
+            `🚫 Не удалось создать заявку на вывод\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'create_withdrawal')],
+            [Markup.button.callback('🔙 Назад к выводу', 'withdraw')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
+// Обработка просмотра заявок пользователя
+async function handleMyWithdrawals(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка просмотра заявки пользователя', { userId });
+    
+    try {
+        // Получаем заявки пользователя
+        const requests = await dataManager.db.collection('withdrawals')
+            .find({ userId: Number(userId) })
+            .sort({ createdAt: -1 })
+            .toArray();
+        
+        if (requests.length === 0) {
+            const noRequestsMessage = `📋 **Мои заявки на вывод**\n\n` +
+                `❌ У вас пока нет заявок на вывод\n\n` +
+                `💡 Создайте первую заявку, нажав "💳 Создать заявку"`;
+            
+            const noRequestsKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('💳 Создать заявку', 'create_withdrawal')],
+                [Markup.button.callback('🔙 Назад к выводу', 'withdraw')]
+            ]);
+            
+            await ctx.editMessageText(noRequestsMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: noRequestsKeyboard.reply_markup
+            });
+            return;
+        }
+        
+        let requestsMessage = `📋 **Мои заявки на вывод**\n\n`;
+        
+        for (const request of requests) {
+            const status = request.status === 'pending' ? '⏳ Ожидает' : 
+                          request.status === 'approved' ? '✅ Одобрена' : '❌ Отклонена';
+            
+            const date = new Date(request.createdAt).toLocaleDateString('ru-RU');
+            const time = new Date(request.createdAt).toLocaleTimeString('ru-RU');
+            
+            requestsMessage += `📋 **Заявка #${request.id}**\n` +
+                `├ 💰 Сумма: ${request.amount} ⭐ Stars\n` +
+                `├ 📅 Дата: ${date} ${time}\n` +
+                `├ 📊 Статус: ${status}\n`;
+            
+            if (request.status !== 'pending') {
+                const processedDate = new Date(request.processedAt).toLocaleDateString('ru-RU');
+                const processedTime = new Date(request.processedAt).toLocaleTimeString('ru-RU');
+                requestsMessage += `├ ⏰ Обработана: ${processedDate} ${processedTime}\n`;
+                
+                if (request.comment) {
+                    requestsMessage += `└ 💬 Комментарий: ${request.comment}\n`;
+                } else {
+                    requestsMessage += `└ 💬 Комментарий: Нет\n`;
+                }
+            } else {
+                requestsMessage += `└ ⏰ Обработка: 24-48 часов\n`;
+            }
+            
+            requestsMessage += '\n';
+        }
+        
+        const requestsKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('💳 Создать новую заявку', 'create_withdrawal')],
+            [Markup.button.callback('🔙 Назад к выводу', 'withdraw')]
+        ]);
+        
+        await ctx.editMessageText(requestsMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: requestsKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка просмотра заявок пользователя', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки заявок**\n\n` +
+            `🚫 Не удалось загрузить ваши заявки\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'my_withdrawals')],
+            [Markup.button.callback('🔙 Назад к выводу', 'withdraw')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
+// Обработка одобрения заявки на вывод (только для админов)
+async function handleApproveWithdrawal(ctx, action) {
+    const userId = ctx.from.id;
+    const requestId = action.replace('approve_withdrawal_', '');
+    
+    logger.info('Попытка одобрения заявки на вывод', { userId, requestId });
+    
+    try {
+        // Проверяем, является ли пользователь админом
+        const user = await dataManager.getUser(userId);
+        if (!user.isAdmin) {
+            await ctx.answerCbQuery('❌ У вас нет прав для одобрения заявок');
+            return;
+        }
+        
+        // Обрабатываем заявку
+        const result = await dataManager.processWithdrawalRequest(requestId, 'approve', userId, 'Одобрено администратором');
+        
+        if (result.success) {
+            // Обновляем сообщение в канале
+            const updatedMessage = `📋 **Заявка на вывод ОДОБРЕНА** ✅\n\n` +
+                `👤 **Пользователь:**\n` +
+                `├ 🆔 ID: \`${result.request.userId}\`\n` +
+                `├ 👤 Имя: ${result.request.firstName}\n` +
+                `└ 🏷️ Username: ${result.request.username}\n\n` +
+                `💰 **Детали заявки:**\n` +
+                `├ 🆔 ID заявки: \`${result.request.id}\`\n` +
+                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
+                `├ 📅 Дата: ${new Date(result.request.createdAt).toLocaleDateString('ru-RU')}\n` +
+                `└ ⏰ Время: ${new Date(result.request.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+                `✅ **Одобрено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n` +
+                `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
+                `💬 **Комментарий:** ${result.request.comment}`;
+            
+            // Обновляем сообщение в канале
+            await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
+            
+            // Уведомляем пользователя
+            await ctx.telegram.sendMessage(result.request.userId, 
+                `🎉 **Ваша заявка на вывод одобрена!**\n\n` +
+                `📋 **Детали заявки:**\n` +
+                `├ 🆔 ID: \`${result.request.id}\`\n` +
+                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
+                `└ ✅ Статус: Одобрена\n\n` +
+                `⏰ **Время одобрения:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n\n` +
+                `💡 **Что дальше:** Ожидайте выплаты в течение 24-48 часов`
+            );
+            
+            logger.info('Заявка на вывод одобрена', { userId, requestId, adminId: userId });
+            
+        } else {
+            await ctx.answerCbQuery(`❌ ${result.message}`);
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка одобрения заявки на вывод', error, { userId, requestId });
+        await ctx.answerCbQuery('❌ Ошибка при одобрении заявки');
+    }
+}
+
+// Обработка отклонения заявки на вывод (только для админов)
+async function handleRejectWithdrawal(ctx, action) {
+    const userId = ctx.from.id;
+    const requestId = action.replace('reject_withdrawal_', '');
+    
+    logger.info('Попытка отклонения заявки на вывод', { userId, requestId });
+    
+    try {
+        // Проверяем, является ли пользователь админом
+        const user = await dataManager.getUser(userId);
+        if (!user.isAdmin) {
+            await ctx.answerCbQuery('❌ У вас нет прав для отклонения заявок');
+            return;
+        }
+        
+        // Обрабатываем заявку
+        const result = await dataManager.processWithdrawalRequest(requestId, 'reject', userId, 'Отклонено администратором');
+        
+        if (result.success) {
+            // Обновляем сообщение в канале
+            const updatedMessage = `📋 **Заявка на вывод ОТКЛОНЕНА** ❌\n\n` +
+                `👤 **Пользователь:**\n` +
+                `├ 🆔 ID: \`${result.request.userId}\`\n` +
+                `├ 👤 Имя: ${result.request.firstName}\n` +
+                `└ 🏷️ Username: ${result.request.username}\n\n` +
+                `💰 **Детали заявки:**\n` +
+                `├ 🆔 ID заявки: \`${result.request.id}\`\n` +
+                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
+                `├ 📅 Дата: ${new Date(result.request.createdAt).toLocaleDateString('ru-RU')}\n` +
+                `└ ⏰ Время: ${new Date(result.request.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+                `❌ **Отклонено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n` +
+                `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
+                `💬 **Комментарий:** ${result.request.comment}\n\n` +
+                `💰 **Звезды возвращены пользователю**`;
+            
+            // Обновляем сообщение в канале
+            await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
+            
+            // Уведомляем пользователя
+            await ctx.telegram.sendMessage(result.request.userId, 
+                `❌ **Ваша заявка на вывод отклонена**\n\n` +
+                `📋 **Детали заявки:**\n` +
+                `├ 🆔 ID: \`${result.request.id}\`\n` +
+                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
+                `└ ❌ Статус: Отклонена\n\n` +
+                `⏰ **Время отклонения:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n` +
+                `💬 **Комментарий:** ${result.request.comment}\n\n` +
+                `💰 **Звезды возвращены на ваш баланс**\n\n` +
+                `💡 **Что дальше:** Вы можете создать новую заявку на вывод`
+            );
+            
+            logger.info('Заявка на вывод отклонена', { userId, requestId, adminId: userId });
+            
+        } else {
+            await ctx.answerCbQuery(`❌ ${result.message}`);
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка отклонения заявки на вывод', error, { userId, requestId });
+        await ctx.answerCbQuery('❌ Ошибка при отклонении заявки');
+    }
+}
+
+// Обработка проверки подписки
+async function handleCheckSubscription(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Проверка подписки пользователя', { userId });
+    
+    try {
+        // Проверяем подписку пользователя
+        const subscriptionCheck = await dataManager.checkUserSubscription(userId);
+        
+        if (subscriptionCheck.isSubscribed) {
+            // Подписка подтверждена - показываем главное меню
+            const successMessage = `✅ **Подписка подтверждена!**\n\n` +
+                `🎉 Теперь вы можете использовать все функции бота!\n\n` +
+                `🚀 Добро пожаловать в Magnum Stars!`;
+            
+            const mainMenu = Markup.inlineKeyboard([
+                [Markup.button.callback('💰 Майнеры', 'miners')],
+                [Markup.button.callback('👤 Профиль', 'profile')],
+                [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
+                [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
+                [Markup.button.callback('👥 Рефералы', 'referrals')],
+                [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
+                [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
+            ]);
+            
+            await ctx.editMessageText(successMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: mainMenu.reply_markup
+            });
+            
+            logger.info('Подписка пользователя подтверждена, показано главное меню', { userId });
+            
+        } else {
+            // Подписка не подтверждена - показываем сообщение об ошибке
+            const errorMessage = `❌ **Подписка не подтверждена**\n\n` +
+                `📢 Вы не подписаны на канал **@magnumtap**\n\n` +
+                `📋 **Что нужно сделать:**\n` +
+                `1️⃣ Нажмите кнопку "📢 Подписаться на канал"\n` +
+                `2️⃣ Подпишитесь на канал @magnumtap\n` +
+                `3️⃣ Вернитесь в бот и нажмите "✅ Проверить подписку"\n\n` +
+                `💡 После подписки на канал вы получите доступ ко всем функциям бота!`;
+            
+            const subscriptionKeyboard = Markup.inlineKeyboard([
+                [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
+                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+            ]);
+            
+            await ctx.editMessageText(errorMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: subscriptionKeyboard.reply_markup
+            });
+            
+            logger.info('Подписка пользователя не подтверждена', { userId });
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка проверки подписки', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка проверки подписки**\n\n` +
+            `🚫 Не удалось проверить подписку\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'check_subscription')],
+            [Markup.button.callback('🏠 Главное меню', 'start')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
+module.exports = {
+    callbackHandler,
+    handleKeyCreation,
+    handleTitleKeyCreation,
+    userStates
+};

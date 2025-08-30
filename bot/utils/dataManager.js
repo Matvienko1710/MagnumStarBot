@@ -131,6 +131,10 @@ class DataManager {
                         level: 1,
                         hasReceivedReferralBonus: false
                     },
+                    subscription: {
+                        isConfirmed: false,
+                        confirmedAt: null
+                    },
                     titles: {
                         current: 'novice',
                         unlocked: ['novice'],
@@ -783,6 +787,213 @@ class DataManager {
     // Генерация уникального ID для майнера
     generateMinerId() {
         return 'miner_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // Создание заявки на вывод звезд
+    async createWithdrawalRequest(userId, amount) {
+        try {
+            logger.info('Создание заявки на вывод звезд', { userId, amount });
+            
+            // Проверяем баланс пользователя
+            const user = await this.getUser(userId);
+            if (user.balance.stars < amount) {
+                return { success: false, message: 'Недостаточно звезд для вывода' };
+            }
+            
+            // Проверяем минимальную сумму
+            if (amount < 50) {
+                return { success: false, message: 'Минимальная сумма для вывода: 50 ⭐ Stars' };
+            }
+            
+            // Создаем заявку
+            const withdrawalRequest = {
+                id: this.generateWithdrawalId(),
+                userId: Number(userId),
+                username: user.username || 'Не указан',
+                firstName: user.firstName || 'Не указано',
+                amount: amount,
+                status: 'pending', // pending, approved, rejected
+                createdAt: new Date(),
+                processedAt: null,
+                processedBy: null,
+                comment: ''
+            };
+            
+            // Сохраняем заявку в базе
+            await this.db.collection('withdrawals').insertOne(withdrawalRequest);
+            
+            // Резервируем звезды (вычитаем из баланса)
+            await this.updateBalance(userId, 'stars', -amount, 'withdrawal_request');
+            
+            logger.info('Заявка на вывод создана', { userId, amount, requestId: withdrawalRequest.id });
+            
+            return { 
+                success: true, 
+                message: 'Заявка на вывод создана успешно',
+                requestId: withdrawalRequest.id,
+                request: withdrawalRequest
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка создания заявки на вывод', error, { userId, amount });
+            throw error;
+        }
+    }
+    
+    // Получение заявок на вывод (для админов)
+    async getWithdrawalRequests(status = 'pending') {
+        try {
+            const requests = await this.db.collection('withdrawals')
+                .find({ status: status })
+                .sort({ createdAt: -1 })
+                .toArray();
+            
+            return requests;
+            
+        } catch (error) {
+            logger.error('Ошибка получения заявок на вывод', error);
+            return [];
+        }
+    }
+    
+    // Обработка заявки на вывод (одобрение/отклонение)
+    async processWithdrawalRequest(requestId, action, adminId, comment = '') {
+        try {
+            logger.info('Обработка заявки на вывод', { requestId, action, adminId, comment });
+            
+            const request = await this.db.collection('withdrawals').findOne({ id: requestId });
+            if (!request) {
+                return { success: false, message: 'Заявка не найдена' };
+            }
+            
+            if (request.status !== 'pending') {
+                return { success: false, message: 'Заявка уже обработана' };
+            }
+            
+            const updateData = {
+                status: action === 'approve' ? 'approved' : 'rejected',
+                processedAt: new Date(),
+                processedBy: Number(adminId),
+                comment: comment
+            };
+            
+            // Обновляем статус заявки
+            await this.db.collection('withdrawals').updateOne(
+                { id: requestId },
+                { $set: updateData }
+            );
+            
+            if (action === 'reject') {
+                // Возвращаем звезды пользователю при отклонении
+                await this.updateBalance(request.userId, 'stars', request.amount, 'withdrawal_rejected');
+                logger.info('Звезды возвращены пользователю при отклонении заявки', { 
+                    userId: request.userId, 
+                    amount: request.amount 
+                });
+            }
+            
+            logger.info('Заявка на вывод обработана', { requestId, action, adminId });
+            
+            return { 
+                success: true, 
+                message: `Заявка ${action === 'approve' ? 'одобрена' : 'отклонена'}`,
+                request: { ...request, ...updateData }
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка обработки заявки на вывод', error, { requestId, action, adminId });
+            throw error;
+        }
+    }
+    
+    // Генерация уникального ID для заявки на вывод
+    generateWithdrawalId() {
+        return 'wd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // Проверка подписки пользователя на канал
+    async checkUserSubscription(userId, channelUsername = '@magnumtap') {
+        try {
+            logger.info('Проверка подписки пользователя', { userId, channelUsername });
+            
+            // Получаем информацию о пользователе
+            const user = await this.getUser(userId);
+            
+            // Если пользователь уже подтвердил подписку, возвращаем true
+            if (user.subscription && user.subscription.isConfirmed) {
+                return { 
+                    success: true, 
+                    isSubscribed: true, 
+                    message: 'Подписка подтверждена' 
+                };
+            }
+            
+            // Проверяем, подписан ли пользователь на канал
+            // В реальном боте здесь будет вызов Telegram API
+            // Пока что возвращаем false для демонстрации
+            const isSubscribed = false; // Заглушка
+            
+            if (isSubscribed) {
+                // Обновляем статус подписки
+                await this.updateUser(userId, {
+                    'subscription.isConfirmed': true,
+                    'subscription.confirmedAt': new Date()
+                });
+                
+                logger.info('Подписка пользователя подтверждена', { userId });
+                
+                return { 
+                    success: true, 
+                    isSubscribed: true, 
+                    message: 'Подписка подтверждена' 
+                };
+            } else {
+                return { 
+                    success: false, 
+                    isSubscribed: false, 
+                    message: 'Вы не подписаны на канал' 
+                };
+            }
+            
+        } catch (error) {
+            logger.error('Ошибка проверки подписки', error, { userId });
+            return { 
+                success: false, 
+                isSubscribed: false, 
+                message: 'Ошибка проверки подписки' 
+            };
+        }
+    }
+    
+    // Установка статуса подписки (для ручной проверки админом)
+    async setSubscriptionStatus(userId, isConfirmed) {
+        try {
+            const updateData = {
+                'subscription.isConfirmed': isConfirmed,
+                'subscription.confirmedAt': isConfirmed ? new Date() : null
+            };
+            
+            await this.updateUser(userId, updateData);
+            
+            logger.info('Статус подписки обновлен', { userId, isConfirmed });
+            
+            return { success: true };
+            
+        } catch (error) {
+            logger.error('Ошибка обновления статуса подписки', error, { userId });
+            throw error;
+        }
+    }
+    
+    // Проверка, может ли пользователь использовать бота
+    async canUserUseBot(userId) {
+        try {
+            const user = await this.getUser(userId);
+            return user.subscription && user.subscription.isConfirmed;
+        } catch (error) {
+            logger.error('Ошибка проверки доступа пользователя к боту', error, { userId });
+            return false;
+        }
     }
 }
 

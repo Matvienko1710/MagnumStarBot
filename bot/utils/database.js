@@ -49,7 +49,8 @@ class DatabaseManager {
                 'titles',
                 'keys',
                 'referrals',
-                'transactions'
+                'transactions',
+                'withdrawals'
             ];
 
             for (const collectionName of collections) {
@@ -99,6 +100,11 @@ class DatabaseManager {
             
             // Индекс для рефералов
             await this.db.collection('referrals').createIndex({ userId: 1, referrerId: 1 });
+            
+            // Индекс для заявок на вывод
+            await this.db.collection('withdrawals').createIndex({ id: 1 }, { unique: true });
+            await this.db.collection('withdrawals').createIndex({ userId: 1 });
+            await this.db.collection('withdrawals').createIndex({ status: 1 });
 
             logger.info('✅ Индексы созданы');
 

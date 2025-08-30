@@ -13,6 +13,49 @@ async function startHandler(ctx) {
         
         logger.info('Получена команда /start', { userId, startPayload });
         
+        // Проверяем подписку пользователя на канал
+        const subscriptionCheck = await dataManager.checkUserSubscription(userId);
+        
+        if (!subscriptionCheck.isSubscribed) {
+            // Пользователь не подписан - показываем экран подписки
+            const subscriptionMessage = `🔒 **Требуется подписка на канал**\n\n` +
+                `📢 Для использования бота необходимо подписаться на канал **@magnumtap**\n\n` +
+                `📋 **Что нужно сделать:**\n` +
+                `1️⃣ Нажмите кнопку "📢 Подписаться на канал"\n` +
+                `2️⃣ Подпишитесь на канал @magnumtap\n` +
+                `3️⃣ Вернитесь в бот и нажмите "✅ Проверить подписку"\n\n` +
+                `💡 После подтверждения подписки вы получите доступ ко всем функциям бота!`;
+            
+            const subscriptionKeyboard = Markup.inlineKeyboard([
+                [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
+                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+            ]);
+            
+            // Удаляем старое сообщение бота, если оно есть
+            const lastMessageId = lastBotMessages.get(userId);
+            if (lastMessageId) {
+                try {
+                    await ctx.telegram.deleteMessage(ctx.chat.id, lastMessageId);
+                    logger.info('Старое сообщение бота удалено', { userId, messageId: lastMessageId });
+                } catch (error) {
+                    logger.warn('Не удалось удалить старое сообщение', { userId, messageId: lastMessageId, error: error.message });
+                }
+            }
+            
+            // Отправляем сообщение о необходимости подписки
+            const newMessage = await ctx.reply(subscriptionMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: subscriptionKeyboard.reply_markup
+            });
+            
+            // Сохраняем ID нового сообщения
+            lastBotMessages.set(userId, newMessage.message_id);
+            logger.info('Сообщение о подписке отправлено', { userId, messageId: newMessage.message_id });
+            
+            return; // Прерываем выполнение, пока пользователь не подпишется
+        }
+        
         // Настраиваем реферальную систему для нового пользователя
         try {
             if (startPayload) {

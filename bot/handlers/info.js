@@ -35,6 +35,12 @@ async function infoHandler(ctx) {
             return;
         }
         
+        if (userState && userState.state === 'waiting_for_withdrawal_amount') {
+            // Обработка создания заявки на вывод
+            await handleWithdrawalAmount(ctx, text);
+            return;
+        }
+        
         // Если нет специального состояния, отправляем сообщение о помощи
         await ctx.reply(
             '💡 Используйте кнопки меню для навигации по боту.\n\n' +
@@ -342,6 +348,142 @@ async function handleTitleKeyCreation(ctx, text) {
         default:
             await ctx.reply('❌ Неизвестный шаг создания ключа титула');
             break;
+    }
+}
+
+// Обработка ввода суммы для заявки на вывод
+async function handleWithdrawalAmount(ctx, text) {
+    const userId = ctx.from.id;
+    const amount = parseInt(text.trim());
+    
+    logger.info('Обработка ввода суммы для заявки на вывод', { userId, amount });
+    
+    if (isNaN(amount) || amount <= 0) {
+        await ctx.reply(
+            '❌ **Неверная сумма!**\n\n' +
+            '💰 Введите корректное число больше 0\n' +
+            '💡 Пример: 100 (для вывода 100 ⭐ Stars)\n\n' +
+            'Попробуйте еще раз или нажмите "Отмена"'
+        );
+        return;
+    }
+    
+    if (amount < 50) {
+        await ctx.reply(
+            '❌ **Сумма слишком мала!**\n\n' +
+            '💰 Минимальная сумма для вывода: 50 ⭐ Stars\n' +
+            '💡 Введите сумму 50 или больше\n\n' +
+            'Попробуйте еще раз или нажмите "Отмена"'
+        );
+        return;
+    }
+    
+    try {
+        // Импортируем dataManager
+        const dataManager = require('../utils/dataManager');
+        
+        // Создаем заявку на вывод
+        const result = await dataManager.createWithdrawalRequest(userId, amount);
+        
+        if (result.success) {
+            logger.info('Заявка на вывод создана успешно', { userId, amount, requestId: result.requestId });
+            
+            // Очищаем состояние
+            const { userStates } = require('./callback');
+            userStates.delete(userId);
+            
+            const successMessage = `✅ **Заявка на вывод создана!**\n\n` +
+                `📋 **Детали заявки:**\n` +
+                `├ 🆔 ID: \`${result.requestId}\`\n` +
+                `├ 💰 Сумма: ${amount} ⭐ Stars\n` +
+                `├ 📅 Дата: ${new Date().toLocaleDateString('ru-RU')}\n` +
+                `└ 📊 Статус: ⏳ Ожидает одобрения\n\n` +
+                `⏰ **Время обработки:** 24-48 часов\n` +
+                `💡 **Что дальше:** Ожидайте уведомления об одобрении или отклонении заявки`;
+            
+            const successKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('📋 Мои заявки', 'my_withdrawals')],
+                [Markup.button.callback('💳 Создать еще заявку', 'create_withdrawal')],
+                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+            ]);
+            
+            await ctx.reply(successMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: successKeyboard.reply_markup
+            });
+            
+            // Отправляем заявку в канал для админов
+            await sendWithdrawalToChannel(ctx, result.request);
+            
+        } else {
+            await ctx.reply(
+                `❌ **Ошибка создания заявки!**\n\n` +
+                `🚫 ${result.message}\n\n` +
+                `💡 Попробуйте другую сумму или обратитесь к администратору`
+            );
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка создания заявки на вывод', error, { userId, amount });
+        
+        // Очищаем состояние
+        const { userStates } = require('./callback');
+        userStates.delete(userId);
+        
+        await ctx.reply(
+            `❌ **Ошибка создания заявки!**\n\n` +
+            `🚫 Не удалось создать заявку на вывод\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору\n\n` +
+            `💬 Ошибка: ${error.message}`,
+            Markup.inlineKeyboard([
+                [Markup.button.callback('🔄 Попробовать снова', 'create_withdrawal')],
+                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+            ]).reply_markup
+        );
+    }
+}
+
+// Отправка заявки на вывод в канал для админов
+async function sendWithdrawalToChannel(ctx, withdrawalRequest) {
+    try {
+        const channelUsername = '@magnumwithdrawal';
+        
+        const adminMessage = `📋 **Новая заявка на вывод**\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
+            `├ 👤 Имя: ${withdrawalRequest.firstName}\n` +
+            `└ 🏷️ Username: ${withdrawalRequest.username}\n\n` +
+            `💰 **Детали заявки:**\n` +
+            `├ 🆔 ID заявки: \`${withdrawalRequest.id}\`\n` +
+            `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+            `├ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `🎯 **Действия:**`;
+        
+        const adminKeyboard = Markup.inlineKeyboard([
+            [
+                Markup.button.callback('✅ Одобрить', `approve_withdrawal_${withdrawalRequest.id}`),
+                Markup.button.callback('❌ Отклонить', `reject_withdrawal_${withdrawalRequest.id}`)
+            ]
+        ]);
+        
+        // Отправляем в канал
+        await ctx.telegram.sendMessage(channelUsername, adminMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: adminKeyboard.reply_markup
+        });
+        
+        logger.info('Заявка на вывод отправлена в канал', { 
+            userId: withdrawalRequest.userId, 
+            requestId: withdrawalRequest.id,
+            channel: channelUsername
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка отправки заявки в канал', error, { 
+            userId: withdrawalRequest.userId, 
+            requestId: withdrawalRequest.id 
+        });
     }
 }
 
