@@ -1,151 +1,227 @@
 const express = require('express');
-const path = require('path');
-const dotenv = require('dotenv');
-const { bot, launchBot } = require('./bot');
-const logger = require('./bot/utils/logger');
+const { Telegraf } = require('telegraf');
 const database = require('./bot/utils/database');
-const { migrateDataToMongoDB } = require('./bot/utils/migration');
+const logger = require('./bot/utils/logger');
 
-// Загрузка переменных окружения
-dotenv.config();
-logger.info('Запуск сервера', { 
-  nodeVersion: process.version, 
-  platform: process.platform,
-  env: process.env.NODE_ENV || 'development'
-});
-
-// Инициализация Express приложения
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Статические файлы
-app.use(express.static(path.join(__dirname, 'webapp')));
+// Middleware
 app.use(express.json());
+app.use(express.static('webapp'));
 
-// Маршруты
-app.get('/', (req, res) => {
-  logger.request('GET', '/');
-  res.sendFile(path.join(__dirname, 'webapp', 'index.html'));
-  logger.response('GET', '/', 200);
-});
+// Переменная для отслеживания состояния базы данных
+let isDatabaseConnected = false;
 
-// API для взаимодействия с ботом
-app.post('/api/webhook', (req, res) => {
-  logger.request('POST', '/api/webhook', req.body);
-  const data = req.body;
-  logger.info('Получены данные от WebApp', { data });
-  res.json({ success: true });
-  logger.response('POST', '/api/webhook', 200);
-});
+// Функция инициализации базы данных с повторными попытками
+async function initializeDatabase() {
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+        try {
+            logger.info('Попытка подключения к MongoDB Atlas...', { 
+                attempt: retryCount + 1, 
+                maxRetries 
+            });
+            
+            await database.connect();
+            await database.initializeCollections();
+            await database.createDefaultData();
+            
+            isDatabaseConnected = true;
+            logger.info('База данных успешно инициализирована');
+            return true;
+            
+        } catch (error) {
+            retryCount++;
+            logger.error('Ошибка подключения к MongoDB Atlas', error, { 
+                attempt: retryCount, 
+                maxRetries 
+            });
+            
+            if (retryCount < maxRetries) {
+                const delay = Math.pow(2, retryCount) * 1000; // Экспоненциальная задержка
+                logger.info(`Повторная попытка через ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    logger.warn('Не удалось подключиться к MongoDB Atlas после всех попыток. Бот будет работать в режиме fallback.');
+    return false;
+}
 
-// API для проверки состояния базы данных
+// Функция запуска бота
+async function launchBot() {
+    try {
+        logger.info('Запуск бота...');
+        
+        // Инициализируем бота
+        const bot = require('./bot');
+        
+        if (isDatabaseConnected) {
+            logger.info('Бот запущен с подключением к базе данных');
+        } else {
+            logger.warn('Бот запущен в режиме fallback (без базы данных)');
+        }
+        
+        return bot;
+        
+    } catch (error) {
+        logger.error('Ошибка запуска бота', error);
+        throw error;
+    }
+}
+
+// Health Check API
 app.get('/api/health', async (req, res) => {
-  logger.request('GET', '/api/health');
-  try {
-    const dbStatus = await database.ping();
-    const dbStats = await database.getDatabaseStats();
+    try {
+        logger.request('Health check запрос', { 
+            method: req.method, 
+            url: req.url,
+            userAgent: req.get('User-Agent')
+        });
+        
+        const healthData = {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            environment: process.env.NODE_ENV || 'development',
+            database: {
+                connected: isDatabaseConnected,
+                status: isDatabaseConnected ? 'connected' : 'disconnected'
+            },
+            server: {
+                nodeVersion: process.version,
+                platform: process.platform,
+                memory: process.memoryUsage(),
+                pid: process.pid
+            }
+        };
+        
+        // Если база данных подключена, получаем статистику
+        if (isDatabaseConnected) {
+            try {
+                const dbStats = await database.getDatabaseStats();
+                healthData.database.stats = dbStats;
+            } catch (error) {
+                logger.error('Ошибка получения статистики БД для health check', error);
+                healthData.database.stats = 'error';
+            }
+        }
+        
+        logger.response('Health check ответ', { 
+            statusCode: 200, 
+            responseTime: Date.now() - req.startTime 
+        });
+        
+        res.status(200).json(healthData);
+        
+    } catch (error) {
+        logger.error('Ошибка health check', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Middleware для измерения времени ответа
+app.use((req, res, next) => {
+    req.startTime = Date.now();
+    next();
+});
+
+// Обработка ошибок
+app.use((error, req, res, next) => {
+    logger.error('Ошибка Express', error, {
+        method: req.method,
+        url: req.url,
+        userAgent: req.get('User-Agent')
+    });
     
-    const healthData = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: {
-        connected: dbStatus,
-        stats: dbStats
-      },
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      platform: process.platform,
-      nodeVersion: process.version
-    };
-    
-    logger.response('GET', '/api/health', 200, healthData);
-    res.json(healthData);
-  } catch (error) {
-    logger.error('Ошибка проверки здоровья системы', error);
-    const errorData = {
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: error.message,
-      uptime: process.uptime()
-    };
-    
-    logger.response('GET', '/api/health', 500, errorData);
-    res.status(500).json(errorData);
-  }
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: error.message
+    });
 });
 
 // Запуск сервера
-const server = app.listen(PORT, async () => {
-  logger.info(`Сервер запущен на порту ${PORT}`);
-  
-  try {
-    // Подключаемся к базе данных
-    logger.info('Подключение к базе данных...');
-    await database.connect();
+async function startServer() {
+    try {
+        // Запускаем Express сервер
+        app.listen(PORT, () => {
+            logger.info('Сервер запущен', {
+                port: PORT,
+                environment: process.env.NODE_ENV || 'development',
+                nodeVersion: process.version,
+                platform: process.platform
+            });
+        });
+        
+        // Инициализируем базу данных
+        await initializeDatabase();
+        
+        // Запускаем бота
+        await launchBot();
+        
+        logger.info('Приложение полностью инициализировано');
+        
+    } catch (error) {
+        logger.error('Критическая ошибка при запуске сервера', error);
+        process.exit(1);
+    }
+}
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    logger.info('Получен сигнал SIGTERM, начинаем graceful shutdown...');
     
-    // Инициализируем коллекции и индексы
-    await database.initializeCollections();
-    
-    // Создаем базовые данные
-    await database.createDefaultData();
-    
-    // Запускаем миграцию данных
-    await migrateDataToMongoDB();
-    
-    logger.info('База данных готова к работе');
-    
-    // Запуск бота
-    logger.info('Запуск бота...');
-    launchBot();
-  } catch (error) {
-    logger.error('Критическая ошибка при инициализации', error);
-    process.exit(1);
-  }
+    try {
+        if (isDatabaseConnected) {
+            await database.close();
+            logger.info('Соединение с базой данных закрыто');
+        }
+        
+        logger.info('Graceful shutdown завершен');
+        process.exit(0);
+        
+    } catch (error) {
+        logger.error('Ошибка при graceful shutdown', error);
+        process.exit(1);
+    }
 });
 
-// Корректное завершение работы
-const gracefulShutdown = async (signal) => {
-  logger.info(`Получен сигнал ${signal}. Начинаю graceful shutdown...`);
-  
-  try {
-    // Останавливаем бота
-    logger.info('Остановка бота...');
-    await bot.stop(signal);
-    logger.info('Бот успешно остановлен');
+process.on('SIGINT', async () => {
+    logger.info('Получен сигнал SIGINT, начинаем graceful shutdown...');
     
-    // Закрываем соединение с базой данных
-    logger.info('Закрытие соединения с базой данных...');
-    await database.close();
-    logger.info('Соединение с базой данных закрыто');
-    
-    // Останавливаем сервер
-    server.close(() => {
-      logger.info('HTTP сервер успешно остановлен');
-      process.exit(0);
-    });
-    
-    // Таймаут для принудительного завершения
-    setTimeout(() => {
-      logger.error('Принудительное завершение из-за таймаута');
-      process.exit(1);
-    }, 10000);
-    
-  } catch (error) {
-    logger.error('Ошибка при graceful shutdown', error);
-    process.exit(1);
-  }
-};
+    try {
+        if (isDatabaseConnected) {
+            await database.close();
+            logger.info('Соединение с базой данных закрыто');
+        }
+        
+        logger.info('Graceful shutdown завершен');
+        process.exit(0);
+        
+    } catch (error) {
+        logger.error('Ошибка при graceful shutdown', error);
+        process.exit(1);
+    }
+});
 
-process.once('SIGINT', () => gracefulShutdown('SIGINT'));
-process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
-
-// Обработка необработанных ошибок процесса
+// Обработка необработанных ошибок
 process.on('uncaughtException', (error) => {
-  logger.error('Необработанная ошибка процесса', error);
-  gracefulShutdown('uncaughtException');
+    logger.error('Необработанная ошибка', error);
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Необработанное отклонение промиса', error, { reason, promise });
-  gracefulShutdown('unhandledRejection');
+    logger.error('Необработанное отклонение промиса', { reason, promise });
+    process.exit(1);
 });
+
+// Запускаем сервер
+startServer();

@@ -1,137 +1,141 @@
 const { Telegraf } = require('telegraf');
-const dotenv = require('dotenv');
 const logger = require('./utils/logger');
 
-// Загрузка переменных окружения
-dotenv.config();
-logger.info('Инициализация бота', { 
-  botToken: process.env.BOT_TOKEN ? 'Установлен' : 'Не установлен',
-  nodeEnv: process.env.NODE_ENV || 'development'
-});
-
 // Инициализация бота
-const bot = new Telegraf(process.env.BOT_TOKEN);
-logger.info('Бот создан', { botId: bot.botInfo?.id });
-
-// Импорт обработчиков
-const startHandler = require('./handlers/start');
-const infoHandler = require('./handlers/info');
-const callbackHandler = require('./handlers/callback');
-
-// Импорт middleware
-const {
-  requestLogger,
-  contextValidator,
-  rateLimitMiddleware,
-  stateManager,
-  performanceMonitor,
-  errorHandlerMiddleware
-} = require('./middleware/errorMiddleware');
-
-// Импорт конфигурации ошибок
-const { getErrorMessage, isFeatureEnabled } = require('./config/errorConfig');
-
-// Функция для логирования ошибок
-const logError = (error, context = '') => {
-  logger.errorWithContext(context, error);
-};
-
-// Функция для безопасного выполнения асинхронных операций
-const safeAsync = (fn) => {
-  return async (ctx, next) => {
-    const userId = ctx.from?.id || 'unknown';
-    const updateType = ctx.updateType || 'unknown';
-    
-    logger.function('safeAsync', { userId, updateType, functionName: fn.name || 'anonymous' });
-    
+function initializeBot() {
     try {
-      await fn(ctx, next);
-      logger.function('safeAsync_success', { userId, updateType });
+        const botToken = process.env.BOT_TOKEN;
+        if (!botToken) {
+            throw new Error('BOT_TOKEN не установлен в переменных окружения');
+        }
+
+        logger.info('Инициализация бота', {
+            botToken: 'Установлен',
+            nodeEnv: process.env.NODE_ENV || 'development'
+        });
+
+        const bot = new Telegraf(botToken);
+        logger.info('Бот создан');
+
+        // Настройка логирования ошибок
+        const logError = (error, ctx) => {
+            logger.errorWithContext('Ошибка в боте', error, {
+                userId: ctx?.from?.id,
+                chatId: ctx?.chat?.id,
+                messageType: ctx?.message?.text ? 'text' : 'callback',
+                timestamp: new Date().toISOString()
+            });
+        };
+
+        // Безопасная обертка для асинхронных обработчиков
+        const safeAsync = (handler) => {
+            return async (ctx, next) => {
+                try {
+                    logger.function('Выполнение обработчика', {
+                        handler: handler.name || 'anonymous',
+                        userId: ctx?.from?.id,
+                        chatId: ctx?.chat?.id
+                    });
+
+                    await handler(ctx, next);
+                    
+                } catch (error) {
+                    logger.errorWithContext('Ошибка в обработчике', error, {
+                        handler: handler.name || 'anonymous',
+                        userId: ctx?.from?.id,
+                        chatId: ctx?.chat?.id,
+                        message: ctx?.message?.text || 'callback'
+                    });
+
+                    // Отправляем сообщение пользователю об ошибке
+                    try {
+                        await ctx.reply('❌ Произошла ошибка. Попробуйте позже.');
+                        logger.info('Отправлено сообщение об ошибке пользователю', {
+                            userId: ctx?.from?.id
+                        });
+                    } catch (replyError) {
+                        logger.error('Не удалось отправить сообщение об ошибке', replyError);
+                    }
+                }
+            };
+        };
+
+        // Регистрация обработчиков
+        logger.info('Регистрация обработчиков...');
+
+        // Обработчик /start
+        logger.info('Обработчик start зарегистрирован');
+        const startHandler = require('./handlers/start');
+        bot.start(safeAsync(startHandler));
+
+        // Обработчик текстовых сообщений
+        logger.info('Обработчик info зарегистрирован');
+        const infoHandler = require('./handlers/info');
+        bot.on('text', safeAsync(infoHandler));
+
+        // Обработчик callback запросов
+        logger.info('Обработчик callback зарегистрирован');
+        const callbackHandler = require('./handlers/callback');
+        bot.on('callback_query', safeAsync(callbackHandler));
+
+        // Глобальная обработка ошибок
+        bot.catch((error, ctx) => {
+            logger.errorWithContext('Глобальная ошибка бота', error, {
+                userId: ctx?.from?.id,
+                chatId: ctx?.chat?.id,
+                messageType: ctx?.message?.text ? 'text' : 'callback',
+                timestamp: new Date().toISOString(),
+                errorStack: error.stack
+            });
+        });
+
+        // Обработка ошибок процесса
+        process.on('uncaughtException', (error) => {
+            logger.error('Необработанная ошибка процесса', error);
+        });
+
+        process.on('unhandledRejection', (reason, promise) => {
+            logger.error('Необработанное отклонение промиса', { reason, promise });
+        });
+
+        // Функция запуска бота
+        const launchBot = async () => {
+            try {
+                logger.info('Запуск бота...');
+                await bot.launch();
+                logger.info('Бот успешно запущен');
+            } catch (error) {
+                logger.error('Ошибка запуска бота', error);
+                throw error;
+            }
+        };
+
+        // Graceful shutdown
+        const gracefulShutdown = async (signal) => {
+            logger.info(`Получен сигнал ${signal}. Остановка бота...`);
+            try {
+                await bot.stop(signal);
+                logger.info('Бот успешно остановлен');
+                process.exit(0);
+            } catch (error) {
+                logger.error('Ошибка при остановке бота', error);
+                process.exit(1);
+            }
+        };
+
+        process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+        process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+        return { bot, launchBot };
+
     } catch (error) {
-      logger.errorWithContext(`Handler error for user ${userId}`, error, { userId, updateType });
-      
-      // Отправляем пользователю понятное сообщение об ошибке
-      try {
-        await ctx.reply(getErrorMessage('general'));
-        logger.info('Отправлено сообщение об ошибке пользователю', { userId });
-      } catch (replyError) {
-        logger.errorWithContext('Failed to send error message to user', replyError, { userId });
-      }
+        logger.error('Критическая ошибка при инициализации бота', error);
+        throw error;
     }
-  };
-};
-
-// Применение middleware (только если включены в конфигурации)
-if (isFeatureEnabled('logging')) {
-  bot.use(requestLogger);
 }
 
-bot.use(errorHandlerMiddleware);
-bot.use(contextValidator);
+// Создаем и инициализируем бота
+const { bot, launchBot } = initializeBot();
 
-if (isFeatureEnabled('rateLimit')) {
-  bot.use(rateLimitMiddleware);
-}
-
-bot.use(stateManager);
-
-if (isFeatureEnabled('performance')) {
-  bot.use(performanceMonitor);
-}
-
-// Регистрация обработчиков с защитой от ошибок
-logger.info('Регистрация обработчиков...');
-startHandler(bot, safeAsync);
-logger.info('Обработчик start зарегистрирован');
-infoHandler(bot, safeAsync);
-logger.info('Обработчик info зарегистрирован');
-callbackHandler(bot, safeAsync);
-logger.info('Обработчик callback зарегистрирован');
-
-// Глобальная обработка ошибок
-bot.catch((err, ctx) => {
-  const userId = ctx.from?.id || 'unknown';
-  const updateType = ctx.updateType || 'unknown';
-  const chatType = ctx.chat?.type || 'unknown';
-  
-  logger.errorWithContext(`Global bot error for update type: ${updateType}`, err, { 
-    userId, updateType, chatType 
-  });
-  
-  // Попытка отправить сообщение пользователю о критической ошибке
-  try {
-    if (ctx.chat?.type === 'private') {
-      ctx.reply(getErrorMessage('critical')).catch(replyError => {
-        logger.errorWithContext('Failed to send critical error message', replyError, { userId });
-      });
-    }
-  } catch (error) {
-    logger.errorWithContext('Failed to handle critical error', error, { userId });
-  }
-});
-
-// Обработка необработанных ошибок процесса
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception', error);
-  
-  // В продакшене здесь можно добавить graceful shutdown
-  // process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection', new Error(`Unhandled Rejection at: ${promise}, reason: ${reason}`));
-});
-
-// Обработка ошибок при запуске бота
-const launchBot = async () => {
-  logger.info('Запуск бота...');
-  try {
-    await bot.launch();
-    logger.info('Бот успешно запущен');
-  } catch (error) {
-    logger.error('Bot launch failed', error);
-    process.exit(1);
-  }
-};
-
-module.exports = { bot, launchBot, logError };
+// Экспортируем бота и функцию запуска
+module.exports = { bot, launchBot };

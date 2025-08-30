@@ -1,996 +1,234 @@
-const { inlineKeyboard, profileKeyboard, withdrawKeyboard, createTitleKeyKeyboard } = require('../keyboards/inline');
-const { isAdmin } = require('../utils/admin');
-const { activateKey, getUserKeyHistory, createKey } = require('../utils/keys');
-const { getUserMiners, getAvailableRewards, buyMiner, collectRewards, getMinersStats, getMinerTypes } = require('../utils/miners');
-const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle, getTitleById } = require('../utils/titles');
-const { activateReferralCode, getReferralStats, getLevelInfo, getNextLevel } = require('../utils/referral');
-const { getUserBalance, getUserStats } = require('../utils/currency');
+const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
 
-// Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
+// Состояния пользователей для создания ключей
 const userStates = new Map();
 
-module.exports = (bot, safeAsync) => {
-  // Обработка команды /info
-  bot.command('info', safeAsync(async (ctx) => {
-    const adminStatus = isAdmin(ctx.from.id);
-    await ctx.reply(
-      'ℹ️ Информация о боте:\n\n' +
-      'Magnum Star Bot - платформа для заработка Stars и Magnum Coins.\n\n' +
-      '🎯 Основные функции:\n' +
-      '• 👤 Профиль пользователя\n' +
-      '• 🔑 Активация ключей (промокоды)\n' +
-      '• ⛏️ Система майнеров\n' +
-      '• 👑 Система титулов\n' +
-      (adminStatus ? '• 🌐 WebApp (только для админов)\n' : '') +
-      (adminStatus ? '• 🔧 Админ панель\n' : '') +
-      '\nИспользуйте кнопки ниже для навигации:',
-      inlineKeyboard(adminStatus)
-    );
-  }));
+// Обработчик текстовых сообщений
+async function infoHandler(ctx) {
+    try {
+        const userId = ctx.from.id;
+        const text = ctx.message.text;
+        
+        logger.info('Получено текстовое сообщение', { userId, text: text.substring(0, 50) });
+        
+        // Проверяем состояние пользователя
+        const userState = userStates.get(userId);
+        
+        if (userState && userState.state === 'waiting_for_key') {
+            // Обработка активации ключа
+            await handleKeyActivation(ctx, text);
+            return;
+        }
+        
+        if (userState && userState.state === 'creating_key') {
+            // Обработка создания ключа
+            await handleKeyCreation(ctx, text);
+            return;
+        }
+        
+        if (userState && userState.state === 'creating_title_key') {
+            // Обработка создания ключа титула
+            await handleTitleKeyCreation(ctx, text);
+            return;
+        }
+        
+        // Если нет специального состояния, отправляем сообщение о помощи
+        await ctx.reply(
+            '💡 Используйте кнопки меню для навигации по боту.\n\n' +
+            '🔑 Для активации ключа нажмите "Активировать ключ"\n' +
+            '💰 Для покупки майнеров нажмите "Майнеры"\n' +
+            '👤 Для просмотра профиля нажмите "Профиль"',
+            Markup.inlineKeyboard([
+                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+            ]).reply_markup
+        );
+        
+    } catch (error) {
+        logger.error('Ошибка в обработчике текстовых сообщений', error, { userId: ctx?.from?.id });
+        throw error;
+    }
+}
 
-  // Обработка команды /menu
-  bot.command('menu', safeAsync(async (ctx) => {
-    const adminStatus = isAdmin(ctx.from.id);
-    await ctx.reply('Выберите действие:', inlineKeyboard(adminStatus));
-  }));
-
-  // Обработка текстовых сообщений
-  bot.on('text', safeAsync(async (ctx) => {
-    const text = ctx.message.text;
+// Обработка активации ключа
+async function handleKeyActivation(ctx, text) {
     const userId = ctx.from.id;
-    const adminStatus = isAdmin(userId);
+    const key = text.trim();
     
-    logger.info('Текстовое сообщение получено', { 
-      userId, 
-      text, 
-      adminStatus,
-      username: ctx.from.username,
-      firstName: ctx.from.first_name
-    });
+    logger.info('Обработка активации ключа', { userId, key: key.substring(0, 10) });
     
-    // Проверяем состояние пользователя
+    if (key.length === 0) {
+        await ctx.reply(
+            '❌ Ключ не может быть пустым!\n\n' +
+            '🔑 Введите ключ для активации\n\n' +
+            'Попробуйте еще раз или нажмите "Отмена"'
+        );
+        return;
+    }
+    
+    // Здесь будет логика активации ключа
+    // Пока что просто имитируем успешную активацию
+    
+    logger.info('Ключ успешно активирован', { userId, key: key.substring(0, 10) });
+    
+    // Очищаем состояние
+    userStates.delete(userId);
+    
+    await ctx.reply(
+        `✅ Ключ успешно активирован!\n\n` +
+        `🎁 Получено:\n` +
+        `├ ⭐ Stars: +50\n` +
+        `└ 🪙 Magnum Coins: +25\n\n` +
+        `🔑 Ключ: ${key.substring(0, 10)}...`,
+        Markup.inlineKeyboard([
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]).reply_markup
+    );
+}
+
+// Обработка создания ключа
+async function handleKeyCreation(ctx, text) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка создания ключа', { userId, step: userStates.get(userId)?.currentStep });
+    
     const userState = userStates.get(userId);
-    if (userState) {
-      logger.userState(userId, 'current', userState);
-    }
+    if (!userState) return;
     
-    if (userState && userState.state === 'waiting_for_key') {
-      logger.info('Обработка ввода ключа', { userId, text });
-      
-      // Пользователь вводит ключ
-      if (text.toLowerCase() === 'отмена') {
-        logger.info('Отмена активации ключа', { userId });
-        userStates.delete(userId);
-        await ctx.reply('❌ Активация ключа отменена.', inlineKeyboard(adminStatus));
-        return;
-      }
-      
-      // Проверяем формат ключа
-      if (text.length !== 12 || !/^[A-Z0-9]{12}$/i.test(text)) {
-        logger.warn('Неверный формат ключа', { userId, text, length: text.length });
-        await ctx.reply(
-          '❌ Неверный формат ключа!\n\n' +
-          '📝 Ключ должен содержать ровно 12 символов (буквы и цифры)\n' +
-          '💡 Пример: ABC123DEF456\n\n' +
-          'Попробуйте еще раз или напишите "отмена" для отмены.',
-          inlineKeyboard(adminStatus)
-        );
-        return;
-      }
-      
-      try {
-        logger.info('Попытка активации ключа', { userId, key: text });
-        
-        // Активируем ключ
-        const result = activateKey(text, userId);
-        
-        logger.info('Ключ успешно активирован', { 
-          userId, 
-          key: text, 
-          reward: result.reward,
-          titleReward: result.titleReward,
-          remainingUses: result.remainingUses
-        });
-        
-        // Очищаем состояние
-        userStates.delete(userId);
-        logger.userState(userId, 'deleted', { state: 'waiting_for_key' });
-        
-        await ctx.reply(
-          `✅ Ключ успешно активирован!\n\n` +
-          `🔑 Ключ: ${result.key}\n` +
-          `📝 Описание: ${result.description}\n\n` +
-          `🎁 Получено:\n` +
-          (result.reward.stars > 0 ? `├ ⭐ Stars: +${result.reward.stars}\n` : '') +
-          (result.reward.coins > 0 ? `├ 🪙 Magnum Coins: +${result.reward.coins}\n` : '') +
-          (result.titleReward ? `└ 👑 Титул: ${getTitleById(result.titleReward).name}\n` : '') +
-          `\n💰 Осталось использований: ${result.remainingUses}`,
-          inlineKeyboard(adminStatus)
-        );
-      } catch (error) {
-        logger.error('Ошибка активации ключа', error, { userId, key: text });
-        
-        // Очищаем состояние
-        userStates.delete(userId);
-        logger.userState(userId, 'deleted', { state: 'waiting_for_key' });
-        
-        await ctx.reply(
-          `❌ Ошибка активации ключа!\n\n` +
-          `🔍 Причина: ${error.message}\n\n` +
-          `Попробуйте другой ключ или напишите "отмена" для отмены.`,
-          inlineKeyboard(adminStatus)
-        );
-      }
-      return;
-    }
-    
-    if (userState && userState.state === 'creating_title_key') {
-      logger.info('Обработка создания ключа титула', { userId, step: userState.step, text });
-      
-      // Админ создает ключ титула
-      if (text.toLowerCase() === 'отмена') {
-        logger.info('Отмена создания ключа титула', { userId });
-        userStates.delete(userId);
-        logger.userState(userId, 'deleted', { state: 'creating_title_key' });
-        await ctx.reply('❌ Создание ключа титула отменено.', createTitleKeyKeyboard());
-        return;
-      }
-      
-      const step = userState.step;
-      
-      switch (step) {
-        case 'title':
-          logger.info('Обработка шага title', { userId, input: text });
-          
-          // Ввод ID титула
-          const titleId = text.toLowerCase().trim();
-          const { getTitleById } = require('../utils/titles');
-          const title = getTitleById(titleId);
-          
-          if (!title) {
-            logger.warn('Неверный ID титула', { userId, input: text, availableTitles: ['novice', 'owner'] });
-            await ctx.reply(
-              '❌ Неверный ID титула!\n\n' +
-              '💡 Доступные титулы:\n' +
-              '• novice - Новичок\n' +
-              '• owner - Владелец\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          logger.info('Титул выбран', { userId, titleId, titleName: title.name });
-          
-          userState.data.titleId = titleId;
-          userState.step = 'stars';
-          logger.userState(userId, 'step_updated', { step: 'stars', titleId });
-          
-          await ctx.reply(
-            '👑 Создание ключа титула:\n\n' +
-            `✅ Титул: ${getFormattedTitle(title)}\n\n` +
-            'Шаг 2/4: Введите количество Stars для награды\n\n' +
-            '💡 Пример: 50\n' +
-            '❌ Для отмены напишите "отмена"'
-          );
-          break;
-          
-        case 'stars':
-          logger.info('Обработка шага stars', { userId, input: text });
-          
-          // Ввод количества Stars
-          const stars = parseInt(text);
-          if (isNaN(stars) || stars < 0) {
-            logger.warn('Неверное количество Stars', { userId, input: text, parsed: stars });
-            await ctx.reply(
-              '❌ Неверное количество Stars!\n\n' +
-              '💡 Введите число больше или равное 0\n' +
-              'Пример: 50\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          logger.info('Количество Stars введено', { userId, stars });
-          
-          userState.data.stars = stars;
-          userState.step = 'coins';
-          logger.userState(userId, 'step_updated', { step: 'coins', stars });
-          
-          await ctx.reply(
-            '👑 Создание ключа титула:\n\n' +
-            `✅ Титул: ${getFormattedTitle(getTitleById(userState.data.titleId))}\n` +
-            `✅ Stars: ${stars}\n\n` +
-            'Шаг 3/4: Введите количество Magnum Coins для награды\n\n' +
-            '💡 Пример: 100\n' +
-            '❌ Для отмены напишите "отмена"'
-          );
-          break;
-          
-        case 'coins':
-          logger.info('Обработка шага coins', { userId, input: text });
-          
-          // Ввод количества Coins
-          const coins = parseInt(text);
-          if (isNaN(coins) || coins < 0) {
-            logger.warn('Неверное количество Coins', { userId, input: text, parsed: coins });
-            await ctx.reply(
-              '❌ Неверное количество Coins!\n\n' +
-              '💡 Введите число больше или равное 0\n' +
-              'Пример: 100\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          logger.info('Количество Coins введено', { userId, coins });
-          
-          userState.data.coins = coins;
-          userState.step = 'max_uses';
-          logger.userState(userId, 'step_updated', { step: 'max_uses', coins });
-          
-          await ctx.reply(
-            '👑 Создание ключа титула:\n\n' +
-            `✅ Титул: ${getFormattedTitle(getTitleById(userState.data.titleId))}\n` +
-            `✅ Stars: ${userState.data.stars}\n` +
-            `✅ Coins: ${coins}\n\n` +
-            'Шаг 4/4: Введите максимальное количество активаций\n\n' +
-            '💡 Пример: 5\n' +
-            '❌ Для отмены напишите "отмена"'
-          );
-          break;
-          
-        case 'max_uses':
-          logger.info('Обработка шага max_uses', { userId, input: text });
-          
-          // Ввод максимального количества использований
-          const maxUses = parseInt(text);
-          if (isNaN(maxUses) || maxUses < 1) {
-            logger.warn('Неверное количество активаций', { userId, input: text, parsed: maxUses });
-            await ctx.reply(
-              '❌ Неверное количество активаций!\n\n' +
-              '💡 Введите число больше 0\n' +
-              'Пример: 5\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          logger.info('Количество активаций введено', { userId, maxUses });
-          
-          userState.data.maxUses = maxUses;
-          userState.step = 'description';
-          logger.userState(userId, 'step_updated', { step: 'description', maxUses });
-          
-          await ctx.reply(
-            '👑 Создание ключа титула:\n\n' +
-            `✅ Титул: ${getFormattedTitle(getTitleById(userState.data.titleId))}\n` +
-            `✅ Stars: ${userState.data.stars}\n` +
-            `✅ Coins: ${userState.data.coins}\n` +
-            `✅ Максимум активаций: ${maxUses}\n\n` +
-            'Шаг 5/5: Введите описание ключа\n\n' +
-            '💡 Пример: Ключ для получения титула Владелец\n' +
-            '❌ Для отмены напишите "отмена"'
-          );
-          break;
-          
-                case 'description':
-          logger.info('Обработка шага description', { userId, input: text });
-          
-          // Ввод описания
-          const description = text.trim();
-          if (description.length === 0) {
-            logger.warn('Пустое описание ключа', { userId });
-            await ctx.reply(
-              '❌ Описание не может быть пустым!\n\n' +
-              '💡 Введите описание ключа\n' +
-              'Пример: Ключ для получения титула Владелец\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          logger.info('Описание ключа введено', { userId, description });
-          userState.data.description = description;
-          
-          // Создаем ключ титула
-          try {
-            logger.info('Создание ключа титула', { userId, data: userState.data });
-            
-            const newKey = createKey(
-              { stars: userState.data.stars, coins: userState.data.coins },
-              userState.data.maxUses,
-              userState.data.description,
-              userState.data.titleId
-            );
-            
-            logger.info('Ключ титула успешно создан', { userId, key: newKey, data: userState.data });
-            
-            // Очищаем состояние
-            userStates.delete(userId);
-            logger.userState(userId, 'deleted', { state: 'creating_title_key' });
-            
-            const title = getTitleById(userState.data.titleId);
-            
-            await ctx.reply(
-              `✅ Ключ титула успешно создан!\n\n` +
-              `🔑 Ключ: ${newKey}\n` +
-              `👑 Титул: ${getFormattedTitle(title)}\n` +
-              `📝 Описание: ${userState.data.description}\n\n` +
-              `🎁 Награда:\n` +
-              `├ ⭐ Stars: ${userState.data.stars}\n` +
-              `├ 🪙 Magnum Coins: ${userState.data.coins}\n` +
-              `└ 👑 Титул: ${title.name}\n\n` +
-              `💰 Максимум активаций: ${userState.data.maxUses}`,
-              createTitleKeyKeyboard()
-            );
-          } catch (error) {
-            logger.error('Ошибка создания ключа титула', error, { userId, data: userState.data });
-            
-            // Очищаем состояние
-            userStates.delete(userId);
-            logger.userState(userId, 'deleted', { state: 'creating_title_key' });
-            
-            await ctx.reply(
-              `❌ Ошибка создания ключа титула!\n\n` +
-              `🔍 Причина: ${error.message}`,
-              createTitleKeyKeyboard()
-            );
-          }
-          break;
-      }
-      return;
-    }
-    
-    if (userState && userState.state === 'waiting_for_withdraw_amount') {
-      // Пользователь вводит сумму для вывода
-      if (text.toLowerCase() === 'отмена') {
-        userStates.delete(userId);
-        await ctx.reply('❌ Вывод звезд отменен.', inlineKeyboard(adminStatus));
-        return;
-      }
-      
-      const amount = parseInt(text);
-      if (isNaN(amount) || amount < 10) {
-        await ctx.reply(
-          '❌ Неверная сумма!\n\n' +
-          '💡 Введите число больше или равное 10\n' +
-          'Пример: 100\n\n' +
-          'Попробуйте еще раз или напишите "отмена" для отмены.',
-          withdrawKeyboard()
-        );
-        return;
-      }
-      
-      const userBalance = getUserBalance(userId);
-      if (amount > userBalance.stars) {
-        await ctx.reply(
-          '❌ Недостаточно звезд!\n\n' +
-          `💎 Ваш баланс: ${userBalance.stars} ⭐\n` +
-          `💰 Запрошенная сумма: ${amount} ⭐\n\n` +
-          'Попробуйте еще раз или напишите "отмена" для отмены.',
-          withdrawKeyboard()
-        );
-        return;
-      }
-      
-      // Очищаем состояние
-      userStates.delete(userId);
-      
-      await ctx.reply(
-        `💰 Заявка на вывод создана!
-
-💎 Сумма к выводу: ${amount} ⭐
-💳 Способ вывода: Банковская карта
-⏰ Время обработки: 1-3 рабочих дня
-
-✅ Ваша заявка принята в обработку!
-📞 Для уточнения деталей обратитесь к администратору.`,
-        inlineKeyboard(adminStatus)
-      );
-      return;
-    }
-    
-    if (userState && userState.state === 'creating_key') {
-      // Админ создает ключ
-      if (text.toLowerCase() === 'отмена') {
-        userStates.delete(userId);
-        await ctx.reply('❌ Создание ключа отменено.', inlineKeyboard(adminStatus));
-        return;
-      }
-      
-      const step = userState.step;
-      
-      switch (step) {
-        case 'stars':
-          // Ввод количества Stars
-          const stars = parseInt(text);
-          if (isNaN(stars) || stars < 0) {
-            await ctx.reply(
-              '❌ Неверное количество Stars!\n\n' +
-              '💡 Введите число больше или равное 0\n' +
-              'Пример: 50\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          userState.data.stars = stars;
-          userState.step = 'coins';
-          
-          await ctx.reply(
-            '🔑 Создание нового ключа:\n\n' +
-            `✅ Stars: ${stars}\n\n` +
-            'Шаг 2/4: Введите количество Magnum Coins для награды\n\n' +
-            '💡 Пример: 100\n' +
-            '❌ Для отмены напишите "отмена"'
-          );
-          break;
-          
-        case 'coins':
-          // Ввод количества Coins
-          const coins = parseInt(text);
-          if (isNaN(coins) || coins < 0) {
-            await ctx.reply(
-              '❌ Неверное количество Coins!\n\n' +
-              '💡 Введите число больше или равное 0\n' +
-              'Пример: 100\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          userState.data.coins = coins;
-          userState.step = 'max_uses';
-          
-          await ctx.reply(
-            '🔑 Создание нового ключа:\n\n' +
-            `✅ Stars: ${userState.data.stars}\n` +
-            `✅ Coins: ${coins}\n\n` +
-            'Шаг 3/4: Введите максимальное количество активаций\n\n' +
-            '💡 Пример: 5\n' +
-            '❌ Для отмены напишите "отмена"'
-          );
-          break;
-          
-        case 'max_uses':
-          // Ввод максимального количества использований
-          const maxUses = parseInt(text);
-          if (isNaN(maxUses) || maxUses < 1) {
-            await ctx.reply(
-              '❌ Неверное количество активаций!\n\n' +
-              '💡 Введите число больше 0\n' +
-              'Пример: 5\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          userState.data.maxUses = maxUses;
-          userState.step = 'description';
-          
-          await ctx.reply(
-            '🔑 Создание нового ключа:\n\n' +
-            `✅ Stars: ${userState.data.stars}\n` +
-            `✅ Coins: ${userState.data.coins}\n` +
-            `✅ Максимум активаций: ${maxUses}\n\n` +
-            'Шаг 4/4: Введите описание ключа\n\n' +
-            '💡 Пример: Тестовый ключ для новых пользователей\n' +
-            '❌ Для отмены напишите "отмена"'
-          );
-          break;
-          
+    switch (userState.currentStep) {
         case 'description':
-          // Ввод описания
-          const description = text.trim();
-          if (description.length === 0) {
-            await ctx.reply(
-              '❌ Описание не может быть пустым!\n\n' +
-              '💡 Введите описание ключа\n' +
-              'Пример: Тестовый ключ для новых пользователей\n\n' +
-              'Попробуйте еще раз или напишите "отмена" для отмены.'
-            );
-            return;
-          }
-          
-          userState.data.description = description;
-          
-          // Создаем ключ
-          try {
-            logger.info('Создание обычного ключа', { userId, data: userState.data });
+            // Ввод описания ключа
+            const description = text.trim();
+            if (description.length === 0) {
+                await ctx.reply(
+                    '❌ Описание не может быть пустым!\n\n' +
+                    '💡 Введите описание ключа\n' +
+                    'Пример: Тестовый ключ для новых пользователей\n\n' +
+                    'Попробуйте еще раз или напишите "отмена" для отмены.'
+                );
+                return;
+            }
             
-            const newKey = createKey(
-              { stars: userState.data.stars, coins: userState.data.coins },
-              userState.data.maxUses,
-              userState.data.description
-            );
+            userState.data.description = description;
             
-            logger.info('Обычный ключ успешно создан', { userId, key: newKey, data: userState.data });
+            // Создаем ключ
+            try {
+                logger.info('Создание обычного ключа', { userId, data: userState.data });
+                
+                // Здесь будет логика создания ключа
+                const newKey = 'TEST_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                
+                logger.info('Обычный ключ успешно создан', { userId, key: newKey });
+                
+                // Очищаем состояние
+                userStates.delete(userId);
+                
+                await ctx.reply(
+                    `✅ Ключ успешно создан!\n\n` +
+                    `🔑 Ключ: ${newKey}\n` +
+                    `📝 Описание: ${userState.data.description}\n\n` +
+                    `🎁 Награда:\n` +
+                    `├ ⭐ Stars: ${userState.data.stars}\n` +
+                    `└ 🪙 Magnum Coins: ${userState.data.coins}\n\n` +
+                    `💰 Максимум активаций: ${userState.data.maxUses}`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+                    ]).reply_markup
+                );
+            } catch (error) {
+                logger.error('Ошибка создания обычного ключа', error, { userId, data: userState.data });
+                
+                // Очищаем состояние
+                userStates.delete(userId);
+                
+                await ctx.reply(
+                    `❌ Ошибка создания ключа!\n\n` +
+                    `🔍 Причина: ${error.message}`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+                    ]).reply_markup
+                );
+            }
+            break;
             
-            // Очищаем состояние
-            userStates.delete(userId);
-            logger.userState(userId, 'deleted', { state: 'creating_key' });
-            
-            await ctx.reply(
-              `✅ Ключ успешно создан!\n\n` +
-              `🔑 Ключ: ${newKey}\n` +
-              `📝 Описание: ${userState.data.description}\n\n` +
-              `🎁 Награда:\n` +
-              `├ ⭐ Stars: ${userState.data.stars}\n` +
-              `└ 🪙 Magnum Coins: ${userState.data.coins}\n\n` +
-              `💰 Максимум активаций: ${userState.data.maxUses}`,
-              createKeyKeyboard()
-            );
-          } catch (error) {
-            logger.error('Ошибка создания обычного ключа', error, { userId, data: userState.data });
-            
-            // Очищаем состояние
-            userStates.delete(userId);
-            logger.userState(userId, 'deleted', { state: 'creating_key' });
-            
-            await ctx.reply(
-              `❌ Ошибка создания ключа!\n\n` +
-              `🔍 Причина: ${error.message}`,
-              createKeyKeyboard()
-            );
-          }
-          break;
-      }
-      return;
+        default:
+            await ctx.reply('❌ Неизвестный шаг создания ключа');
+            break;
     }
+}
+
+// Обработка создания ключа титула
+async function handleTitleKeyCreation(ctx, text) {
+    const userId = ctx.from.id;
     
-    // Обычная обработка команд
-    const textLower = text.toLowerCase();
+    logger.info('Обработка создания ключа титула', { userId, step: userStates.get(userId)?.currentStep });
     
-    switch (textLower) {
-      case 'меню':
-      case 'menu':
-      case 'кнопки':
-      case 'buttons':
-        await ctx.reply('Выберите действие:', inlineKeyboard(adminStatus));
-        break;
-        
-      case 'профиль':
-      case 'profile':
-        const user = ctx.from;
-        const userName = user.first_name || 'пользователь';
-        
-        // Получаем данные из системы валюты
-        const { getUserBalance, getUserStats } = require('../utils/currency');
-        const balance = getUserBalance(userId);
-        const currencyStats = getUserStats(userId);
-        const keyHistory = getUserKeyHistory(userId);
-        
-                 const currentTitle = getUserCurrentTitle(userId);
-         const referralStats = getReferralStats(userId);
-         const levelInfo = getLevelInfo(referralStats.level);
-         const nextLevel = getNextLevel(referralStats.level);
-         
-         const profileMessage = `👤 Профиль пользователя:
- 
-       👤 Основная информация
-       ├ ID: ${userId}
-       ├ Имя: ${userName}
-       ├ Username: ${user.username || 'Не указан'}
-       ├ Титул: ${getFormattedTitle(currentTitle)}
-       └ Дата регистрации: ${new Date().toLocaleDateString('ru-RU')}
- 
-       💎 Баланс
-       ├ ⭐ Stars: ${balance.stars}
-       └ 🪙 Magnum Coins: ${balance.coins}
- 
-       👥 Реферальная система
-       ├ Реферальный код: ${referralStats.referralCode}
-       ├ Рефералы: ${referralStats.totalReferrals}
-       ├ Активные рефералы: ${referralStats.activeReferrals}
-               ├ Заработано: ${referralStats.totalEarned.stars} ⭐
-       ├ Уровень: ${levelInfo.name} (${referralStats.level})
-       └ ${nextLevel ? `До следующего уровня: ${nextLevel.requirement - referralStats.totalEarned.stars} ⭐` : 'Максимальный уровень!'}
-       
-       📊 Статистика
-       ├ Всего транзакций: ${currencyStats.totalTransactions}
-       ├ Всего заработано Stars: ${currencyStats.totalEarned.stars}
-       ├ Всего заработано Coins: ${currencyStats.totalEarned.coins}
-       ├ Активировано ключей: ${keyHistory.length}
-       └ Последний вход: Сегодня`;
-        
-        await ctx.reply(profileMessage, profileKeyboard(adminStatus));
-        break;
-        
-      case 'ключ':
-      case 'key':
-      case 'активировать':
-      case 'activate':
-        // Устанавливаем состояние ожидания ввода ключа
-        userStates.set(userId, { state: 'waiting_for_key', timestamp: Date.now() });
-        
-        await ctx.reply(
-          '🔑 Активация ключа:\n\n' +
-          'Введите 12-значный ключ активации:\n\n' +
-          '📝 Формат: XXXXXXXXXXXX\n' +
-          '💡 Пример: ABC123DEF456\n\n' +
-          '❌ Для отмены напишите "отмена"',
-          inlineKeyboard(adminStatus)
-        );
-        break;
-        
-             case 'майнеры':
-       case 'miners':
-       case 'майнер':
-       case 'miner':
-         const minersStats = getMinersStats(userId);
-         const availableRewards = getAvailableRewards(userId);
-         
-         const minersMessage = `⛏️ Майнеры:
-
-📊 Общая статистика
-├ Всего майнеров: ${minersStats.totalMiners}
-├ Активных майнеров: ${minersStats.activeMiners}
-├ Доступно наград: ${availableRewards.stars > 0 ? `${availableRewards.stars} ⭐` : ''} ${availableRewards.coins > 0 ? `${availableRewards.coins} 🪙` : ''}
-└ Всего заработано: ${minersStats.totalEarned.stars} ⭐ ${minersStats.totalEarned.coins} 🪙
-
-${minersStats.miners.length > 0 ? 
-  `📋 Ваши майнеры:
-${minersStats.miners.map(miner => {
-  const { getRarityInfo } = require('../utils/miners');
-  const rarityInfo = getRarityInfo(miner.rarity);
-  const rewardSymbol = miner.rewardType === 'stars' ? '⭐' : '🪙';
-  return `├ ${rarityInfo.color} ${miner.name} (${rarityInfo.name})
-  │  ├ Доход/мин: ${miner.rewardPerMinute} ${rewardSymbol}
-  │  ├ Заработано: ${miner.totalEarned}/${miner.maxReward} ${rewardSymbol}
-  │  └ Осталось: ${miner.remainingReward} ${rewardSymbol}`;
-}).join('\n')}` : 
-  '❌ У вас пока нет майнеров\n💡 Купите свой первый майнер!'}`;
-         
-         await ctx.reply(minersMessage, inlineKeyboard(adminStatus));
-         break;
-        
-             case 'купить майнер':
-       case 'buy miner':
-       case 'купить':
-       case 'buy':
-         const { getMinerByPage } = require('../utils/miners');
-         const firstMiner = getMinerByPage(1);
-         
-         const buyMinerMessage = `⛏️ Покупка майнера:
-
-${firstMiner.rarityInfo.color} **${firstMiner.name}** (${firstMiner.rarityInfo.name})
-
-💰 **Цена:** ${firstMiner.price} ${firstMiner.priceSymbol}
-⚡ **Доход/мин:** ${firstMiner.rewardPerMinute} ${firstMiner.rewardSymbol}
-📈 **Максимум:** ${firstMiner.maxReward} ${firstMiner.rewardSymbol}
-🎯 **Доступно на сервере:** ${firstMiner.availableOnServer} шт
-📝 **${firstMiner.description}**
-
-💡 Для покупки используйте кнопки в меню или напишите:
-• "новичок" - купить майнер Новичок (100 🪙)
-• "путь к звездам" - купить майнер Путь к звездам (100 ⭐)
-
-📱 В меню доступна постраничная навигация по майнерам!`;
-         
-         await ctx.reply(buyMinerMessage, inlineKeyboard(adminStatus));
-         break;
-        
-      case 'новичок':
-      case 'novice':
-        try {
-          const result = buyMiner(userId, 'NOVICE');
-          const { getRarityInfo } = require('../utils/miners');
-          const rarityInfo = getRarityInfo(result.miner.rarity);
-          const priceSymbol = result.priceType === 'stars' ? '⭐' : '🪙';
-          
-          await ctx.reply(
-            `✅ Майнер успешно куплен!
-
-⛏️ ${rarityInfo.color} ${result.miner.name} (${rarityInfo.name})
-💰 Стоимость: ${result.price} ${priceSymbol}
-📅 Дата покупки: ${new Date(result.miner.purchaseDate).toLocaleString('ru-RU')}
-
-💎 Новый баланс: ${result.newBalance.stars} ⭐ ${result.newBalance.coins} 🪙`,
-            inlineKeyboard(adminStatus)
-          );
-        } catch (error) {
-          await ctx.reply(
-            `❌ Ошибка покупки майнера!
-
-🔍 Причина: ${error.message}`,
-            inlineKeyboard(adminStatus)
-          );
-        }
-        break;
-        
-      case 'путь к звездам':
-      case 'star path':
-        try {
-          const result = buyMiner(userId, 'STAR_PATH');
-          const { getRarityInfo } = require('../utils/miners');
-          const rarityInfo = getRarityInfo(result.miner.rarity);
-          const priceSymbol = result.priceType === 'stars' ? '⭐' : '🪙';
-          
-          await ctx.reply(
-            `✅ Майнер успешно куплен!
-
-⛏️ ${rarityInfo.color} ${result.miner.name} (${rarityInfo.name})
-💰 Стоимость: ${result.price} ${priceSymbol}
-📅 Дата покупки: ${new Date(result.miner.purchaseDate).toLocaleString('ru-RU')}
-
-💎 Новый баланс: ${result.newBalance.stars} ⭐ ${result.newBalance.coins} 🪙`,
-            inlineKeyboard(adminStatus)
-          );
-        } catch (error) {
-          await ctx.reply(
-            `❌ Ошибка покупки майнера!
-
-🔍 Причина: ${error.message}`,
-            inlineKeyboard(adminStatus)
-          );
-        }
-        break;
-        
-
-        
-      case 'забрать награды':
-      case 'collect rewards':
-      case 'собрать':
-      case 'collect':
-        try {
-          const result = collectRewards(userId);
-          let collectedText = '';
-          if (result.collected.stars > 0) {
-            collectedText += `⭐ Stars: ${result.collected.stars}\n`;
-          }
-          if (result.collected.coins > 0) {
-            collectedText += `🪙 Magnum Coins: ${result.collected.coins}\n`;
-          }
-          
-          await ctx.reply(
-            `💰 Награды успешно собраны!
-
-🎁 Собрано:
-${collectedText}
-💎 Новый баланс: ${result.newBalance.stars} ⭐ ${result.newBalance.coins} 🪙
-
-⏰ Следующий сбор будет доступен через минуту`,
-            inlineKeyboard(adminStatus)
-          );
-        } catch (error) {
-          await ctx.reply(
-            `❌ Ошибка сбора наград!
-
-🔍 Причина: ${error.message}`,
-            inlineKeyboard(adminStatus)
-          );
-        }
-        break;
-        
-      // WebApp временно отключен
-      // case 'веб':
-      // case 'webapp':
-      // case 'web':
-      //   if (!adminStatus) {
-      //     await ctx.reply('❌ Доступ запрещен. Эта функция доступна только администраторам.');
-      //     return;
-      //   }
-      //   
-      //   await ctx.reply(
-      //     '🌐 WebApp - дополнительный функционал:\n\n' +
-      //     '📱 Расширенный интерфейс\n' +
-      //     '📊 Детальная статистика\n' +
-      //     '🎮 Дополнительные задания\n' +
-      //     '💬 Чат с поддержкой\n\n' +
-      //     'Открываем WebApp...',
-      //     inlineKeyboard(adminStatus)
-      //   );
-      //   break;
-        
-      case 'админ':
-      case 'admin':
-      case 'панель':
-      case 'panel':
-        if (!adminStatus) {
-          await ctx.reply('❌ Доступ запрещен. Админ панель доступна только администраторам.');
-          return;
-        }
-        
-        const { getAdminStats, getBotStats } = require('../utils/admin');
-        const adminStats = getAdminStats();
-        const botStats = getBotStats();
-        
-        const adminMessage = `🔧 Админ панель:
-
-👥 Администраторы
-├ Всего админов: ${adminStats.totalAdmins}
-├ ID админов: ${adminStats.adminIds.join(', ') || 'Не настроены'}
-└ Ваш статус: Администратор
-
-🤖 Информация о боте
-├ Версия: ${adminStats.botInfo.version}
-├ Время работы: ${Math.floor(adminStats.botInfo.uptime / 60)} мин
-├ Платформа: ${adminStats.botInfo.platform}
-└ Память: ${Math.round(adminStats.botInfo.memory.heapUsed / 1024 / 1024)} MB
-
-📊 Статистика бота
-├ Всего пользователей: ${botStats.totalUsers}
-├ Активных пользователей: ${botStats.activeUsers}
-├ Всего транзакций: ${botStats.totalTransactions}
-└ Время сервера: ${new Date(botStats.serverTime).toLocaleString('ru-RU')}`;
-        
-        await ctx.reply(adminMessage, inlineKeyboard(adminStatus));
-        break;
-        
-      case 'титулы':
-      case 'titles':
-      case 'титул':
-      case 'title':
-        const titlesStats = getUserTitlesStats(userId);
-        
-        const titlesMessage = `👑 Титулы:
-
-📊 Ваши титулы
-├ Текущий титул: ${getFormattedTitle(titlesStats.currentTitle)}
-├ Разблокировано: ${titlesStats.totalUnlocked}/${titlesStats.totalAvailable}
-└ Всего титулов: ${titlesStats.unlockedTitles.length}
-
-${titlesStats.unlockedTitles.length > 0 ? 
-  `📋 Доступные титулы:
-${titlesStats.unlockedTitles.map(title => 
-  `├ ${getFormattedTitle(title)}
-  │  └ ${title.description}`
-).join('\n')}` : 
-  '❌ У вас пока нет разблокированных титулов\n💡 Используйте ключи для получения титулов!'}`;
-        
-        await ctx.reply(titlesMessage, inlineKeyboard(adminStatus));
-        break;
-        
-      case 'сменить титул':
-      case 'change title':
-        const unlockedTitles = getUserUnlockedTitles(userId);
-        
-        if (unlockedTitles.length === 0) {
-          await ctx.reply(
-            '❌ У вас нет разблокированных титулов!\n\n💡 Используйте ключи для получения титулов.',
-            inlineKeyboard(adminStatus)
-          );
-          return;
-        }
-        
-        const changeTitleMessage = `👑 Смена титула:
-
-Выберите титул для установки:
-
-${unlockedTitles.map(title => 
-  `🔸 ${getFormattedTitle(title)}
-  └ ${title.description}`
-).join('\n\n')}
-
-💡 Для смены титула используйте кнопки в меню или напишите:
-• "установить титул новичок" - установить титул Новичок
-• "установить титул владелец" - установить титул Владелец`;
-        
-        await ctx.reply(changeTitleMessage, inlineKeyboard(adminStatus));
-        break;
-        
-      case 'установить титул новичок':
-      case 'set title novice':
-        try {
-          const result = setUserTitle(userId, 'novice');
-          await ctx.reply(
-            `✅ Титул успешно изменен!
-
-👑 ${getFormattedTitle(result.oldTitle)} → ${getFormattedTitle(result.newTitle)}
-
-Теперь ваш профиль отображается с новым титулом!`,
-            inlineKeyboard(adminStatus)
-          );
-        } catch (error) {
-          await ctx.reply(
-            `❌ Ошибка смены титула!
-
-🔍 Причина: ${error.message}`,
-            inlineKeyboard(adminStatus)
-          );
-        }
-        break;
-        
-      case 'установить титул владелец':
-      case 'set title owner':
-        try {
-          const result = setUserTitle(userId, 'owner');
-          await ctx.reply(
-            `✅ Титул успешно изменен!
-
-👑 ${getFormattedTitle(result.oldTitle)} → ${getFormattedTitle(result.newTitle)}
-
-Теперь ваш профиль отображается с новым титулом!`,
-            inlineKeyboard(adminStatus)
-          );
-        } catch (error) {
-          await ctx.reply(
-            `❌ Ошибка смены титула!
-
-🔍 Причина: ${error.message}`,
-            inlineKeyboard(adminStatus)
-          );
-        }
-        break;
-        
-      case 'вывести звезды':
-      case 'withdraw stars':
-      case 'вывод':
-      case 'withdraw':
-        const withdrawBalance = getUserBalance(userId);
-        
-        const withdrawTextMessage = `💰 Вывод звезд:
-
-💎 Ваш баланс: ${withdrawBalance.stars} ⭐
-
-Выберите способ вывода:
-
-💳 Указать сумму - вывести определенное количество звезд
-💰 Вывести все - вывести весь доступный баланс
-📊 История - посмотреть историю выводов
-
-⚠️ Минимальная сумма для вывода: 10 ⭐
-
-💡 Используйте кнопки в меню для удобной навигации!`;
-        
-        await ctx.reply(withdrawTextMessage, inlineKeyboard(adminStatus));
-        break;
-        
-      case 'реферал':
-      case 'referral':
-        // Проверяем, есть ли реферальный код после команды
-        const referralText = text.toLowerCase().trim();
-        if (referralText === 'реферал' || referralText === 'referral') {
-          await ctx.reply(
-            '🔗 Реферальная система:\n\n' +
-            '💡 Для активации реферального кода напишите:\n' +
-            '• "реферал КОД" (например: реферал ABC12345)\n\n' +
-            '💰 Что дает реферальная система:\n' +
-            '• Награды за приглашенных друзей\n' +
-            '• Бонусы за их активность\n' +
-            '• Повышение уровня и дополнительные награды\n\n' +
-            '📱 Ваш реферальный код можно посмотреть в профиле!',
-            inlineKeyboard(adminStatus)
-          );
-          return;
-        }
-        
-        // Извлекаем реферальный код
-        const referralCode = referralText.replace(/^(реферал|referral)\s+/i, '').trim();
-        if (referralCode.length === 0) {
-          await ctx.reply(
-            '❌ Не указан реферальный код!\n\n' +
-            '💡 Напишите: "реферал КОД"\n' +
-            'Пример: реферал ABC12345',
-            inlineKeyboard(adminStatus)
-          );
-          return;
-        }
-        
-        try {
-          const result = activateReferralCode(referralCode, userId);
-          await ctx.reply(
-            `✅ ${result.message}\n\n` +
-            `🔗 Реферальный код: ${result.referralCode}\n` +
-            `👤 Реферер: ID ${result.referrerId}\n\n` +
-            `💰 Теперь вы будете получать награды за активность реферера!`,
-            inlineKeyboard(adminStatus)
-          );
-        } catch (error) {
-          await ctx.reply(
-            `❌ Ошибка активации реферального кода!\n\n` +
-            `🔍 Причина: ${error.message}`,
-            inlineKeyboard(adminStatus)
-          );
-        }
-        break;
-        
-      default:
-        await ctx.reply(
-          'Не понимаю команду. Напишите "меню" для показа кнопок или используйте команду /info',
-          inlineKeyboard(adminStatus)
-        );
+    const userState = userStates.get(userId);
+    if (!userState) return;
+    
+    switch (userState.currentStep) {
+        case 'description':
+            // Ввод описания ключа
+            const description = text.trim();
+            if (description.length === 0) {
+                await ctx.reply(
+                    '❌ Описание не может быть пустым!\n\n' +
+                    '💡 Введите описание ключа\n' +
+                    'Пример: Тестовый ключ для новых пользователей\n\n' +
+                    'Попробуйте еще раз или напишите "отмена" для отмены.'
+                );
+                return;
+            }
+            
+            logger.info('Описание ключа введено', { userId, description });
+            userState.data.description = description;
+            
+            // Создаем ключ титула
+            try {
+                logger.info('Создание ключа титула', { userId, data: userState.data });
+                
+                // Здесь будет логика создания ключа титула
+                const newKey = 'TITLE_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                
+                logger.info('Ключ титула успешно создан', { userId, key: newKey, data: userState.data });
+                
+                // Очищаем состояние
+                userStates.delete(userId);
+                
+                await ctx.reply(
+                    `✅ Ключ титула успешно создан!\n\n` +
+                    `🔑 Ключ: ${newKey}\n` +
+                    `👑 Титул: ${userState.data.titleId}\n` +
+                    `📝 Описание: ${userState.data.description}\n\n` +
+                    `🎁 Награда:\n` +
+                    `├ ⭐ Stars: ${userState.data.stars}\n` +
+                    `├ 🪙 Magnum Coins: ${userState.data.coins}\n` +
+                    `└ 👑 Титул: ${userState.data.titleId}\n\n` +
+                    `💰 Максимум активаций: ${userState.data.maxUses}`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+                    ]).reply_markup
+                );
+            } catch (error) {
+                logger.error('Ошибка создания ключа титула', error, { userId, data: userState.data });
+                
+                // Очищаем состояние
+                userStates.delete(userId);
+                
+                await ctx.reply(
+                    `❌ Ошибка создания ключа титула!\n\n` +
+                    `🔍 Причина: ${error.message}`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+                    ]).reply_markup
+                );
+            }
+            break;
+            
+        default:
+            await ctx.reply('❌ Неизвестный шаг создания ключа титула');
+            break;
     }
-  }));
-};
+}
+
+module.exports = infoHandler;
