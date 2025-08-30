@@ -96,10 +96,11 @@ class DataManager {
                         totalCoinsAwarded += result.coins;
                         totalStarsAwarded += result.stars;
                         
-                        logger.debug('Пользователь обработан (автоматический доход)', { 
+                        logger.info('Пользователь обработан (автоматический доход)', { 
                             userId: user.userId, 
                             coins: result.coins, 
-                            stars: result.stars 
+                            stars: result.stars,
+                            timestamp: new Date().toISOString()
                         });
                     }
                 } catch (userError) {
@@ -326,7 +327,15 @@ class DataManager {
             // Записываем транзакцию
             await this.addTransaction(userId, currency, amount, reason, oldBalance, newBalance);
             
-            logger.info('Баланс успешно обновлен', { userId, currency, amount, reason, oldBalance, newBalance });
+            logger.info('💰 Баланс успешно обновлен', { 
+                userId, 
+                currency, 
+                amount, 
+                reason, 
+                oldBalance, 
+                newBalance,
+                timestamp: new Date().toISOString()
+            });
             
             return newBalance;
             

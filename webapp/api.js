@@ -54,6 +54,7 @@ router.get('/user/balance/:userId', ensureDataManagerConnection, async (req, res
         const balance = user.balance || { stars: 0, coins: 0 };
         
         console.log(`✅ API: Баланс успешно получен для ${userId}:`, balance);
+        console.log(`📊 API: Текущее время запроса: ${new Date().toISOString()}`);
         
         res.json({
             success: true,
@@ -61,7 +62,9 @@ router.get('/user/balance/:userId', ensureDataManagerConnection, async (req, res
                 stars: balance.stars || 0,
                 coins: balance.coins || 0,
                 totalEarned: balance.totalEarned || { stars: 0, coins: 0 }
-            }
+            },
+            timestamp: new Date().toISOString(),
+            lastActivity: user.lastActivity
         });
         
     } catch (error) {
