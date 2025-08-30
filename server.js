@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware для измерения времени ответа (должен быть ПЕРЕД всеми маршрутами)
 app.use((req, res, next) => {
     req.startTime = Date.now();
+    console.log(`📊 Middleware: установлен startTime для ${req.method} ${req.path}: ${req.startTime}`);
     next();
 });
 
@@ -128,9 +129,12 @@ app.get('/api/health', async (req, res) => {
             }
         }
         
+        const responseTime = Date.now() - req.startTime;
+        console.log(`📊 Health check: startTime=${req.startTime}, now=${Date.now()}, responseTime=${responseTime}`);
+        
         logger.response('Health check ответ', { 
             statusCode: 200, 
-            responseTime: Date.now() - req.startTime 
+            responseTime: responseTime
         });
         
         res.status(200).json(healthData);

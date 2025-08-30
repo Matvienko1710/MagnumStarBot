@@ -37,15 +37,23 @@ router.get('/user/balance/:userId', ensureDatabaseConnection, async (req, res) =
         const { userId } = req.params;
         const db = req.db;
         
+        console.log(`🔍 API: Запрос баланса для пользователя ${userId}`);
+        console.log(`🔍 API: База данных подключена: ${!!db}`);
+        
         // Получаем пользователя из базы
         const user = await db.collection('users').findOne({ userId: Number(userId) });
         
+        console.log(`🔍 API: Пользователь найден: ${!!user}`);
+        
         if (!user) {
+            console.log(`❌ API: Пользователь ${userId} не найден`);
             return res.status(404).json({ error: 'Пользователь не найден' });
         }
         
         // Возвращаем баланс
         const balance = user.balance || { stars: 0, coins: 0 };
+        
+        console.log(`✅ API: Баланс успешно получен для ${userId}:`, balance);
         
         res.json({
             success: true,
@@ -57,7 +65,7 @@ router.get('/user/balance/:userId', ensureDatabaseConnection, async (req, res) =
         });
         
     } catch (error) {
-        console.error('Ошибка получения баланса:', error);
+        console.error('❌ API: Ошибка получения баланса:', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
 });
@@ -215,11 +223,21 @@ router.get('/user/info/:userId', ensureDatabaseConnection, async (req, res) => {
 // Проверка здоровья API
 router.get('/health', (req, res) => {
     console.log('🔍 API Health check вызван');
+    console.log('🔍 API: Проверяем подключение к MongoDB...');
+    
+    // Проверяем подключение к MongoDB
+    const isConnected = !!db && !!client;
+    console.log(`🔍 API: MongoDB подключен: ${isConnected}`);
+    
     res.json({
         success: true,
         message: 'Magnum Stars WebApp API работает!',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
+        mongodb: {
+            connected: isConnected,
+            database: db ? 'connected' : 'disconnected'
+        },
         endpoints: [
             '/api/health',
             '/api/user/balance/:userId',
