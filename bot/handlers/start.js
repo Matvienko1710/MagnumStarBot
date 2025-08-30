@@ -2,6 +2,9 @@ const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
 const dataManager = require('../utils/dataManager');
 
+// Хранилище последних сообщений бота для каждого пользователя
+const lastBotMessages = new Map();
+
 // Обработчик команды /start
 async function startHandler(ctx) {
     try {
@@ -25,7 +28,12 @@ async function startHandler(ctx) {
                         `👥 Ваш реферер получил: **5 ⭐ Stars**\n\n` +
                         `🎯 Продолжайте зарабатывать вместе!`;
                     
-                    await ctx.reply(referralBonusMessage, { parse_mode: 'Markdown' });
+                    // Отправляем сообщение о реферальной награде
+                    const referralMessage = await ctx.reply(referralBonusMessage, { parse_mode: 'Markdown' });
+                    
+                    // Сохраняем ID сообщения о реферальной награде
+                    lastBotMessages.set(userId, referralMessage.message_id);
+                    logger.info('Сообщение о реферальной награде отправлено и сохранено', { userId, messageId: referralMessage.message_id });
                 }
             } else {
                 // Если нет ID реферера, создаем пользователя без реферера
@@ -67,10 +75,26 @@ async function startHandler(ctx) {
             [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
         ]);
         
-        await ctx.reply(welcomeMessage, {
+        // Удаляем старое сообщение бота, если оно есть
+        const lastMessageId = lastBotMessages.get(userId);
+        if (lastMessageId) {
+            try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, lastMessageId);
+                logger.info('Старое сообщение бота удалено', { userId, messageId: lastMessageId });
+            } catch (error) {
+                logger.warn('Не удалось удалить старое сообщение', { userId, messageId: lastMessageId, error: error.message });
+            }
+        }
+        
+        // Отправляем новое сообщение
+        const newMessage = await ctx.reply(welcomeMessage, {
             parse_mode: 'Markdown',
             reply_markup: mainMenu.reply_markup
         });
+        
+        // Сохраняем ID нового сообщения
+        lastBotMessages.set(userId, newMessage.message_id);
+        logger.info('Новое сообщение бота отправлено и сохранено', { userId, messageId: newMessage.message_id });
         
         logger.info('Команда /start успешно обработана', { userId });
         
@@ -85,10 +109,26 @@ async function startHandler(ctx) {
             [Markup.button.callback('🔄 Попробовать снова', 'start')]
         ]);
         
-        await ctx.reply(errorMessage, {
+        // Удаляем старое сообщение бота, если оно есть
+        const lastMessageId = lastBotMessages.get(userId);
+        if (lastMessageId) {
+            try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, lastMessageId);
+                logger.info('Старое сообщение бота удалено при ошибке', { userId, messageId: lastMessageId });
+            } catch (error) {
+                logger.warn('Не удалось удалить старое сообщение при ошибке', { userId, messageId: lastMessageId, error: error.message });
+            }
+        }
+        
+        // Отправляем новое сообщение об ошибке
+        const newMessage = await ctx.reply(errorMessage, {
             parse_mode: 'Markdown',
             reply_markup: errorKeyboard.reply_markup
         });
+        
+        // Сохраняем ID нового сообщения
+        lastBotMessages.set(userId, newMessage.message_id);
+        logger.info('Новое сообщение об ошибке отправлено и сохранено', { userId, messageId: newMessage.message_id });
     }
 }
 
