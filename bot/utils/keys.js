@@ -1,6 +1,7 @@
 // Система управления ключами активации (промокодами)
 
 const { updateStars, updateCoins } = require('./currency');
+const { unlockTitle } = require('./titles');
 
 // Временное хранилище данных (в реальном проекте заменить на БД)
 const activationKeys = new Map();
@@ -18,11 +19,12 @@ const generateKey = () => {
 };
 
 // Создание нового ключа активации
-const createKey = (reward = { stars: 10, coins: 0 }, maxUses = 1, description = 'Стандартный ключ') => {
+const createKey = (reward = { stars: 10, coins: 0 }, maxUses = 1, description = 'Стандартный ключ', titleReward = null) => {
   const key = generateKey();
   
   activationKeys.set(key, {
     reward: reward,
+    titleReward: titleReward,
     maxUses: maxUses,
     currentUses: 0,
     description: description,
@@ -91,6 +93,17 @@ const activateKey = (key, userId) => {
     results.coins = updateCoins(userId, keyData.reward.coins, `key_activation_${upperKey}`);
   }
   
+  // Выдаем титул, если есть
+  if (keyData.titleReward) {
+    try {
+      const unlockedTitle = unlockTitle(userId, keyData.titleReward);
+      results.title = unlockedTitle;
+    } catch (error) {
+      // Если титул уже разблокирован, игнорируем ошибку
+      console.log(`Title already unlocked for user ${userId}: ${error.message}`);
+    }
+  }
+  
   // Обновляем статистику использования ключа
   keyData.currentUses += 1;
   
@@ -108,6 +121,7 @@ const activateKey = (key, userId) => {
   return {
     key: upperKey,
     reward: keyData.reward,
+    titleReward: keyData.titleReward,
     results: results,
     description: keyData.description,
     remainingUses: keyData.maxUses - keyData.currentUses
