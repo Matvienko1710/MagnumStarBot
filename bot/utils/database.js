@@ -214,6 +214,7 @@ class Database {
             }
 
             console.log('🔧 Инициализация коллекций...');
+            console.log('✅ Версия кода: 2.0 - исправлена ошибка с пустыми индексами');
 
             // Создаем коллекции и индексы
             const collections = [
@@ -230,11 +231,14 @@ class Database {
             for (const collectionName of collections) {
                 const collection = this.db.collection(collectionName);
                 
+                console.log(`🔍 Проверка коллекции: ${collectionName}`);
+                
                 // Проверяем, существует ли коллекция
                 const collectionExists = await this.db.listCollections({ name: collectionName }).hasNext();
                 
                 if (!collectionExists) {
                     // Создаем коллекцию с одним документом и сразу удаляем его
+                    console.log(`📝 Создание коллекции ${collectionName} через временный документ...`);
                     await collection.insertOne({ _temp: true });
                     await collection.deleteOne({ _temp: true });
                     console.log(`✅ Коллекция ${collectionName} создана`);
