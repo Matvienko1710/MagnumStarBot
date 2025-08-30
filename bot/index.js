@@ -1,5 +1,6 @@
 const { Telegraf } = require('telegraf');
 const logger = require('./utils/logger');
+const messageCleaner = require('./utils/messageCleaner');
 
 // Инициализация бота
 function initializeBot() {
@@ -71,6 +72,11 @@ function initializeBot() {
         // Обработчик текстовых сообщений
         logger.info('Обработчик info зарегистрирован');
         const infoHandler = require('./handlers/info');
+        const { autoDeleteUserMessageMiddleware } = require('./utils/autoDelete');
+        
+        // Добавляем middleware для автоматического удаления сообщений пользователя
+        bot.use(autoDeleteUserMessageMiddleware());
+        
         bot.on('text', safeAsync(infoHandler));
 
         // Обработчик callback запросов
@@ -88,6 +94,12 @@ function initializeBot() {
                 errorStack: error.stack
             });
         });
+
+        // Интеграция системы автоматического удаления сообщений
+        messageCleaner.setBot(bot);
+        messageCleaner.start();
+        
+        logger.info('Система автоматического удаления сообщений интегрирована с ботом');
 
         // Обработка ошибок процесса
         process.on('uncaughtException', (error) => {

@@ -51,7 +51,8 @@ class DatabaseManager {
                 'key_activations',
                 'referrals',
                 'transactions',
-                'withdrawals'
+                'withdrawals',
+                'message_deletions'
             ];
 
             for (const collectionName of collections) {
@@ -111,6 +112,11 @@ class DatabaseManager {
             await this.db.collection('withdrawals').createIndex({ id: 1 }, { unique: true });
             await this.db.collection('withdrawals').createIndex({ userId: 1 });
             await this.db.collection('withdrawals').createIndex({ status: 1 });
+            
+            // Индекс для автоматического удаления сообщений
+            await this.db.collection('message_deletions').createIndex({ deleteAt: 1 });
+            await this.db.collection('message_deletions').createIndex({ messageId: 1 });
+            await this.db.collection('message_deletions').createIndex({ isDeleted: 1 });
 
             logger.info('✅ Индексы созданы');
 

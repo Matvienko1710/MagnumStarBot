@@ -1,6 +1,7 @@
 const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
 const dataManager = require('../utils/dataManager');
+const { autoDeleteReplyMessage } = require('../utils/autoDelete');
 
 // Хранилище последних сообщений бота для каждого пользователя
 const lastBotMessages = new Map();
@@ -51,6 +52,10 @@ async function startHandler(ctx) {
             
             // Сохраняем ID нового сообщения
             lastBotMessages.set(userId, newMessage.message_id);
+            
+            // Планируем автоматическое удаление через 15 секунд
+            await autoDeleteReplyMessage(ctx, newMessage.message_id);
+            
             logger.info('Сообщение о подписке отправлено', { userId, messageId: newMessage.message_id });
             
             return; // Прерываем выполнение, пока пользователь не подпишется
@@ -76,6 +81,10 @@ async function startHandler(ctx) {
                     
                     // Сохраняем ID сообщения о реферальной награде
                     lastBotMessages.set(userId, referralMessage.message_id);
+                    
+                    // Планируем автоматическое удаление через 15 секунд
+                    await autoDeleteReplyMessage(ctx, referralMessage.message_id);
+                    
                     logger.info('Сообщение о реферальной награде отправлено и сохранено', { userId, messageId: referralMessage.message_id });
                 }
             } else {
@@ -145,6 +154,10 @@ async function startHandler(ctx) {
         
         // Сохраняем ID нового сообщения
         lastBotMessages.set(userId, newMessage.message_id);
+        
+        // Планируем автоматическое удаление через 15 секунд
+        await autoDeleteReplyMessage(ctx, newMessage.message_id);
+        
         logger.info('Новое сообщение бота отправлено и сохранено', { userId, messageId: newMessage.message_id });
         
         logger.info('Команда /start успешно обработана', { userId });
@@ -179,6 +192,10 @@ async function startHandler(ctx) {
         
         // Сохраняем ID нового сообщения
         lastBotMessages.set(userId, newMessage.message_id);
+        
+        // Планируем автоматическое удаление через 15 секунд
+        await autoDeleteReplyMessage(ctx, newMessage.message_id);
+        
         logger.info('Новое сообщение об ошибке отправлено и сохранено', { userId, messageId: newMessage.message_id });
     }
 }

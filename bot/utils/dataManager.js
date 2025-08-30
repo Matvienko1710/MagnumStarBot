@@ -1322,6 +1322,71 @@ class DataManager {
             return { totalKeys: 0, activeKeys: 0, totalActivations: 0 };
         }
     }
+    
+    // === АВТОМАТИЧЕСКОЕ УДАЛЕНИЕ СООБЩЕНИЙ ===
+    
+    // Логирование сообщения для автоматического удаления
+    async logMessageForDeletion(messageId, chatId, userId, messageType = 'bot') {
+        try {
+            const deletionTime = new Date(Date.now() + 15000); // 15 секунд
+            
+            await this.db.collection('message_deletions').insertOne({
+                messageId: messageId,
+                chatId: chatId,
+                userId: userId,
+                messageType: messageType, // 'bot' или 'user'
+                createdAt: new Date(),
+                deleteAt: deletionTime,
+                isDeleted: false
+            });
+            
+            logger.info('Сообщение запланировано на удаление', { 
+                messageId, 
+                chatId, 
+                userId, 
+                messageType, 
+                deleteAt: deletionTime 
+            });
+            
+        } catch (error) {
+            logger.error('Ошибка логирования сообщения для удаления', error, { messageId, chatId, userId });
+        }
+    }
+    
+    // Получение сообщений для удаления
+    async getMessagesToDelete() {
+        try {
+            const now = new Date();
+            
+            const messages = await this.db.collection('message_deletions')
+                .find({
+                    deleteAt: { $lte: now },
+                    isDeleted: false
+                })
+                .toArray();
+            
+            return messages;
+            
+        } catch (error) {
+            logger.error('Ошибка получения сообщений для удаления', error);
+            return [];
+        }
+    }
+    
+    // Отметка сообщения как удаленного
+    async markMessageAsDeleted(messageId) {
+        try {
+            await this.db.collection('message_deletions').updateOne(
+                { messageId: messageId },
+                { $set: { isDeleted: true, deletedAt: new Date() } }
+            );
+            
+            logger.info('Сообщение отмечено как удаленное', { messageId });
+            
+        } catch (error) {
+            logger.error('Ошибка отметки сообщения как удаленного', error, { messageId });
+        }
+    }
 }
 
 // Создаем и экспортируем экземпляр
