@@ -48,6 +48,7 @@ class DatabaseManager {
                 'miners', 
                 'titles',
                 'keys',
+                'key_activations',
                 'referrals',
                 'transactions',
                 'withdrawals'
@@ -97,6 +98,11 @@ class DatabaseManager {
             
             // Индекс для ключей
             await this.db.collection('keys').createIndex({ key: 1 }, { unique: true });
+            
+            // Индекс для активаций ключей
+            await this.db.collection('key_activations').createIndex({ key: 1 });
+            await this.db.collection('key_activations').createIndex({ userId: 1 });
+            await this.db.collection('key_activations').createIndex({ activatedAt: 1 });
             
             // Индекс для рефералов
             await this.db.collection('referrals').createIndex({ userId: 1, referrerId: 1 });

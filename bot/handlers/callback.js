@@ -1350,28 +1350,51 @@ async function handleKeyCreation(ctx, text) {
             
             userState.data.maxUses = maxUses;
             
-            // Создаем ключ
+            // Создаем ключ в базе данных
             const { generateKey } = require('../utils/keys');
             const key = generateKey();
             
-            const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+            const keyData = {
+                key: key,
+                type: userState.data.rewardType,
+                reward: {
+                    stars: userState.data.rewardType === 'stars' ? userState.data.stars : 0,
+                    coins: userState.data.rewardType === 'coins' ? userState.data.coins : 0
+                },
+                maxUses: maxUses,
+                createdBy: userId
+            };
             
-            const successMessage = `✅ **Ключ успешно создан!**\n\n` +
-                `🔑 Ключ: \`${key}\`\n` +
-                `🎯 Тип: ${rewardTypeText}\n` +
-                `💰 Награда: ${userState.data[userState.data.rewardType]} ${rewardTypeText}\n` +
-                `🔄 Максимум активаций: ${maxUses}\n\n` +
-                `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
-            
-            const keyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
-                [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
-            ]);
-            
-            await ctx.reply(successMessage, {
-                parse_mode: 'Markdown',
-                reply_markup: keyboard.reply_markup
-            });
+            try {
+                const createResult = await dataManager.createKey(keyData);
+                
+                if (createResult.success) {
+                    const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+                    
+                    const successMessage = `✅ **Ключ успешно создан!**\n\n` +
+                        `🔑 Ключ: \`${key}\`\n` +
+                        `🎯 Тип: ${rewardTypeText}\n` +
+                        `💰 Награда: ${userState.data[userState.data.rewardType]} ${rewardTypeText}\n` +
+                        `🔄 Максимум активаций: ${maxUses}\n\n` +
+                        `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
+                    
+                    const keyboard = Markup.inlineKeyboard([
+                        [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
+                        [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+                    ]);
+                    
+                    await ctx.reply(successMessage, {
+                        parse_mode: 'Markdown',
+                        reply_markup: keyboard.reply_markup
+                    });
+                } else {
+                    await ctx.reply('❌ Ошибка создания ключа в базе данных');
+                }
+                
+            } catch (error) {
+                logger.error('Ошибка создания ключа в базе данных', error, { userId, keyData });
+                await ctx.reply('❌ Ошибка создания ключа в базе данных');
+            }
             
             // Очищаем состояние
             userStates.delete(userId);

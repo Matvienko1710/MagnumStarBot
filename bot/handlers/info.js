@@ -87,8 +87,9 @@ async function handleKeyActivation(ctx, text) {
     }
     
     try {
-        // Активируем ключ
-        const result = activateKey(key, userId);
+        // Активируем ключ через dataManager
+        const dataManager = require('../utils/dataManager');
+        const result = await dataManager.activateKey(key, userId);
         
         if (result.success) {
             logger.info('Ключ успешно активирован', { userId, key: key.substring(0, 10) });
@@ -97,18 +98,10 @@ async function handleKeyActivation(ctx, text) {
             const { userStates } = require('./callback');
             userStates.delete(userId);
             
-            const rewardText = [];
-            if (result.reward.stars > 0) {
-                rewardText.push(`⭐ Stars: +${result.reward.stars}`);
-            }
-            if (result.reward.coins > 0) {
-                rewardText.push(`🪙 Magnum Coins: +${result.reward.coins}`);
-            }
-            
             await ctx.reply(
                 `✅ **Ключ успешно активирован!**\n\n` +
                 `🎁 Получено:\n` +
-                `${rewardText.join('\n')}\n\n` +
+                `${result.rewardText.join('\n')}\n\n` +
                 `🔑 Ключ: ${key.substring(0, 6)}...`,
                 Markup.inlineKeyboard([
                     [Markup.button.callback('🏠 Главное меню', 'main_menu')]
@@ -132,7 +125,7 @@ async function handleKeyActivation(ctx, text) {
         await ctx.reply(
             `❌ **Ошибка при активации ключа**\n\n` +
             `🚫 ${error.message || 'Неизвестная ошибка'}\n\n` +
-            `🔑 Попробуйте еще раз или обратитесь к администратору`,
+            `🔑 Попробуйте другой ключ или обратитесь к администратору`,
             Markup.inlineKeyboard([
                 [Markup.button.callback('🔑 Попробовать еще раз', 'activate_key')],
                 [Markup.button.callback('🏠 Главное меню', 'main_menu')]

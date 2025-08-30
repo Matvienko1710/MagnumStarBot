@@ -1195,6 +1195,133 @@ class DataManager {
             return { current: 'novice', unlocked: [], history: [] };
         }
     }
+    
+    // === УПРАВЛЕНИЕ КЛЮЧАМИ ===
+    
+    // Создание нового ключа
+    async createKey(keyData) {
+        try {
+            const key = {
+                key: keyData.key,
+                type: keyData.type, // 'stars', 'coins'
+                reward: keyData.reward,
+                maxUses: keyData.maxUses,
+                currentUses: 0,
+                createdAt: new Date(),
+                createdBy: keyData.createdBy,
+                isActive: true
+            };
+            
+            await this.db.collection('keys').insertOne(key);
+            
+            logger.info('Ключ создан в базе данных', { 
+                key: key.key.substring(0, 6) + '...', 
+                type: key.type,
+                reward: key.reward,
+                maxUses: key.maxUses 
+            });
+            
+            return { success: true, key: key };
+            
+        } catch (error) {
+            logger.error('Ошибка создания ключа в базе данных', error, { keyData });
+            throw error;
+        }
+    }
+    
+    // Активация ключа
+    async activateKey(key, userId) {
+        try {
+            // Находим ключ в базе данных
+            const keyDoc = await this.db.collection('keys').findOne({ 
+                key: key, 
+                isActive: true 
+            });
+            
+            if (!keyDoc) {
+                return { success: false, message: 'Ключ не найден или неактивен' };
+            }
+            
+            // Проверяем, не превышено ли количество использований
+            if (keyDoc.currentUses >= keyDoc.maxUses) {
+                return { success: false, message: 'Ключ уже использован максимальное количество раз' };
+            }
+            
+            // Проверяем, не активировал ли пользователь этот ключ ранее
+            const activationRecord = await this.db.collection('key_activations').findOne({
+                key: key,
+                userId: Number(userId)
+            });
+            
+            if (activationRecord) {
+                return { success: false, message: 'Вы уже активировали этот ключ' };
+            }
+            
+            // Начисляем награду пользователю
+            let rewardText = [];
+            
+            if (keyDoc.type === 'stars' && keyDoc.reward.stars > 0) {
+                await this.updateBalance(userId, 'stars', keyDoc.reward.stars, 'key_activation');
+                rewardText.push(`⭐ Stars: +${keyDoc.reward.stars}`);
+            }
+            
+            if (keyDoc.type === 'coins' && keyDoc.reward.coins > 0) {
+                await this.updateBalance(userId, 'coins', keyDoc.reward.coins, 'key_activation');
+                rewardText.push(`🪙 Magnum Coins: +${keyDoc.reward.coins}`);
+            }
+            
+            // Увеличиваем счетчик использований ключа
+            await this.db.collection('keys').updateOne(
+                { key: key },
+                { $inc: { currentUses: 1 } }
+            );
+            
+            // Записываем активацию ключа
+            await this.db.collection('key_activations').insertOne({
+                key: key,
+                userId: Number(userId),
+                activatedAt: new Date(),
+                reward: keyDoc.reward
+            });
+            
+            logger.info('Ключ успешно активирован', { 
+                key: key.substring(0, 6) + '...', 
+                userId, 
+                reward: keyDoc.reward 
+            });
+            
+            return {
+                success: true,
+                type: keyDoc.type,
+                reward: keyDoc.reward,
+                message: 'Ключ успешно активирован!',
+                rewardText: rewardText
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка активации ключа', error, { key: key.substring(0, 6) + '...', userId });
+            throw error;
+        }
+    }
+    
+    // Получение статистики ключей
+    async getKeysStats() {
+        try {
+            const totalKeys = await this.db.collection('keys').countDocuments();
+            const activeKeys = await this.db.collection('keys').countDocuments({ isActive: true });
+            const totalActivations = await this.db.collection('key_activations').countDocuments();
+            
+            return {
+                totalKeys,
+                activeKeys,
+                totalActivations
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка получения статистики ключей', error);
+            return { totalKeys: 0, activeKeys: 0, totalActivations: 0 };
+        }
+    }
 }
 
 // Создаем и экспортируем экземпляр
