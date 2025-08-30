@@ -719,18 +719,19 @@ ${topReferrers.map((ref, index) => {
         await ctx.answerCbQuery();
         const currentLevel = getReferralStats(userId).level;
         const nextLevelInfo = getNextLevel(currentLevel);
+        const currentReferralStats = getReferralStats(userId);
         
         let levelsMessage = `📈 Уровни реферальной системы:
 
 ${Array.from({length: 10}, (_, i) => i + 1).map(level => {
   const levelData = getLevelInfo(level);
   const isCurrent = level === currentLevel;
-  const isCompleted = referralStats.totalEarned.stars >= levelData.requirement;
+  const isCompleted = currentReferralStats.totalEarned.stars >= levelData.requirement;
   
   let status = '';
   if (isCurrent) status = ' ✅ Текущий';
   else if (isCompleted) status = ' ✅ Достигнут';
-  else status = ` ❌ Нужно: ${levelData.requirement - referralStats.totalEarned.stars} ⭐`;
+  else status = ` ❌ Нужно: ${levelData.requirement - currentReferralStats.totalEarned.stars} ⭐`;
   
      return `${level}. ${levelData.name}
     ├ Требование: ${levelData.requirement} ⭐
