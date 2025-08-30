@@ -331,9 +331,6 @@ async function handleMainMenu(ctx) {
             `💎 **Баланс**\n` +
             `├ ⭐ Stars: ${userBalance.stars}\n` +
             `└ 🪙 Magnum Coins: ${userBalance.coins}\n\n` +
-            `👥 **Реферальная программа**\n` +
-            `├ 👥 Друзей приглашено: ${referralStats.totalReferrals}\n` +
-            `└ 💰 Доход: ${referralStats.totalEarned.stars} ⭐\n\n` +
             `📊 **Информация о боте**\n` +
             `├ 👤 Пользователей: ${botStats.totalUsers}\n` +
             `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
