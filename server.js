@@ -15,7 +15,7 @@ let isDatabaseConnected = false;
 
 // Функция инициализации базы данных с повторными попытками
 async function initializeDatabase() {
-    const maxRetries = 3;
+    const maxRetries = 5; // Увеличиваем количество попыток
     let retryCount = 0;
     
     while (retryCount < maxRetries) {
@@ -37,7 +37,9 @@ async function initializeDatabase() {
             retryCount++;
             logger.error('Ошибка подключения к MongoDB Atlas', error, { 
                 attempt: retryCount, 
-                maxRetries 
+                maxRetries,
+                errorMessage: error.message,
+                errorCode: error.code
             });
             
             if (retryCount < maxRetries) {
@@ -84,13 +86,14 @@ app.get('/api/health', async (req, res) => {
         });
         
         const healthData = {
-            status: 'ok',
+            status: isDatabaseConnected ? 'ok' : 'warning',
             timestamp: new Date().toISOString(),
             uptime: process.uptime(),
             environment: process.env.NODE_ENV || 'development',
             database: {
                 connected: isDatabaseConnected,
-                status: isDatabaseConnected ? 'connected' : 'disconnected'
+                status: isDatabaseConnected ? 'connected' : 'disconnected',
+                message: isDatabaseConnected ? 'Database connected successfully' : 'Database connection failed - running in fallback mode'
             },
             server: {
                 nodeVersion: process.version,
@@ -167,7 +170,10 @@ async function startServer() {
         // Запускаем бота
         await launchBot();
         
-        logger.info('Приложение полностью инициализировано');
+        logger.info('Приложение полностью инициализировано', {
+            databaseConnected: isDatabaseConnected,
+            mode: isDatabaseConnected ? 'full' : 'fallback'
+        });
         
     } catch (error) {
         logger.error('Критическая ошибка при запуске сервера', error);
