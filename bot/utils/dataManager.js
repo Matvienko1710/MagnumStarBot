@@ -696,12 +696,34 @@ class DataManager {
             // Обновляем майнеры пользователя
             await this.updateUser(userId, { miners: miners });
             
-            logger.info('Майнинг успешно запущен', { userId, startTime: now });
+            // Сразу начисляем первую награду за запуск майнинга
+            let totalCoins = 0;
+            let totalStars = 0;
+            
+            for (const miner of miners) {
+                if (miner.isActive) {
+                    totalCoins += miner.speed.coins;
+                    totalStars += miner.speed.stars;
+                }
+            }
+            
+            // Начисляем доход за первую минуту
+            if (totalCoins > 0) {
+                await this.updateBalance(userId, 'coins', totalCoins, 'mining_income_start');
+                logger.info('Начислена награда за запуск майнинга (Coins)', { userId, totalCoins });
+            }
+            if (totalStars > 0) {
+                await this.updateBalance(userId, 'stars', totalStars, 'mining_income_start');
+                logger.info('Начислена награда за запуск майнинга (Stars)', { userId, totalStars });
+            }
+            
+            logger.info('Майнинг успешно запущен', { userId, startTime: now, initialReward: { coins: totalCoins, stars: totalStars } });
             
             return { 
                 success: true, 
-                message: 'Майнинг запущен! Доход будет начисляться каждую минуту автоматически.',
-                startTime: now
+                message: `Майнинг запущен! Получено ${totalCoins} 🪙 Coins за первую минуту. Доход будет начисляться каждую минуту автоматически.`,
+                startTime: now,
+                initialReward: { coins: totalCoins, stars: totalStars }
             };
             
         } catch (error) {
@@ -733,9 +755,9 @@ class DataManager {
                 const hoursSinceStart = timeSinceMiningStart / (1000 * 60 * 60);
                 
                 if (hoursSinceStart < 4) {
-                    // Начисляем доход за последнюю минуту
-                    const coinsEarned = miner.speed.coins / 60; // Доход в минуту
-                    const starsEarned = miner.speed.stars / 60; // Доход в минуту
+                    // Начисляем доход за последнюю минуту (скорость уже в минуту)
+                    const coinsEarned = miner.speed.coins; // Доход в минуту (1 Coin)
+                    const starsEarned = miner.speed.stars; // Доход в минуту
                     
                     totalCoins += coinsEarned;
                     totalStars += starsEarned;
@@ -745,9 +767,11 @@ class DataManager {
             // Начисляем доход
             if (totalCoins > 0) {
                 await this.updateBalance(userId, 'coins', totalCoins, 'mining_income_auto');
+                logger.info('Автоматический доход от майнинга начислен (Coins)', { userId, totalCoins });
             }
             if (totalStars > 0) {
                 await this.updateBalance(userId, 'stars', totalStars, 'mining_income_auto');
+                logger.info('Автоматический доход от майнинга начислен (Stars)', { userId, totalStars });
             }
             
             logger.info('Автоматический доход от майнинга начислен', { userId, totalCoins, totalStars });
@@ -767,16 +791,8 @@ class DataManager {
                 id: 'novice',
                 name: 'Новичок',
                 price: { coins: 100, stars: 0 },
-                speed: { coins: 0.25, stars: 0 },
+                speed: { coins: 1, stars: 0 }, // 1 Magnum Coin в минуту
                 rarity: 'Обычный',
-                available: 100
-            },
-            'star_path': {
-                id: 'star_path',
-                name: 'Путь к звездам',
-                price: { coins: 0, stars: 100 },
-                speed: { coins: 0, stars: 0.01 },
-                rarity: 'Редкий',
                 available: 100
             }
         };

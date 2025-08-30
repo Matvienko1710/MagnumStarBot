@@ -62,10 +62,6 @@ async function callbackHandler(ctx) {
                 await handleBuyMiner(ctx, 'novice');
                 break;
                 
-            case 'buy_miner_star_path':
-                await handleBuyMiner(ctx, 'star_path');
-                break;
-                
             case 'withdraw':
                 await handleWithdraw(ctx);
                 break;
@@ -316,17 +312,9 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
                 id: 'novice',
                 name: 'Новичок',
                 price: { coins: 100, stars: 0 },
-                speed: { coins: 0.25, stars: 0 },
+                speed: { coins: 1, stars: 0 }, // 1 Magnum Coin в минуту
                 rarity: 'Обычный',
-                description: 'Первый майнер для начинающих'
-            },
-            {
-                id: 'star_path',
-                name: 'Путь к звездам',
-                price: { coins: 0, stars: 100 },
-                speed: { coins: 0, stars: 0.01 },
-                rarity: 'Редкий',
-                description: 'Майнер для добычи Stars'
+                description: 'Первый майнер для начинающих. Добывает 1 🪙 Magnum Coin в минуту'
             }
         ];
         
@@ -336,7 +324,6 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
         }
         
         const currentMiner = availableMiners[currentMinerIndex];
-        const isLastMiner = currentMinerIndex === availableMiners.length - 1;
         
         // Формируем сообщение о текущем майнере
         const priceText = currentMiner.price.coins > 0 
@@ -351,7 +338,6 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
             `💰 **Ваш баланс:**\n` +
             `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
             `└ ⭐ Stars: ${userBalance.stars}\n\n` +
-            `⛏️ **Майнер ${currentMinerIndex + 1} из ${availableMiners.length}**\n\n` +
             `🎯 **${currentMiner.name}**\n` +
             `├ 💰 Цена: ${priceText}\n` +
             `├ ⚡ Скорость: ${speedText}\n` +
@@ -368,20 +354,6 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
             `🛒 Купить ${currentMiner.name}`, 
             `buy_miner_${currentMiner.id}`
         )]);
-        
-        // Кнопка следующего майнера (если не последний)
-        if (!isLastMiner) {
-            shopKeyboard.push([Markup.button.callback(
-                '⏭️ Следующий майнер', 
-                `next_miner_shop_${currentMinerIndex + 1}`
-            )]);
-        } else {
-            // Если последний майнер, показываем кнопку "Первый майнер"
-            shopKeyboard.push([Markup.button.callback(
-                '⏮️ Первый майнер', 
-                'next_miner_shop_0'
-            )]);
-        }
         
         // Навигационные кнопки
         shopKeyboard.push([
@@ -564,8 +536,12 @@ async function handleStartMining(ctx) {
         const miningResult = await dataManager.startMining(userId);
         
         if (miningResult.success) {
-            // Показываем уведомление
-            await ctx.answerCbQuery('🚀 Майнинг запущен!');
+            // Показываем уведомление с наградой
+            const rewardMessage = miningResult.initialReward.coins > 0 
+                ? `🚀 Майнинг запущен! Получено ${miningResult.initialReward.coins} 🪙 Magnum Coins за первую минуту!`
+                : '🚀 Майнинг запущен!';
+            
+            await ctx.answerCbQuery(rewardMessage);
             
             // Обновляем сообщение с таймером
             await updateMiningTimer(ctx, userId, miningResult.startTime);
