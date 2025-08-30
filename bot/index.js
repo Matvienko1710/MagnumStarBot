@@ -137,5 +137,11 @@ function initializeBot() {
 // Создаем и инициализируем бота
 const { bot, launchBot } = initializeBot();
 
+// Автоматически запускаем бота
+launchBot().catch(error => {
+    logger.error('Критическая ошибка при запуске бота', error);
+    process.exit(1);
+});
+
 // Экспортируем бота и функцию запуска
 module.exports = { bot, launchBot };
