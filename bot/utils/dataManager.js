@@ -23,16 +23,19 @@ class DataManager {
             await this.createDefaultData();
             
             // Проверяем и начисляем пропущенные награды за майнинг (после редеплоя)
-            logger.info('Начинаем проверку пропущенных наград за майнинг...');
+            logger.info('⛏️ Начинаем проверку пропущенных наград за майнинг...');
             try {
+                logger.info('🔍 Вызываем processAllMissedMiningRewards...');
                 const missedRewardsResult = await this.processAllMissedMiningRewards();
+                logger.info('📊 Результат processAllMissedMiningRewards получен:', missedRewardsResult);
+                
                 if (missedRewardsResult.success) {
-                    logger.info('Проверка пропущенных наград завершена успешно', missedRewardsResult);
+                    logger.info('✅ Проверка пропущенных наград завершена успешно', missedRewardsResult);
                 } else {
-                    logger.error('Ошибка проверки пропущенных наград', missedRewardsResult.error);
+                    logger.error('❌ Ошибка проверки пропущенных наград', missedRewardsResult.error);
                 }
             } catch (missedRewardsError) {
-                logger.error('Ошибка при проверке пропущенных наград', missedRewardsError);
+                logger.error('💥 Ошибка при проверке пропущенных наград', missedRewardsError);
             }
             
             logger.info('DataManager успешно инициализирован');

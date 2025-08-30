@@ -104,7 +104,17 @@ app.get('/api/health', async (req, res) => {
         // Если база данных подключена, получаем статистику
         if (isDatabaseConnected) {
             try {
-                const dbStats = await database.getDatabaseStats();
+                // Получаем базовую статистику БД
+                const db = database.getDb();
+                const collections = await db.listCollections().toArray();
+                const collectionNames = collections.map(col => col.name);
+                
+                const dbStats = {
+                    collections: collectionNames.length,
+                    collectionNames: collectionNames,
+                    status: 'connected'
+                };
+                
                 healthData.database.stats = dbStats;
             } catch (error) {
                 logger.error('Ошибка получения статистики БД для health check', error);
@@ -193,12 +203,25 @@ app.use((error, req, res, next) => {
     });
 });
 
+// Проверка на уже запущенный процесс
+let isServerStarting = false;
+
 // Запуск сервера
 async function startServer() {
+    // Проверяем, не запускается ли уже сервер
+    if (isServerStarting) {
+        logger.warn('Сервер уже запускается, пропускаем повторный запуск');
+        return;
+    }
+    
+    isServerStarting = true;
+    
     try {
+        logger.info('🚀 Начинаем запуск сервера...');
+        
         // Запускаем Express сервер
-        app.listen(PORT, () => {
-            logger.info('Сервер запущен', {
+        const server = app.listen(PORT, () => {
+            logger.info('✅ Express сервер запущен', {
                 port: PORT,
                 environment: process.env.NODE_ENV || 'development',
                 nodeVersion: process.version,
@@ -207,18 +230,24 @@ async function startServer() {
         });
         
         // Инициализируем базу данных
+        logger.info('🔌 Инициализация базы данных...');
         await initializeDatabase();
         
         // Запускаем бота
+        logger.info('🤖 Запуск Telegram бота...');
         await launchBot();
         
-        logger.info('Приложение полностью инициализировано', {
+        logger.info('🎉 Приложение полностью инициализировано', {
             databaseConnected: isDatabaseConnected,
             mode: isDatabaseConnected ? 'full' : 'fallback'
         });
         
+        // Сбрасываем флаг запуска
+        isServerStarting = false;
+        
     } catch (error) {
-        logger.error('Критическая ошибка при запуске сервера', error);
+        logger.error('❌ Критическая ошибка при запуске сервера', error);
+        isServerStarting = false;
         process.exit(1);
     }
 }
