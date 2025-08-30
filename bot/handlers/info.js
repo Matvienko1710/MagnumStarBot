@@ -2,8 +2,9 @@ const { inlineKeyboard, profileKeyboard, withdrawKeyboard } = require('../keyboa
 const { isAdmin } = require('../utils/admin');
 const { activateKey, getUserKeyHistory, createKey } = require('../utils/keys');
 const { getUserMiners, getAvailableRewards, buyMiner, collectRewards, getMinersStats, getMinerTypes } = require('../utils/miners');
-const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle } = require('../utils/titles');
+const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle, getTitleById } = require('../utils/titles');
 const { activateReferralCode, getReferralStats, getLevelInfo, getNextLevel } = require('../utils/referral');
+const { getUserBalance, getUserStats } = require('../utils/currency');
 
 // Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
 const userStates = new Map();

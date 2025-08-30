@@ -1,12 +1,12 @@
 const { Markup } = require('telegraf');
 const { inlineKeyboard, inlineKeyboardWithBack, adminPanelKeyboard, createKeyKeyboard, minersKeyboard, buyMinerKeyboard, titlesKeyboard, changeTitleKeyboard, profileKeyboard, withdrawKeyboard, referralsKeyboard } = require('../keyboards/inline');
 const { generateUserProfile } = require('../utils/profile');
-const { getUserBalance, getUserStats, getTransactionHistory } = require('../utils/currency');
+const { getUserBalance, getUserStats, getTransactionHistory, addStars, addCoins } = require('../utils/currency');
 const { isAdmin, getAdminStats, getBotStats } = require('../utils/admin');
 const { activateKey, getUserKeyHistory, createKey, getKeysStats } = require('../utils/keys');
 const { getUserMiners, getAvailableRewards, buyMiner, collectRewards, getMinersStats, getMinerTypes, getMinerType } = require('../utils/miners');
-const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle } = require('../utils/titles');
-const { getReferralStats, getLevelInfo, getNextLevel } = require('../utils/referral');
+const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle, getTitleById } = require('../utils/titles');
+const { getReferralStats, getLevelInfo, getNextLevel, getUserReferralCode, getUserReferrals, getTopReferrers } = require('../utils/referral');
 
 // Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
 const userStates = new Map();
