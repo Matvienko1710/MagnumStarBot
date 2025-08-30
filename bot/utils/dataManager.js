@@ -40,9 +40,98 @@ class DataManager {
             
             logger.info('DataManager успешно инициализирован');
             
+            // Запускаем автоматическое начисление дохода от майнинга каждую минуту
+            this.startMiningIncomeScheduler();
+            
         } catch (error) {
             logger.error('Ошибка инициализации DataManager', error);
             throw error;
+        }
+    }
+    
+    // Запуск планировщика автоматического дохода от майнинга
+    startMiningIncomeScheduler() {
+        try {
+            logger.info('🚀 Запускаем планировщик автоматического дохода от майнинга...');
+            
+            // Запускаем каждую минуту (60000 мс)
+            this.miningIncomeInterval = setInterval(async () => {
+                try {
+                    await this.processAllUsersMiningIncome();
+                } catch (error) {
+                    logger.error('❌ Ошибка в планировщике автоматического дохода', error);
+                }
+            }, 60000); // 1 минута
+            
+            logger.info('✅ Планировщик автоматического дохода запущен (интервал: 1 минута)');
+            
+        } catch (error) {
+            logger.error('❌ Ошибка запуска планировщика автоматического дохода', error);
+        }
+    }
+    
+    // Обработка автоматического дохода для всех пользователей
+    async processAllUsersMiningIncome() {
+        try {
+            logger.info('⏰ Запуск автоматического начисления дохода от майнинга...');
+            
+            // Получаем всех пользователей с майнерами
+            const usersWithMiners = await this.db.collection('users').find({
+                'miners.0': { $exists: true } // У пользователя есть хотя бы один майнер
+            }).toArray();
+            
+            logger.info(`🔍 Найдено пользователей с майнерами: ${usersWithMiners.length}`);
+            
+            let totalUsersProcessed = 0;
+            let totalCoinsAwarded = 0;
+            let totalStarsAwarded = 0;
+            
+            // Обрабатываем каждого пользователя
+            for (const user of usersWithMiners) {
+                try {
+                    const result = await this.processMiningIncome(user.userId);
+                    
+                    if (result.coins > 0 || result.stars > 0) {
+                        totalUsersProcessed++;
+                        totalCoinsAwarded += result.coins;
+                        totalStarsAwarded += result.stars;
+                        
+                        logger.debug('Пользователь обработан (автоматический доход)', { 
+                            userId: user.userId, 
+                            coins: result.coins, 
+                            stars: result.stars 
+                        });
+                    }
+                } catch (userError) {
+                    logger.error('Ошибка обработки пользователя (автоматический доход)', userError, { userId: user.userId });
+                }
+            }
+            
+            if (totalCoinsAwarded > 0 || totalStarsAwarded > 0) {
+                logger.info('🎉 Автоматическое начисление дохода завершено', {
+                    totalUsersProcessed,
+                    totalCoinsAwarded,
+                    totalStarsAwarded
+                });
+            } else {
+                logger.debug('Автоматическое начисление дохода завершено (нет активных майнеров)');
+            }
+            
+        } catch (error) {
+            logger.error('❌ Ошибка автоматического начисления дохода для всех пользователей', error);
+        }
+    }
+    
+    // Остановка планировщика автоматического дохода
+    stopMiningIncomeScheduler() {
+        try {
+            if (this.miningIncomeInterval) {
+                clearInterval(this.miningIncomeInterval);
+                this.miningIncomeInterval = null;
+                logger.info('🛑 Планировщик автоматического дохода остановлен');
+            }
+        } catch (error) {
+            logger.error('❌ Ошибка остановки планировщика автоматического дохода', error);
         }
     }
 
@@ -654,7 +743,18 @@ class DataManager {
             const userMiners = user.miners || [];
             userMiners.push(miner);
             
+            // Обновляем пользователя с новыми майнерами
             await this.updateUser(userId, { miners: userMiners });
+            
+            // Если у пользователя уже запущен майнинг, добавляем новый майнер к активным
+            const hasActiveMining = userMiners.some(m => m.isActive && m.lastMiningStart);
+            if (hasActiveMining) {
+                logger.info('У пользователя уже запущен майнинг, новый майнер добавлен к активным', { 
+                    userId, 
+                    minerId: miner.id, 
+                    totalMiners: userMiners.length 
+                });
+            }
             
             logger.info('Майнер успешно куплен', { userId, minerType, minerId: miner.id });
             
@@ -695,6 +795,7 @@ class DataManager {
             let nextStartTime = null;
             
             // Проверяем, можно ли запустить майнинг
+            // Если хотя бы один майнер может запуститься - разрешаем
             for (const miner of miners) {
                 if (!miner.isActive) continue;
                 
@@ -709,12 +810,24 @@ class DataManager {
                 if (hoursSinceLastStart >= 4) {
                     canStartMining = true;
                     break;
-                } else {
-                    const remainingHours = 4 - hoursSinceLastStart;
-                    const nextStart = new Date(miner.lastMiningStart);
-                    nextStart.setHours(nextStart.getHours() + 4);
-                    nextStartTime = nextStart;
                 }
+            }
+            
+            // Если майнинг уже запущен, показываем время следующего запуска
+            if (!canStartMining) {
+                const earliestNextStart = new Date(Math.min(...miners
+                    .filter(m => m.isActive && m.lastMiningStart)
+                    .map(m => new Date(m.lastMiningStart).getTime() + (4 * 60 * 60 * 1000))
+                ));
+                
+                const timeUntilNext = earliestNextStart - now;
+                const hoursUntilNext = Math.ceil(timeUntilNext / (1000 * 60 * 60));
+                
+                return { 
+                    success: false, 
+                    message: `Майнинг уже запущен! Следующий запуск возможен через ${hoursUntilNext} часов`,
+                    nextStartTime: earliestNextStart
+                };
             }
             
             if (!canStartMining) {
@@ -785,9 +898,19 @@ class DataManager {
             let totalStars = 0;
             const now = new Date();
             
+            logger.info('Обрабатываем автоматический доход от майнинга', { userId, minersCount: miners.length });
+            
             // Рассчитываем доход для каждого майнера
             for (const miner of miners) {
-                if (!miner.isActive || !miner.lastMiningStart) continue;
+                if (!miner.isActive || !miner.lastMiningStart) {
+                    logger.debug('Майнер неактивен или майнинг не запущен', { 
+                        userId, 
+                        minerId: miner.id, 
+                        isActive: miner.isActive, 
+                        lastMiningStart: miner.lastMiningStart 
+                    });
+                    continue;
+                }
                 
                 // Проверяем, что майнинг был запущен менее 4 часов назад
                 const timeSinceMiningStart = now - new Date(miner.lastMiningStart);
@@ -800,25 +923,44 @@ class DataManager {
                     
                     totalCoins += coinsEarned;
                     totalStars += starsEarned;
+                    
+                    logger.debug('Майнер генерирует доход', { 
+                        userId, 
+                        minerId: miner.id, 
+                        minerType: miner.type,
+                        coinsEarned, 
+                        starsEarned,
+                        hoursSinceStart: Math.round(hoursSinceStart * 100) / 100
+                    });
+                } else {
+                    logger.debug('Майнинг майнера истек (более 4 часов)', { 
+                        userId, 
+                        minerId: miner.id, 
+                        hoursSinceStart: Math.round(hoursSinceStart * 100) / 100
+                    });
                 }
             }
             
             // Начисляем доход
             if (totalCoins > 0) {
                 await this.updateBalance(userId, 'coins', totalCoins, 'mining_income_auto');
-                logger.info('Автоматический доход от майнинга начислен (Coins)', { userId, totalCoins });
+                logger.info('✅ Автоматический доход от майнинга начислен (Coins)', { userId, totalCoins });
             }
             if (totalStars > 0) {
                 await this.updateBalance(userId, 'stars', totalStars, 'mining_income_auto');
-                logger.info('Автоматический доход от майнинга начислен (Stars)', { userId, totalStars });
+                logger.info('✅ Автоматический доход от майнинга начислен (Stars)', { userId, totalStars });
             }
             
-            logger.info('Автоматический доход от майнинга начислен', { userId, totalCoins, totalStars });
+            if (totalCoins > 0 || totalStars > 0) {
+                logger.info('🎉 Автоматический доход от майнинга начислен', { userId, totalCoins, totalStars });
+            } else {
+                logger.debug('Автоматический доход не начислен (нет активных майнеров)', { userId });
+            }
             
             return { coins: totalCoins, stars: totalStars };
             
         } catch (error) {
-            logger.error('Ошибка автоматического начисления дохода', error, { userId });
+            logger.error('❌ Ошибка автоматического начисления дохода', error, { userId });
             return { coins: 0, stars: 0 };
         }
     }
