@@ -18,7 +18,13 @@ const getAdminIds = () => {
 // Проверка является ли пользователь администратором
 const isAdmin = (userId) => {
   const adminIds = getAdminIds();
-  return adminIds.includes(Number(userId));
+  const isUserAdmin = adminIds.includes(Number(userId));
+  
+  console.log(`🔍 Проверка админа для пользователя ${userId}:`);
+  console.log(`📋 Список админов из ADMIN_IDS: [${adminIds.join(', ')}]`);
+  console.log(`✅ Результат: ${isUserAdmin ? 'ДА' : 'НЕТ'}`);
+  
+  return isUserAdmin;
 };
 
 // Получение статистики администратора

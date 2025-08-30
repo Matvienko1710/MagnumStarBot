@@ -1,6 +1,9 @@
 const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
 const cacheManager = require('../utils/cache');
+const { getUserBalance } = require('../utils/currency');
+const { getReferralStats } = require('../utils/referral');
+const { isAdmin } = require('../utils/admin');
 
 // Состояния пользователей для создания ключей
 const userStates = new Map();
@@ -225,9 +228,25 @@ async function handleMainMenu(ctx) {
     
     logger.info('Обработка главного меню', { userId });
     
-    const mainMenuMessage = `🏠 **Главное меню**\n\n` +
-        `🎉 Добро пожаловать в Magnum Star Bot!\n\n` +
-        `🚀 Выберите действие:`;
+    // Получаем баланс пользователя
+    const userBalance = getUserBalance(userId);
+    
+    // Получаем реферальную статистику
+    const referralStats = getReferralStats(userId);
+    
+    const mainMenuMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
+        `💎 Твой путь к наградам уже начался!\n\n` +
+        `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
+        `👤 **Профиль**\n` +
+        `├ ID: \`${userId}\`\n` +
+        `└ Имя: ${ctx.from.first_name || 'Не указано'}\n\n` +
+        `💎 **Баланс**\n` +
+        `├ ⭐ Stars: ${userBalance.stars}\n` +
+        `└ 🪙 Magnum Coins: ${userBalance.coins}\n\n` +
+        `👥 **Реферальная программа**\n` +
+        `├ Друзей приглашено: ${referralStats.totalReferrals}\n` +
+        `└ Доход: ${referralStats.totalEarned.stars} ⭐\n\n` +
+        `🎯 Выберите действие и двигайтесь дальше 🚀`;
     
     const mainMenuKeyboard = Markup.inlineKeyboard([
         [Markup.button.callback('💰 Майнеры', 'miners')],
@@ -252,9 +271,7 @@ async function handleAdminPanel(ctx) {
     logger.info('Обработка админ панели', { userId });
     
     // Проверяем, является ли пользователь админом
-    const isAdmin = userId === 123456789; // Замените на реальный ID админа
-    
-    if (!isAdmin) {
+    if (!isAdmin(userId)) {
         await ctx.reply('❌ У вас нет доступа к админ панели');
         return;
     }
@@ -360,9 +377,7 @@ async function handleClearCache(ctx) {
     logger.info('Обработка очистки кэша', { userId });
     
     // Проверяем, является ли пользователь админом
-    const isAdmin = userId === 123456789; // Замените на реальный ID админа
-    
-    if (!isAdmin) {
+    if (!isAdmin(userId)) {
         await ctx.reply('❌ У вас нет доступа к этой функции');
         return;
     }
@@ -400,9 +415,7 @@ async function handleCacheStats(ctx) {
     logger.info('Обработка статистики кэша', { userId });
     
     // Проверяем, является ли пользователь админом
-    const isAdmin = userId === 123456789; // Замените на реальный ID админа
-    
-    if (!isAdmin) {
+    if (!isAdmin(userId)) {
         await ctx.reply('❌ У вас нет доступа к этой функции');
         return;
     }

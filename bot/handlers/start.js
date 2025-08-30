@@ -1,5 +1,7 @@
 const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
+const { getUserBalance } = require('../utils/currency');
+const { getReferralStats } = require('../utils/referral');
 
 // Обработчик команды /start
 async function startHandler(ctx) {
@@ -9,26 +11,26 @@ async function startHandler(ctx) {
         
         logger.info('Команда /start', { userId, username });
         
-        // Создаем профиль пользователя
-        const userProfile = {
-            userId: userId,
-            username: username || 'Unknown',
-            firstName: ctx.from.first_name || 'Unknown',
-            lastName: ctx.from.last_name || '',
-            joinDate: new Date(),
-            stars: 0,
-            coins: 0,
-            level: 1,
-            experience: 0
-        };
+        // Получаем баланс пользователя
+        const userBalance = getUserBalance(userId);
         
-        logger.debug('Профиль пользователя создан', { userId, profile: userProfile });
+        // Получаем реферальную статистику
+        const referralStats = getReferralStats(userId);
         
-        // Приветственное сообщение
-        const welcomeMessage = `🎉 Добро пожаловать в **Magnum Star Bot**!\n\n` +
-            `👋 Привет, ${userProfile.firstName}!\n\n` +
-            `⭐ **Stars** и 🪙 **Magnum Coins** ждут тебя!\n\n` +
-            `🚀 Начни зарабатывать прямо сейчас!`;
+        // Приветственное сообщение согласно новому дизайну
+        const welcomeMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
+            `💎 Твой путь к наградам уже начался!\n\n` +
+            `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
+            `👤 **Профиль**\n` +
+            `├ ID: \`${userId}\`\n` +
+            `└ Имя: ${ctx.from.first_name || 'Не указано'}\n\n` +
+            `💎 **Баланс**\n` +
+            `├ ⭐ Stars: ${userBalance.stars}\n` +
+            `└ 🪙 Magnum Coins: ${userBalance.coins}\n\n` +
+            `👥 **Реферальная программа**\n` +
+            `├ Друзей приглашено: ${referralStats.totalReferrals}\n` +
+            `└ Доход: ${referralStats.totalEarned.stars} ⭐\n\n` +
+            `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
         // Главное меню
         const mainMenu = Markup.inlineKeyboard([
