@@ -61,6 +61,17 @@ class DataManager {
                 logger.info('Коллекция keys уже существует');
             }
             
+            // Индексы для уведомлений
+            try {
+                await this.db.createCollection('notifications');
+                await this.db.collection('notifications').createIndex({ userId: 1 });
+                await this.db.collection('notifications').createIndex({ createdAt: -1 });
+                await this.db.collection('notifications').createIndex({ isRead: 1 });
+                await this.db.collection('notifications').createIndex({ type: 1 });
+            } catch (error) {
+                logger.info('Коллекция notifications уже существует');
+            }
+            
             logger.info('Индексы созданы');
             
         } catch (error) {
@@ -371,8 +382,44 @@ class DataManager {
             
             logger.info('Реферал успешно добавлен к пользователю', { referrerId, newUserId, newEarned });
             
+            // Отправляем уведомление рефереру о новом реферале
+            await this.sendReferralNotification(referrerId, newUserId);
+            
         } catch (error) {
             logger.error('Ошибка добавления реферала', error, { referrerId, newUserId });
+        }
+    }
+
+    // Отправка уведомления рефереру о новом реферале
+    async sendReferralNotification(referrerId, newUserId) {
+        try {
+            logger.info('Отправляем уведомление рефереру о новом реферале', { referrerId, newUserId });
+            
+            // Получаем информацию о новом пользователе
+            const newUser = await this.getUser(newUserId);
+            const newUserName = newUser.firstName || newUser.username || `Пользователь ${newUserId}`;
+            
+            // Создаем уведомление для реферера
+            const notification = {
+                type: 'new_referral',
+                userId: referrerId,
+                data: {
+                    newUserId: newUserId,
+                    newUserName: newUserName,
+                    reward: 5,
+                    timestamp: new Date()
+                },
+                isRead: false,
+                createdAt: new Date()
+            };
+            
+            // Сохраняем уведомление в базе
+            await this.db.collection('notifications').insertOne(notification);
+            
+            logger.info('Уведомление о новом реферале сохранено', { referrerId, newUserId, notificationId: notification._id });
+            
+        } catch (error) {
+            logger.error('Ошибка отправки уведомления о новом реферале', error, { referrerId, newUserId });
         }
     }
 
@@ -507,6 +554,91 @@ class DataManager {
         } catch (error) {
             logger.error('Ошибка получения общего количества выведенных звезд', error);
             return 0;
+        }
+    }
+
+    // === УПРАВЛЕНИЕ УВЕДОМЛЕНИЯМИ ===
+    
+    // Получение уведомлений пользователя
+    async getUserNotifications(userId, limit = 10) {
+        try {
+            const notifications = await this.db.collection('notifications')
+                .find({ userId: Number(userId) })
+                .sort({ createdAt: -1 })
+                .limit(limit)
+                .toArray();
+            
+            return notifications;
+            
+        } catch (error) {
+            logger.error('Ошибка получения уведомлений пользователя', error, { userId });
+            return [];
+        }
+    }
+    
+    // Получение непрочитанных уведомлений
+    async getUnreadNotifications(userId) {
+        try {
+            const notifications = await this.db.collection('notifications')
+                .find({ 
+                    userId: Number(userId), 
+                    isRead: false 
+                })
+                .sort({ createdAt: -1 })
+                .toArray();
+            
+            return notifications;
+            
+        } catch (error) {
+            logger.error('Ошибка получения непрочитанных уведомлений', error, { userId });
+            return [];
+        }
+    }
+    
+    // Отметить уведомление как прочитанное
+    async markNotificationAsRead(notificationId) {
+        try {
+            await this.db.collection('notifications').updateOne(
+                { _id: notificationId },
+                { $set: { isRead: true } }
+            );
+            
+            logger.info('Уведомление отмечено как прочитанное', { notificationId });
+            
+        } catch (error) {
+            logger.error('Ошибка отметки уведомления как прочитанного', error, { notificationId });
+        }
+    }
+    
+    // Отметить все уведомления пользователя как прочитанные
+    async markAllNotificationsAsRead(userId) {
+        try {
+            const result = await this.db.collection('notifications').updateMany(
+                { userId: Number(userId), isRead: false },
+                { $set: { isRead: true } }
+            );
+            
+            logger.info('Все уведомления пользователя отмечены как прочитанные', { userId, updatedCount: result.modifiedCount });
+            
+        } catch (error) {
+            logger.error('Ошибка отметки всех уведомлений как прочитанных', error, { userId });
+        }
+    }
+    
+    // Удаление старых уведомлений (старше 30 дней)
+    async cleanupOldNotifications() {
+        try {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            const result = await this.db.collection('notifications').deleteMany({
+                createdAt: { $lt: thirtyDaysAgo }
+            });
+            
+            logger.info('Старые уведомления очищены', { deletedCount: result.deletedCount });
+            
+        } catch (error) {
+            logger.error('Ошибка очистки старых уведомлений', error);
         }
     }
 }
