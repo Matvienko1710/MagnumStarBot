@@ -941,12 +941,19 @@ async function handleMainMenu(ctx) {
             `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
-        const mainMenuKeyboard = Markup.inlineKeyboard([
+        // Создаем основное меню
+        const mainMenuButtons = [
             [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
-            [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
-            [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
-        ]);
+            [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
+        ];
+        
+        // Добавляем кнопку админ панели только для админов
+        if (isAdmin(userId)) {
+            mainMenuButtons.push([Markup.button.callback('⚙️ Админ панель', 'admin_panel')]);
+        }
+        
+        const mainMenuKeyboard = Markup.inlineKeyboard(mainMenuButtons);
         
         await ctx.editMessageText(mainMenuMessage, {
             parse_mode: 'Markdown',

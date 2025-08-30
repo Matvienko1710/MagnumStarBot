@@ -2,6 +2,7 @@ const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
 const dataManager = require('../utils/dataManager');
 const { sendSmartMessage } = require('../utils/autoDelete');
+const { isAdmin } = require('../utils/admin');
 
 // Хранилище последних сообщений бота для каждого пользователя
 const lastBotMessages = new Map();
@@ -111,8 +112,7 @@ async function startHandler(ctx) {
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
         // Проверяем, является ли пользователь админом
-        const user = await dataManager.getUser(userId);
-        const isAdmin = user.isAdmin;
+        const userIsAdmin = isAdmin(userId);
         
         // Создаем основное меню
         const mainMenuButtons = [
@@ -122,7 +122,7 @@ async function startHandler(ctx) {
         ];
         
         // Добавляем кнопку админ панели только для админов
-        if (isAdmin) {
+        if (userIsAdmin) {
             mainMenuButtons.push([Markup.button.callback('⚙️ Админ панель', 'admin_panel')]);
         }
         
