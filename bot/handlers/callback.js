@@ -1,5 +1,5 @@
 const { Markup } = require('telegraf');
-const { inlineKeyboard, inlineKeyboardWithBack, adminPanelKeyboard, createKeyKeyboard, minersKeyboard, buyMinerKeyboard, titlesKeyboard, changeTitleKeyboard, profileKeyboard, withdrawKeyboard, referralsKeyboard } = require('../keyboards/inline');
+const { inlineKeyboard, inlineKeyboardWithBack, adminPanelKeyboard, createKeyKeyboard, createTitleKeyKeyboard, minersKeyboard, buyMinerKeyboard, titlesKeyboard, changeTitleKeyboard, profileKeyboard, withdrawKeyboard, referralsKeyboard } = require('../keyboards/inline');
 const { generateUserProfile } = require('../utils/profile');
 const { getUserBalance, getUserStats, getTransactionHistory, addStars, addCoins } = require('../utils/currency');
 const { isAdmin, getAdminStats, getBotStats } = require('../utils/admin');
@@ -7,6 +7,7 @@ const { activateKey, getUserKeyHistory, createKey, getKeysStats } = require('../
 const { getUserMiners, getAvailableRewards, buyMiner, collectRewards, getMinersStats, getMinerTypes, getMinerType } = require('../utils/miners');
 const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle, getTitleById } = require('../utils/titles');
 const { getReferralStats, getLevelInfo, getNextLevel, getUserReferralCode, getUserReferrals, getTopReferrers } = require('../utils/referral');
+const logger = require('../utils/logger');
 
 // Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
 const userStates = new Map();
@@ -18,8 +19,17 @@ module.exports = (bot, safeAsync) => {
     const userId = ctx.from.id;
     const adminStatus = isAdmin(userId);
     
+    logger.info('Callback query получен', { 
+      userId, 
+      callbackData, 
+      adminStatus,
+      username: ctx.from.username,
+      firstName: ctx.from.first_name
+    });
+    
     switch (callbackData) {
       case 'profile':
+        logger.info('Обработка callback: profile', { userId });
         await ctx.answerCbQuery();
         const user = ctx.from;
         const userName = user.first_name || 'пользователь';
@@ -131,10 +141,13 @@ ${myTitlesStats.unlockedTitles.length > 0 ?
         break;
       
       case 'activate_key':
+        logger.info('Обработка callback: activate_key', { userId });
         await ctx.answerCbQuery();
         
         // Устанавливаем состояние ожидания ввода ключа
-        userStates.set(userId, { state: 'waiting_for_key', timestamp: Date.now() });
+        const keyState = { state: 'waiting_for_key', timestamp: Date.now() };
+        userStates.set(userId, keyState);
+        logger.userState(userId, 'waiting_for_key', keyState);
         
         await ctx.editMessageText(
           '🔑 Активация ключа:\n\n' +
@@ -181,7 +194,9 @@ ${myTitlesStats.unlockedTitles.length > 0 ?
         break;
       
       case 'create_key':
+        logger.info('Обработка callback: create_key', { userId, adminStatus });
         if (!adminStatus) {
+          logger.warn('Попытка доступа к create_key без прав администратора', { userId });
           await ctx.answerCbQuery('Доступ запрещен');
           return;
         }
@@ -189,12 +204,14 @@ ${myTitlesStats.unlockedTitles.length > 0 ?
         await ctx.answerCbQuery();
         
         // Устанавливаем состояние создания ключа
-        userStates.set(userId, { 
+        const createKeyState = { 
           state: 'creating_key', 
           step: 'stars',
           data: {},
           timestamp: Date.now() 
-        });
+        };
+        userStates.set(userId, createKeyState);
+        logger.userState(userId, 'creating_key', createKeyState);
         
         await ctx.editMessageText(
           '🔑 Создание нового ключа:\n\n' +
@@ -235,7 +252,9 @@ ${keysStats.keys.map(key =>
         break;
       
       case 'create_title_key':
+        logger.info('Обработка callback: create_title_key', { userId, adminStatus });
         if (!adminStatus) {
+          logger.warn('Попытка доступа к create_title_key без прав администратора', { userId });
           await ctx.answerCbQuery('Доступ запрещен');
           return;
         }
@@ -243,12 +262,14 @@ ${keysStats.keys.map(key =>
         await ctx.answerCbQuery();
         
         // Устанавливаем состояние создания ключа титула
-        userStates.set(userId, { 
+        const createTitleKeyState = { 
           state: 'creating_title_key', 
           step: 'title',
           data: {},
           timestamp: Date.now() 
-        });
+        };
+        userStates.set(userId, createTitleKeyState);
+        logger.userState(userId, 'creating_title_key', createTitleKeyState);
         
         const allTitles = getAllTitles();
         const titleOptions = allTitles.map(title => 
@@ -262,37 +283,40 @@ ${keysStats.keys.map(key =>
           titleOptions + '\n\n' +
           '💡 Введите ID титула (например: owner)\n' +
           '❌ Для отмены напишите "отмена"',
-          Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад', 'admin_panel')]
-          ])
+          createTitleKeyKeyboard()
         );
         break;
       
-      case 'webapp':
-        if (!adminStatus) {
-          await ctx.answerCbQuery('Доступ запрещен');
-          return;
-        }
-        
-        await ctx.answerCbQuery();
-        await ctx.editMessageText(
-          '🌐 WebApp - дополнительный функционал:\n\n' +
-          '📱 Расширенный интерфейс\n' +
-          '📊 Детальная статистика\n' +
-          '🎮 Дополнительные задания\n' +
-          '💬 Чат с поддержкой\n\n' +
-          'Открываем WebApp...',
-          inlineKeyboardWithBack(adminStatus)
-        );
-        break;
+      // WebApp временно отключен
+      // case 'webapp':
+      //   if (!adminStatus) {
+      //     await ctx.answerCbQuery('Доступ запрещен');
+      //     return;
+      //   }
+      //   
+      //   await ctx.answerCbQuery();
+      //   await ctx.editMessageText(
+      //     '🌐 WebApp - дополнительный функционал:\n\n' +
+      //     '📱 Расширенный интерфейс\n' +
+      //     '📊 Детальная статистика\n' +
+      //     '🎮 Дополнительные задания\n' +
+      //     '💬 Чат с поддержкой\n\n' +
+      //     'Открываем WebApp...',
+      //     inlineKeyboardWithBack(adminStatus)
+      //   );
+      //   break;
       
       case 'back':
+        logger.info('Обработка callback: back', { userId });
         await ctx.answerCbQuery();
         // Очищаем состояние пользователя
+        const previousState = userStates.get(userId);
         userStates.delete(userId);
+        logger.userState(userId, 'deleted', previousState);
         // Возвращаемся к предыдущему меню (в данном случае к главному)
         const welcomeMessage = generateUserProfile(ctx.from);
         await ctx.editMessageText(welcomeMessage, inlineKeyboard(adminStatus));
+        logger.info('Возврат в главное меню', { userId });
         break;
       
       case 'miners':
@@ -747,11 +771,15 @@ ${Array.from({length: 10}, (_, i) => i + 1).map(level => {
         break;
       
       case 'main_menu':
+        logger.info('Обработка callback: main_menu', { userId });
         await ctx.answerCbQuery();
         // Очищаем состояние пользователя
+        const mainMenuState = userStates.get(userId);
         userStates.delete(userId);
+        logger.userState(userId, 'deleted', mainMenuState);
         const mainMenuMessage = generateUserProfile(ctx.from);
         await ctx.editMessageText(mainMenuMessage, inlineKeyboard(adminStatus));
+        logger.info('Переход в главное меню', { userId });
         break;
       
       default:

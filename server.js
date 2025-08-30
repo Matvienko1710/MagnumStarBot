@@ -2,9 +2,17 @@ const express = require('express');
 const path = require('path');
 const dotenv = require('dotenv');
 const { bot, launchBot } = require('./bot');
+const logger = require('./bot/utils/logger');
+const database = require('./bot/utils/database');
+const { migrateDataToMongoDB } = require('./bot/utils/migration');
 
 // Загрузка переменных окружения
 dotenv.config();
+logger.info('Запуск сервера', { 
+  nodeVersion: process.version, 
+  platform: process.platform,
+  env: process.env.NODE_ENV || 'development'
+});
 
 // Инициализация Express приложения
 const app = express();
@@ -16,47 +24,114 @@ app.use(express.json());
 
 // Маршруты
 app.get('/', (req, res) => {
+  logger.request('GET', '/');
   res.sendFile(path.join(__dirname, 'webapp', 'index.html'));
+  logger.response('GET', '/', 200);
 });
 
 // API для взаимодействия с ботом
 app.post('/api/webhook', (req, res) => {
+  logger.request('POST', '/api/webhook', req.body);
   const data = req.body;
-  console.log('Получены данные от WebApp:', data);
+  logger.info('Получены данные от WebApp', { data });
   res.json({ success: true });
+  logger.response('POST', '/api/webhook', 200);
+});
+
+// API для проверки состояния базы данных
+app.get('/api/health', async (req, res) => {
+  logger.request('GET', '/api/health');
+  try {
+    const dbStatus = await database.ping();
+    const dbStats = await database.getDatabaseStats();
+    
+    const healthData = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: dbStatus,
+        stats: dbStats
+      },
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      platform: process.platform,
+      nodeVersion: process.version
+    };
+    
+    logger.response('GET', '/api/health', 200, healthData);
+    res.json(healthData);
+  } catch (error) {
+    logger.error('Ошибка проверки здоровья системы', error);
+    const errorData = {
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      uptime: process.uptime()
+    };
+    
+    logger.response('GET', '/api/health', 500, errorData);
+    res.status(500).json(errorData);
+  }
 });
 
 // Запуск сервера
-const server = app.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
+const server = app.listen(PORT, async () => {
+  logger.info(`Сервер запущен на порту ${PORT}`);
   
-  // Запуск бота
-  launchBot();
+  try {
+    // Подключаемся к базе данных
+    logger.info('Подключение к базе данных...');
+    await database.connect();
+    
+    // Инициализируем коллекции и индексы
+    await database.initializeCollections();
+    
+    // Создаем базовые данные
+    await database.createDefaultData();
+    
+    // Запускаем миграцию данных
+    await migrateDataToMongoDB();
+    
+    logger.info('База данных готова к работе');
+    
+    // Запуск бота
+    logger.info('Запуск бота...');
+    launchBot();
+  } catch (error) {
+    logger.error('Критическая ошибка при инициализации', error);
+    process.exit(1);
+  }
 });
 
 // Корректное завершение работы
 const gracefulShutdown = async (signal) => {
-  console.log(`\n🔄 Получен сигнал ${signal}. Начинаю graceful shutdown...`);
+  logger.info(`Получен сигнал ${signal}. Начинаю graceful shutdown...`);
   
   try {
     // Останавливаем бота
+    logger.info('Остановка бота...');
     await bot.stop(signal);
-    console.log('✅ Бот успешно остановлен');
+    logger.info('Бот успешно остановлен');
+    
+    // Закрываем соединение с базой данных
+    logger.info('Закрытие соединения с базой данных...');
+    await database.close();
+    logger.info('Соединение с базой данных закрыто');
     
     // Останавливаем сервер
     server.close(() => {
-      console.log('✅ HTTP сервер успешно остановлен');
+      logger.info('HTTP сервер успешно остановлен');
       process.exit(0);
     });
     
     // Таймаут для принудительного завершения
     setTimeout(() => {
-      console.error('❌ Принудительное завершение из-за таймаута');
+      logger.error('Принудительное завершение из-за таймаута');
       process.exit(1);
     }, 10000);
     
   } catch (error) {
-    console.error('❌ Ошибка при graceful shutdown:', error);
+    logger.error('Ошибка при graceful shutdown', error);
     process.exit(1);
   }
 };
@@ -66,11 +141,11 @@ process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // Обработка необработанных ошибок процесса
 process.on('uncaughtException', (error) => {
-  console.error('❌ Необработанная ошибка процесса:', error);
+  logger.error('Необработанная ошибка процесса', error);
   gracefulShutdown('uncaughtException');
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Необработанное отклонение промиса:', reason);
+  logger.error('Необработанное отклонение промиса', error, { reason, promise });
   gracefulShutdown('unhandledRejection');
 });

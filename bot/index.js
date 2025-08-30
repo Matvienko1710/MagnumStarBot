@@ -1,11 +1,17 @@
 const { Telegraf } = require('telegraf');
 const dotenv = require('dotenv');
+const logger = require('./utils/logger');
 
 // Загрузка переменных окружения
 dotenv.config();
+logger.info('Инициализация бота', { 
+  botToken: process.env.BOT_TOKEN ? 'Установлен' : 'Не установлен',
+  nodeEnv: process.env.NODE_ENV || 'development'
+});
 
 // Инициализация бота
 const bot = new Telegraf(process.env.BOT_TOKEN);
+logger.info('Бот создан', { botId: bot.botInfo?.id });
 
 // Импорт обработчиков
 const startHandler = require('./handlers/start');
@@ -27,29 +33,29 @@ const { getErrorMessage, isFeatureEnabled } = require('./config/errorConfig');
 
 // Функция для логирования ошибок
 const logError = (error, context = '') => {
-  const timestamp = new Date().toISOString();
-  const errorMessage = `[${timestamp}] ${context} ERROR: ${error.message}`;
-  const stackTrace = error.stack ? `\nStack trace:\n${error.stack}` : '';
-  
-  console.error(errorMessage + stackTrace);
-  
-  // В будущем здесь можно добавить отправку ошибок в внешние сервисы мониторинга
-  // например, Sentry, LogRocket и т.д.
+  logger.errorWithContext(context, error);
 };
 
 // Функция для безопасного выполнения асинхронных операций
 const safeAsync = (fn) => {
   return async (ctx, next) => {
+    const userId = ctx.from?.id || 'unknown';
+    const updateType = ctx.updateType || 'unknown';
+    
+    logger.function('safeAsync', { userId, updateType, functionName: fn.name || 'anonymous' });
+    
     try {
       await fn(ctx, next);
+      logger.function('safeAsync_success', { userId, updateType });
     } catch (error) {
-      logError(error, `Handler error for user ${ctx.from?.id || 'unknown'}`);
+      logger.errorWithContext(`Handler error for user ${userId}`, error, { userId, updateType });
       
       // Отправляем пользователю понятное сообщение об ошибке
       try {
         await ctx.reply(getErrorMessage('general'));
+        logger.info('Отправлено сообщение об ошибке пользователю', { userId });
       } catch (replyError) {
-        logError(replyError, 'Failed to send error message to user');
+        logger.errorWithContext('Failed to send error message to user', replyError, { userId });
       }
     }
   };
@@ -74,45 +80,56 @@ if (isFeatureEnabled('performance')) {
 }
 
 // Регистрация обработчиков с защитой от ошибок
+logger.info('Регистрация обработчиков...');
 startHandler(bot, safeAsync);
+logger.info('Обработчик start зарегистрирован');
 infoHandler(bot, safeAsync);
+logger.info('Обработчик info зарегистрирован');
 callbackHandler(bot, safeAsync);
+logger.info('Обработчик callback зарегистрирован');
 
 // Глобальная обработка ошибок
 bot.catch((err, ctx) => {
-  logError(err, `Global bot error for update type: ${ctx.updateType}`);
+  const userId = ctx.from?.id || 'unknown';
+  const updateType = ctx.updateType || 'unknown';
+  const chatType = ctx.chat?.type || 'unknown';
+  
+  logger.errorWithContext(`Global bot error for update type: ${updateType}`, err, { 
+    userId, updateType, chatType 
+  });
   
   // Попытка отправить сообщение пользователю о критической ошибке
   try {
     if (ctx.chat?.type === 'private') {
       ctx.reply(getErrorMessage('critical')).catch(replyError => {
-        logError(replyError, 'Failed to send critical error message');
+        logger.errorWithContext('Failed to send critical error message', replyError, { userId });
       });
     }
   } catch (error) {
-    logError(error, 'Failed to handle critical error');
+    logger.errorWithContext('Failed to handle critical error', error, { userId });
   }
 });
 
 // Обработка необработанных ошибок процесса
 process.on('uncaughtException', (error) => {
-  logError(error, 'Uncaught Exception');
+  logger.error('Uncaught Exception', error);
   
   // В продакшене здесь можно добавить graceful shutdown
   // process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logError(new Error(`Unhandled Rejection at: ${promise}, reason: ${reason}`), 'Unhandled Rejection');
+  logger.error('Unhandled Rejection', new Error(`Unhandled Rejection at: ${promise}, reason: ${reason}`));
 });
 
 // Обработка ошибок при запуске бота
 const launchBot = async () => {
+  logger.info('Запуск бота...');
   try {
     await bot.launch();
-    console.log('✅ Бот успешно запущен');
+    logger.info('Бот успешно запущен');
   } catch (error) {
-    logError(error, 'Bot launch failed');
+    logger.error('Bot launch failed', error);
     process.exit(1);
   }
 };
