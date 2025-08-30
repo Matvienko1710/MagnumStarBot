@@ -1,5 +1,6 @@
 const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
+const cacheManager = require('../utils/cache');
 
 // Состояния пользователей для создания ключей
 const userStates = new Map();
@@ -48,6 +49,14 @@ async function callbackHandler(ctx) {
                 
             case 'create_title_key':
                 await handleCreateTitleKey(ctx);
+                break;
+                
+            case 'clear_cache':
+                await handleClearCache(ctx);
+                break;
+                
+            case 'cache_stats':
+                await handleCacheStats(ctx);
                 break;
                 
             default:
@@ -244,11 +253,16 @@ async function handleAdminPanel(ctx) {
         `🔧 Управление ботом:\n\n` +
         `📊 Статистика: 0 пользователей\n` +
         `💰 Общий баланс: 0 ⭐ Stars, 0 🪙 Coins\n` +
-        `🔑 Активных ключей: 0`;
+        `🔑 Активных ключей: 0\n\n` +
+        `🧹 **Управление кэшем:**\n` +
+        `📈 Статистика кэша доступна\n` +
+        `🗑️ Очистка кэша`;
     
     const adminKeyboard = Markup.inlineKeyboard([
         [Markup.button.callback('🔑 Создать ключ', 'create_key')],
         [Markup.button.callback('👑 Создать ключ титула', 'create_title_key')],
+        [Markup.button.callback('📊 Статистика кэша', 'cache_stats')],
+        [Markup.button.callback('🗑️ Очистить кэш', 'clear_cache')],
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
@@ -326,6 +340,89 @@ async function handleCreateTitleKey(ctx) {
     await ctx.reply(createTitleKeyMessage, {
         parse_mode: 'Markdown',
         reply_markup: createTitleKeyKeyboard.reply_markup
+    });
+}
+
+// Обработка очистки кэша
+async function handleClearCache(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка очистки кэша', { userId });
+    
+    // Проверяем, является ли пользователь админом
+    const isAdmin = userId === 123456789; // Замените на реальный ID админа
+    
+    if (!isAdmin) {
+        await ctx.reply('❌ У вас нет доступа к этой функции');
+        return;
+    }
+    
+    const beforeStats = cacheManager.getStats();
+    cacheManager.clear();
+    const afterStats = cacheManager.getStats();
+    
+    const clearMessage = `🗑️ **Кэш очищен**\n\n` +
+        `📊 **До очистки:**\n` +
+        `├ 📈 Размер: ${beforeStats.totalSize} МБ\n` +
+        `├ 🎯 Попадания: ${beforeStats.hits}\n` +
+        `└ ❌ Промахи: ${beforeStats.misses}\n\n` +
+        `📊 **После очистки:**\n` +
+        `├ 📈 Размер: ${afterStats.totalSize} МБ\n` +
+        `├ 🎯 Попадания: ${afterStats.hits}\n` +
+        `└ ❌ Промахи: ${afterStats.misses}\n\n` +
+        `🧹 **Освобождено памяти:** ${beforeStats.totalSize - afterStats.totalSize} МБ`;
+    
+    const clearKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('📊 Статистика кэша', 'cache_stats')],
+        [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+    ]);
+    
+    await ctx.reply(clearMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: clearKeyboard.reply_markup
+    });
+}
+
+// Обработка статистики кэша
+async function handleCacheStats(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка статистики кэша', { userId });
+    
+    // Проверяем, является ли пользователь админом
+    const isAdmin = userId === 123456789; // Замените на реальный ID админа
+    
+    if (!isAdmin) {
+        await ctx.reply('❌ У вас нет доступа к этой функции');
+        return;
+    }
+    
+    const stats = cacheManager.getStats();
+    const memUsage = process.memoryUsage();
+    
+    const statsMessage = `📊 **Статистика кэша**\n\n` +
+        `💾 **Общая информация:**\n` +
+        `├ 📈 Размер кэша: ${stats.totalSize} МБ\n` +
+        `├ 🎯 Попадания: ${stats.hits}\n` +
+        `├ ❌ Промахи: ${stats.misses}\n` +
+        `└ 🗑️ Удаления: ${stats.evictions}\n\n` +
+        `🧠 **Память процесса:**\n` +
+        `├ 💾 Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024 * 100) / 100} МБ\n` +
+        `├ 📊 Heap Total: ${Math.round(memUsage.heapTotal / 1024 / 1024 * 100) / 100} МБ\n` +
+        `└ 🔄 RSS: ${Math.round(memUsage.rss / 1024 / 1024 * 100) / 100} МБ\n\n` +
+        `📋 **Детали по кэшам:**\n` +
+        Object.entries(stats.caches).map(([name, cache]) => 
+            `├ ${name}: ${cache.size}/${cache.maxSize} (TTL: ${Math.round(cache.ttl / 1000)}с)`
+        ).join('\n');
+    
+    const statsKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🗑️ Очистить кэш', 'clear_cache')],
+        [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+    ]);
+    
+    await ctx.reply(statsMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: statsKeyboard.reply_markup
     });
 }
 

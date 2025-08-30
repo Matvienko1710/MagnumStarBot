@@ -2,6 +2,7 @@ const express = require('express');
 const { Telegraf } = require('telegraf');
 const database = require('./bot/utils/database');
 const logger = require('./bot/utils/logger');
+const cacheManager = require('./bot/utils/cache');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -85,6 +86,9 @@ app.get('/api/health', async (req, res) => {
             userAgent: req.get('User-Agent')
         });
         
+        const memUsage = process.memoryUsage();
+        const cacheStats = cacheManager.getStats();
+        
         const healthData = {
             status: isDatabaseConnected ? 'ok' : 'warning',
             timestamp: new Date().toISOString(),
@@ -98,8 +102,21 @@ app.get('/api/health', async (req, res) => {
             server: {
                 nodeVersion: process.version,
                 platform: process.platform,
-                memory: process.memoryUsage(),
+                memory: {
+                    heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024 * 100) / 100,
+                    heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024 * 100) / 100,
+                    rss: Math.round(memUsage.rss / 1024 / 1024 * 100) / 100,
+                    external: Math.round(memUsage.external / 1024 / 1024 * 100) / 100
+                },
                 pid: process.pid
+            },
+            cache: {
+                totalSize: cacheStats.totalSize,
+                hits: cacheStats.hits,
+                misses: cacheStats.misses,
+                evictions: cacheStats.evictions,
+                hitRate: cacheStats.hits + cacheStats.misses > 0 ? 
+                    Math.round((cacheStats.hits / (cacheStats.hits + cacheStats.misses)) * 100) : 0
             }
         };
         
@@ -128,6 +145,50 @@ app.get('/api/health', async (req, res) => {
             message: 'Internal server error',
             timestamp: new Date().toISOString()
         });
+    }
+});
+
+// API для управления кэшем
+app.get('/api/cache/stats', (req, res) => {
+    try {
+        const stats = cacheManager.getStats();
+        const memUsage = process.memoryUsage();
+        
+        const response = {
+            ...stats,
+            memory: {
+                heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024 * 100) / 100,
+                heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024 * 100) / 100,
+                rss: Math.round(memUsage.rss / 1024 / 1024 * 100) / 100
+            }
+        };
+        
+        res.json(response);
+    } catch (error) {
+        logger.error('Ошибка получения статистики кэша', error);
+        res.status(500).json({ error: 'Failed to get cache stats' });
+    }
+});
+
+app.post('/api/cache/clear', (req, res) => {
+    try {
+        const beforeStats = cacheManager.getStats();
+        cacheManager.clear();
+        const afterStats = cacheManager.getStats();
+        
+        const response = {
+            success: true,
+            message: 'Cache cleared successfully',
+            before: beforeStats,
+            after: afterStats,
+            freed: beforeStats.totalSize - afterStats.totalSize
+        };
+        
+        logger.info('Кэш очищен через API', response);
+        res.json(response);
+    } catch (error) {
+        logger.error('Ошибка очистки кэша', error);
+        res.status(500).json({ error: 'Failed to clear cache' });
     }
 });
 
