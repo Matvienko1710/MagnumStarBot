@@ -35,8 +35,8 @@ async function callbackHandler(ctx) {
                 await handleMyMiners(ctx);
                 break;
                 
-            case 'collect_mining_income':
-                await handleCollectMiningIncome(ctx);
+            case 'start_mining':
+                await handleStartMining(ctx);
                 break;
                 
             case 'buy_miner':
@@ -219,7 +219,7 @@ async function handleMiners(ctx) {
         const minersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
-            [Markup.button.callback('💰 Собрать доход', 'collect_mining_income')],
+            [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
         
@@ -362,7 +362,7 @@ async function handleMyMiners(ctx) {
             `🎯 **Выберите действие:**`;
         
         const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('💰 Собрать доход', 'collect_mining_income')],
+            [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
             [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
@@ -436,19 +436,19 @@ async function handleWithdraw(ctx) {
     }
 }
 
-// Обработка сбора дохода от майнинга
-async function handleCollectMiningIncome(ctx) {
+// Обработка запуска майнинга
+async function handleStartMining(ctx) {
     const userId = ctx.from.id;
     
-    logger.info('Обработка сбора дохода от майнинга', { userId });
+    logger.info('Обработка запуска майнинга', { userId });
     
     try {
         // Получаем майнеры пользователя
         const userMiners = await dataManager.getUserMiners(userId);
         
         if (userMiners.length === 0) {
-            const noMinersMessage = `💰 **Сбор дохода**\n\n` +
-                `❌ У вас нет майнеров для сбора дохода\n\n` +
+            const noMinersMessage = `⛏️ **Запуск майнинга**\n\n` +
+                `❌ У вас нет майнеров для запуска майнинга\n\n` +
                 `💡 Купите майнер в магазине, чтобы начать зарабатывать!`;
             
             const noMinersKeyboard = Markup.inlineKeyboard([
@@ -463,36 +463,53 @@ async function handleCollectMiningIncome(ctx) {
             return;
         }
         
-        // Собираем реальный доход от майнеров
-        const collectedIncome = await dataManager.collectMiningIncome(userId);
+        // Запускаем майнинг
+        const miningResult = await dataManager.startMining(userId);
         
-        const collectMessage = `💰 **Доход собран!**\n\n` +
-            `⛏️ **Собрано:**\n` +
-            `├ 🪙 Magnum Coins: +${collectedIncome.coins.toFixed(2)}\n` +
-            `└ ⭐ Stars: +${collectedIncome.stars.toFixed(2)}\n\n` +
-            `💡 Доход автоматически начисляется каждые 10 минут\n` +
-            `🔄 Следующий сбор через: 10:00`;
-        
-        const collectKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
-            [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
-        ]);
-        
-        await ctx.editMessageText(collectMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: collectKeyboard.reply_markup
-        });
+        if (miningResult.success) {
+            const successMessage = `🚀 **Майнинг запущен!**\n\n` +
+                `⛏️ **Статус:** Майнинг активен\n` +
+                `💰 **Доход:** Начисляется каждую минуту автоматически\n` +
+                `⏰ **Время запуска:** ${new Date(miningResult.startTime).toLocaleTimeString('ru-RU')}\n` +
+                `🔄 **Следующий запуск:** Через 4 часа\n\n` +
+                `💡 Теперь ваши майнеры работают и приносят доход!`;
+            
+            const successKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
+                [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
+                [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
+            ]);
+            
+            await ctx.editMessageText(successMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: successKeyboard.reply_markup
+            });
+        } else {
+            const errorMessage = `⏰ **Майнинг не запущен**\n\n` +
+                `❌ ${miningResult.message}\n\n` +
+                `💡 Майнинг можно запускать раз в 4 часа`;
+            
+            const errorKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
+                [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
+                [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
+            ]);
+            
+            await ctx.editMessageText(errorMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: errorKeyboard.reply_markup
+            });
+        }
         
     } catch (error) {
-        logger.error('Ошибка сбора дохода от майнинга', error, { userId });
+        logger.error('Ошибка запуска майнинга', error, { userId });
         
-        const errorMessage = `❌ **Ошибка сбора дохода**\n\n` +
-            `🚫 Не удалось собрать доход\n` +
+        const errorMessage = `❌ **Ошибка запуска майнинга**\n\n` +
+            `🚫 Не удалось запустить майнинг\n` +
             `🔧 Попробуйте позже или обратитесь к администратору`;
         
         const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'collect_mining_income')],
+            [Markup.button.callback('🔄 Попробовать снова', 'start_mining')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
         ]);
         
@@ -557,10 +574,10 @@ async function handleBuyMiner(ctx, minerType) {
             `├ ⚡ Скорость: ${minerInfo.speed.coins > 0 ? minerInfo.speed.coins + ' 🪙/мин' : minerInfo.speed.stars + ' ⭐/мин'}\n` +
             `├ 🎯 Редкость: ${minerInfo.rarity}\n` +
             `└ 📅 Дата покупки: ${new Date().toLocaleDateString('ru-RU')}\n\n` +
-            `🎉 Теперь вы можете собирать доход от майнинга!`;
+            `🎉 Теперь вы можете запустить майнинг и получать доход автоматически!`;
         
         const successKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('💰 Собрать доход', 'collect_mining_income')],
+            [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
             [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
