@@ -868,6 +868,33 @@ class DataManager {
         }
     }
     
+    // Получение количества активных майнеров определенного типа на сервере
+    async getActiveMinersCount(minerType) {
+        try {
+            // Агрегация для подсчета активных майнеров указанного типа
+            const result = await this.db.collection('users').aggregate([
+                { $unwind: '$miners' },
+                { 
+                    $match: { 
+                        'miners.type': minerType,
+                        'miners.isActive': true,
+                        'miners.lastMiningStart': { $exists: true, $ne: null }
+                    } 
+                },
+                { $count: 'total' }
+            ]).toArray();
+            
+            const count = result.length > 0 ? result[0].total : 0;
+            
+            logger.info('Подсчет активных майнеров на сервере', { minerType, count });
+            return count;
+            
+        } catch (error) {
+            logger.error('Ошибка подсчета активных майнеров на сервере', error, { minerType });
+            return 0;
+        }
+    }
+    
     // Получение информации о доступности майнеров для покупки
     async getMinerAvailability(minerType) {
         try {
@@ -877,6 +904,7 @@ class DataManager {
             }
             
             const globalCount = await this.getGlobalMinerCount(minerType);
+            const activeCount = await this.getActiveMinersCount(minerType);
             const available = Math.max(0, minerInfo.globalLimit - globalCount);
             
             return {
@@ -888,6 +916,7 @@ class DataManager {
                 maxPerUser: minerInfo.maxPerUser,
                 globalLimit: minerInfo.globalLimit,
                 globalCount: globalCount,
+                activeCount: activeCount,
                 available: available,
                 isAvailable: available > 0
             };

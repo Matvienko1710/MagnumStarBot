@@ -267,7 +267,7 @@ async function handleMiners(ctx) {
             `└ 💎 Доход в Stars: ${totalIncome.stars} ⭐/мин\n\n` +
             `📊 **Лимиты:**\n` +
             `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
-            `├ 🌐 На сервере: ${minerAvailability.globalCount}/${minerAvailability.globalLimit} майнеров\n` +
+            `├ 🌐 Активные майнеры на сервере: ${minerAvailability.activeCount}/${minerAvailability.globalLimit}\n` +
             `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
         
@@ -355,7 +355,7 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
             `├ ⚡ Скорость: ${speedText}\n` +
             `├ 🎯 Редкость: ${currentMiner.rarity}\n` +
             `├ 📝 Описание: ${currentMiner.description}\n\n` +
-            `📊 **Лимиты:**\n` +
+            `📊 **Лимиты сервера:**\n` +
             `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
             `├ 🌐 На сервере: ${minerAvailability.globalCount}/${minerAvailability.globalLimit} майнеров\n` +
             `└ 🆕 Доступно для покупки: ${minerAvailability.available} майнеров\n\n` +
@@ -474,7 +474,7 @@ async function handleMyMiners(ctx) {
             `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
             `📊 **Лимиты:**\n` +
             `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
-            `├ 🌐 На сервере: ${minerAvailability.globalCount}/${minerAvailability.globalLimit} майнеров\n` +
+            `├ 🌐 Активные майнеры на сервере: ${minerAvailability.activeCount}/${minerAvailability.globalLimit}\n` +
             `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
         
