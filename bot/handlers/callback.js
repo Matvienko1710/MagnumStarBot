@@ -98,36 +98,55 @@ async function handleProfile(ctx) {
     
     logger.info('Обработка профиля', { userId });
     
-    // Получаем баланс пользователя
-    const userBalance = getUserBalance(userId);
-    
-    // Получаем реферальную статистику
-    const referralStats = getReferralStats(userId);
-    
-    // Получаем текущий титул пользователя
-    const { getUserCurrentTitle } = require('../utils/titles');
-    const currentTitle = getUserCurrentTitle(userId);
-    
-    const profileMessage = `🎮 **Твой профиль в Magnum Stars**\n\n` +
-        `✨ Ник: ${ctx.from.first_name || 'Не указано'}\n` +
-        `🆔 ID: \`${userId}\`\n` +
-        `🏅 Титул: ${currentTitle.name}\n\n` +
-        `💎 **Баланс:**\n` +
-        `⭐ Stars → ${userBalance.stars}\n` +
-        `🪙 Magnum Coins → ${userBalance.coins}\n\n` +
-        `👥 Друзья: ${referralStats.totalReferrals}\n` +
-        `💰 Реф. доход: ${referralStats.totalEarned.stars} ⭐`;
-    
-    const profileKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('👑 Титулы', 'titles')],
-        [Markup.button.callback('👥 Рефералы', 'referrals')],
-        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-    ]);
-    
-    await ctx.editMessageText(profileMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: profileKeyboard.reply_markup
-    });
+    try {
+        // Получаем баланс пользователя
+        const userBalance = await getUserBalance(userId);
+        
+        // Получаем реферальную статистику
+        const referralStats = await getReferralStats(userId);
+        
+        // Получаем текущий титул пользователя
+        const { getUserCurrentTitle } = require('../utils/titles');
+        const currentTitle = await getUserCurrentTitle(userId);
+        
+        const profileMessage = `🎮 **Твой профиль в Magnum Stars**\n\n` +
+            `✨ Ник: ${ctx.from.first_name || 'Не указано'}\n` +
+            `🆔 ID: \`${userId}\`\n` +
+            `🏅 Титул: ${currentTitle.name}\n\n` +
+            `💎 **Баланс:**\n` +
+            `⭐ Stars → ${userBalance.stars}\n` +
+            `🪙 Magnum Coins → ${userBalance.coins}\n\n` +
+            `👥 Друзья: ${referralStats.totalReferrals}\n` +
+            `💰 Реф. доход: ${referralStats.totalEarned.stars} ⭐`;
+        
+        const profileKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('👑 Титулы', 'titles')],
+            [Markup.button.callback('👥 Рефералы', 'referrals')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(profileMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: profileKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка обработки профиля', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки профиля**\n\n` +
+            `🚫 Не удалось загрузить данные профиля\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'profile')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
 }
 
 // Обработка майнеров
@@ -167,20 +186,42 @@ async function handleWithdraw(ctx) {
     
     logger.info('Обработка вывода звезд', { userId });
     
-    const withdrawMessage = `⭐ **Вывод звезд**\n\n` +
-        `💰 Ваш баланс: 0 ⭐ Stars\n\n` +
-        `💳 Для вывода звезд обратитесь к администратору\n` +
-        `📧 Email: admin@magnumstar.com\n` +
-        `💬 Telegram: @admin`;
-    
-    const withdrawKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-    ]);
-    
-    await ctx.editMessageText(withdrawMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: withdrawKeyboard.reply_markup
-    });
+    try {
+        // Получаем баланс пользователя
+        const userBalance = await getUserBalance(userId);
+        
+        const withdrawMessage = `⭐ **Вывод звезд**\n\n` +
+            `💰 Ваш баланс: ${userBalance.stars} ⭐ Stars\n\n` +
+            `💳 Для вывода звезд обратитесь к администратору\n` +
+            `📧 Email: admin@magnumstar.com\n` +
+            `💬 Telegram: @admin`;
+        
+        const withdrawKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(withdrawMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: withdrawKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка обработки вывода звезд', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки баланса**\n\n` +
+            `🚫 Не удалось загрузить данные баланса\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'withdraw')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
 }
 
 // Обработка активации ключа
@@ -218,28 +259,50 @@ async function handleReferrals(ctx) {
     
     logger.info('Обработка рефералов', { userId });
     
-    const referralsMessage = `👥 **Реферальная система**\n\n` +
-        `🔗 Ваша реферальная ссылка:\n` +
-        `\`https://t.me/MagnumStarBot?start=${userId}\`\n\n` +
-        `📊 Статистика:\n` +
-        `├ 👥 Всего рефералов: 0\n` +
-        `├ ⭐ Заработано: 0\n` +
-        `└ 🎯 Уровень: 1\n\n` +
-        `💰 Награды за рефералов:\n` +
-        `├ 🥇 1 уровень: +5 ⭐ Stars\n` +
-        `├ 🥈 2 уровень: +3 ⭐ Stars\n` +
-        `└ 🥉 3 уровень: +1 ⭐ Stars`;
-    
-    const referralsKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('📊 Детальная статистика', 'referral_stats')],
-        [Markup.button.callback('🏆 Топ рефералов', 'top_referrers')],
-        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-    ]);
-    
-    await ctx.editMessageText(referralsMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: referralsKeyboard.reply_markup
-    });
+    try {
+        // Получаем реферальную статистику
+        const referralStats = await getReferralStats(userId);
+        
+        const referralsMessage = `👥 **Реферальная система**\n\n` +
+            `🔗 Ваша реферальная ссылка:\n` +
+            `\`https://t.me/MagnumStarBot?start=${userId}\`\n\n` +
+            `📊 Статистика:\n` +
+            `├ 👥 Всего рефералов: ${referralStats.totalReferrals}\n` +
+            `├ ⭐ Заработано: ${referralStats.totalEarned.stars}\n` +
+            `└ 🎯 Уровень: ${referralStats.level}\n\n` +
+            `💰 Награды за рефералов:\n` +
+            `├ 🥇 1 уровень: +5 ⭐ Stars\n` +
+            `├ 🥈 2 уровень: +3 ⭐ Stars\n` +
+            `└ 🥉 3 уровень: +1 ⭐ Stars`;
+        
+        const referralsKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📊 Детальная статистика', 'referral_stats')],
+            [Markup.button.callback('🏆 Топ рефералов', 'top_referrers')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(referralsMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: referralsKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка обработки рефералов', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки рефералов**\n\n` +
+            `🚫 Не удалось загрузить данные рефералов\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'referrals')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
 }
 
 // Обработка главного меню
@@ -248,42 +311,65 @@ async function handleMainMenu(ctx) {
     
     logger.info('Обработка главного меню', { userId });
     
-    // Получаем баланс пользователя
-    const userBalance = getUserBalance(userId);
-    
-    // Получаем реферальную статистику
-    const referralStats = getReferralStats(userId);
-    
-    const mainMenuMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
-        `💎 Твой путь к наградам уже начался!\n\n` +
-        `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
-        `👤 **Профиль**\n` +
-        `├ 🆔 ID: \`${userId}\`\n` +
-        `└ ✨ Имя: ${ctx.from.first_name || 'Не указано'}\n\n` +
-        `💎 **Баланс**\n` +
-        `├ ⭐ Stars: ${userBalance.stars}\n` +
-        `└ 🪙 Magnum Coins: ${userBalance.coins}\n\n` +
-        `👥 **Реферальная программа**\n` +
-        `├ 👥 Друзей приглашено: ${referralStats.totalReferrals}\n` +
-        `└ 💰 Доход: ${referralStats.totalEarned.stars} ⭐\n\n` +
-        `📊 **Информация о боте**\n` +
-        `├ 👤 Пользователей: 0\n` +
-        `└ 💎 Всего выведено: 0 ⭐\n\n` +
-        `🎯 Выберите действие и двигайтесь дальше 🚀`;
-    
-    const mainMenuKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('💰 Майнеры', 'miners')],
-        [Markup.button.callback('👤 Профиль', 'profile')],
-        [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
-        [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-        [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
-        [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
-    ]);
-    
-    await ctx.editMessageText(mainMenuMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: mainMenuKeyboard.reply_markup
-    });
+    try {
+        // Получаем баланс пользователя
+        const userBalance = await getUserBalance(userId);
+        
+        // Получаем реферальную статистику
+        const referralStats = await getReferralStats(userId);
+        
+        // Получаем статистику бота
+        const dataManager = require('../utils/dataManager');
+        const botStats = await dataManager.getBotStats();
+        
+        const mainMenuMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
+            `💎 Твой путь к наградам уже начался!\n\n` +
+            `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
+            `👤 **Профиль**\n` +
+            `├ 🆔 ID: \`${userId}\`\n` +
+            `└ ✨ Имя: ${ctx.from.first_name || 'Не указано'}\n\n` +
+            `💎 **Баланс**\n` +
+            `├ ⭐ Stars: ${userBalance.stars}\n` +
+            `└ 🪙 Magnum Coins: ${userBalance.coins}\n\n` +
+            `👥 **Реферальная программа**\n` +
+            `├ 👥 Друзей приглашено: ${referralStats.totalReferrals}\n` +
+            `└ 💰 Доход: ${referralStats.totalEarned.stars} ⭐\n\n` +
+            `📊 **Информация о боте**\n` +
+            `├ 👤 Пользователей: ${botStats.totalUsers}\n` +
+            `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
+            `🎯 Выберите действие и двигайтесь дальше 🚀`;
+        
+        const mainMenuKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('💰 Майнеры', 'miners')],
+            [Markup.button.callback('👤 Профиль', 'profile')],
+            [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
+            [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
+            [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
+            [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
+        ]);
+        
+        await ctx.editMessageText(mainMenuMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: mainMenuKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка обработки главного меню', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки главного меню**\n\n` +
+            `🚫 Не удалось загрузить данные\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'main_menu')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
 }
 
 // Обработка админ панели
@@ -298,27 +384,52 @@ async function handleAdminPanel(ctx) {
         return;
     }
     
-    const adminMessage = `⚙️ **Админ панель**\n\n` +
-        `🔧 Управление ботом:\n\n` +
-        `📊 Статистика: 0 пользователей\n` +
-        `💰 Общий баланс: 0 ⭐ Stars, 0 🪙 Coins\n` +
-        `🔑 Активных ключей: 0\n\n` +
-        `🧹 **Управление кэшем:**\n` +
-        `📈 Статистика кэша доступна\n` +
-        `🗑️ Очистка кэша`;
-    
-    const adminKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('🔑 Создать ключ', 'create_key')],
-        [Markup.button.callback('👑 Создать ключ титула', 'create_title_key')],
-        [Markup.button.callback('📊 Статистика кэша', 'cache_stats')],
-        [Markup.button.callback('🗑️ Очистить кэш', 'clear_cache')],
-        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-    ]);
-    
-    await ctx.editMessageText(adminMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: adminKeyboard.reply_markup
-    });
+    try {
+        // Получаем статистику бота
+        const dataManager = require('../utils/dataManager');
+        const botStats = await dataManager.getBotStats();
+        const totalUsers = await dataManager.getTotalUsers();
+        const totalStarsWithdrawn = await dataManager.getTotalStarsWithdrawn();
+        
+        const adminMessage = `⚙️ **Админ панель**\n\n` +
+            `🔧 Управление ботом:\n\n` +
+            `📊 Статистика: ${totalUsers} пользователей\n` +
+            `💰 Общий баланс: ${botStats.totalStarsWithdrawn} ⭐ Stars, ${botStats.totalCoinsEarned} 🪙 Coins\n` +
+            `🔑 Активных ключей: 0\n\n` +
+            `🧹 **Управление кэшем:**\n` +
+            `📈 Статистика кэша доступна\n` +
+            `🗑️ Очистка кэша`;
+        
+        const adminKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔑 Создать ключ', 'create_key')],
+            [Markup.button.callback('👑 Создать ключ титула', 'create_title_key')],
+            [Markup.button.callback('📊 Статистика кэша', 'cache_stats')],
+            [Markup.button.callback('🗑️ Очистить кэш', 'clear_cache')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(adminMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: adminKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка загрузки админ панели', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки админ панели**\n\n` +
+            `🚫 Не удалось загрузить статистику\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'admin_panel')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
 }
 
 // Обработка создания ключа
@@ -531,4 +642,169 @@ async function handleMyTitles(ctx) {
     });
 }
 
-module.exports = callbackHandler;
+module.exports = {
+    callbackHandler,
+    handleKeyCreation,
+    handleTitleKeyCreation
+};
+
+// === ФУНКЦИИ ДЛЯ СОЗДАНИЯ КЛЮЧЕЙ ===
+
+// Обработка выбора типа награды для ключа
+async function handleKeyRewardType(ctx, rewardType) {
+    const userId = ctx.from.id;
+    
+    logger.info('Выбор типа награды для ключа', { userId, rewardType });
+    
+    const userState = userStates.get(userId);
+    if (!userState) return;
+    
+    userState.currentStep = 'reward_amount';
+    userState.data.rewardType = rewardType;
+    
+    const rewardTypeText = rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+    
+    const message = `🔑 **Создание ключа**\n\n` +
+        `🎯 Тип награды: ${rewardTypeText}\n\n` +
+        `💰 Введите количество ${rewardTypeText} для награды:\n\n` +
+        `💡 Пример: 100`;
+    
+    const keyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+    ]);
+    
+    await ctx.editMessageText(message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard.reply_markup
+    });
+}
+
+// Обработка создания ключа из текстового сообщения
+async function handleKeyCreation(ctx, text) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка создания ключа из текста', { userId, text });
+    
+    const userState = userStates.get(userId);
+    if (!userState || userState.state !== 'creating_key') return;
+    
+    try {
+        if (userState.currentStep === 'reward_amount') {
+            const amount = parseInt(text);
+            if (isNaN(amount) || amount <= 0) {
+                await ctx.reply('❌ Введите корректное число больше 0');
+                return;
+            }
+            
+            userState.data[userState.data.rewardType] = amount;
+            userState.currentStep = 'max_uses';
+            
+            const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+            
+            const message = `🔑 **Создание ключа**\n\n` +
+                `🎯 Тип награды: ${rewardTypeText}\n` +
+                `💰 Количество: ${amount} ${rewardTypeText}\n\n` +
+                `🔄 Введите максимальное количество активаций:\n\n` +
+                `💡 Пример: 1`;
+            
+            const keyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+            ]);
+            
+            await ctx.reply(message, {
+                parse_mode: 'Markdown',
+                reply_markup: keyboard.reply_markup
+            });
+            
+        } else if (userState.currentStep === 'max_uses') {
+            const maxUses = parseInt(text);
+            if (isNaN(maxUses) || maxUses <= 0) {
+                await ctx.reply('❌ Введите корректное число больше 0');
+                return;
+            }
+            
+            userState.data.maxUses = maxUses;
+            
+            // Создаем ключ
+            const { generateKey } = require('../utils/keys');
+            const key = generateKey();
+            
+            const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+            
+            const successMessage = `✅ **Ключ успешно создан!**\n\n` +
+                `🔑 Ключ: \`${key}\`\n` +
+                `🎯 Тип: ${rewardTypeText}\n` +
+                `💰 Награда: ${userState.data[userState.data.rewardType]} ${rewardTypeText}\n` +
+                `🔄 Максимум активаций: ${maxUses}\n\n` +
+                `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
+            
+            const keyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
+                [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+            ]);
+            
+            await ctx.reply(successMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: keyboard.reply_markup
+            });
+            
+            // Очищаем состояние
+            userStates.delete(userId);
+            
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка создания ключа', error, { userId, text });
+        await ctx.reply('❌ Произошла ошибка при создании ключа');
+        userStates.delete(userId);
+    }
+}
+
+// Обработка создания ключа титула из текстового сообщения
+async function handleTitleKeyCreation(ctx, text) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка создания ключа титула из текста', { userId, text });
+    
+    const userState = userStates.get(userId);
+    if (!userState || userState.state !== 'creating_title_key') return;
+    
+    try {
+        if (userState.currentStep === 'description') {
+            if (text.trim().length < 3) {
+                await ctx.reply('❌ Описание должно содержать минимум 3 символа');
+                return;
+            }
+            
+            // Создаем ключ титула
+            const { generateKey } = require('../utils/keys');
+            const key = generateKey();
+            
+            const successMessage = `✅ **Ключ титула успешно создан!**\n\n` +
+                `🔑 Ключ: \`${key}\`\n` +
+                `👑 Титул: Новичок\n` +
+                `📝 Описание: ${text.trim()}\n` +
+                `💰 Награда: 50 ⭐ Stars, 25 🪙 Magnum Coins\n` +
+                `🔄 Максимум активаций: 1\n\n` +
+                `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
+            
+            const keyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('👑 Создать еще ключ титула', 'create_title_key')],
+                [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+            ]);
+            
+            await ctx.reply(successMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: keyboard.reply_markup
+            });
+            
+            // Очищаем состояние
+            userStates.delete(userId);
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка создания ключа титула', error, { userId, text });
+        await ctx.reply('❌ Произошла ошибка при создании ключа титула');
+        userStates.delete(userId);
+    }
+}

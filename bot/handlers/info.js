@@ -23,12 +23,14 @@ async function infoHandler(ctx) {
         
         if (userState && userState.state === 'creating_key') {
             // Обработка создания ключа
+            const { handleKeyCreation } = require('./callback');
             await handleKeyCreation(ctx, text);
             return;
         }
         
         if (userState && userState.state === 'creating_title_key') {
             // Обработка создания ключа титула
+            const { handleTitleKeyCreation } = require('./callback');
             await handleTitleKeyCreation(ctx, text);
             return;
         }

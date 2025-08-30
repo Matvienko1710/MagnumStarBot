@@ -1,8 +1,6 @@
 // Система управления валютой Magnum Coins и Stars
-
-// Временное хранилище данных (в реальном проекте заменить на БД)
-const userBalances = new Map();
-const transactionHistory = new Map();
+const dataManager = require('./dataManager');
+const logger = require('./logger');
 
 // Курсы обмена
 const EXCHANGE_RATES = {
@@ -11,9 +9,13 @@ const EXCHANGE_RATES = {
 };
 
 // Инициализация баланса пользователя
-const initializeUserBalance = (userId) => {
-  if (!userBalances.has(userId)) {
-    userBalances.set(userId, {
+const initializeUserBalance = async (userId) => {
+  try {
+    const user = await dataManager.getUser(userId);
+    return user.balance;
+  } catch (error) {
+    logger.error('Ошибка инициализации баланса пользователя', error, { userId });
+    return {
       stars: 0,
       coins: 0,
       lastUpdated: new Date(),
@@ -21,164 +23,155 @@ const initializeUserBalance = (userId) => {
         stars: 0,
         coins: 0
       }
-    });
+    };
   }
-  return userBalances.get(userId);
 };
 
 // Получение баланса пользователя
-const getUserBalance = (userId) => {
-  return initializeUserBalance(userId);
+const getUserBalance = async (userId) => {
+  try {
+    return await dataManager.getBalance(userId);
+  } catch (error) {
+    logger.error('Ошибка получения баланса пользователя', error, { userId });
+    return {
+      stars: 0,
+      coins: 0,
+      totalEarned: { stars: 0, coins: 0 }
+    };
+  }
 };
 
 // Обновление баланса Stars
-const updateStars = (userId, amount, reason = 'transaction') => {
-  const balance = initializeUserBalance(userId);
-  const oldStars = balance.stars;
-  balance.stars += amount;
-  balance.lastUpdated = new Date();
-  
-  if (amount > 0) {
-    balance.totalEarned.stars += amount;
+const updateStars = async (userId, amount, reason = 'transaction') => {
+  try {
+    const newBalance = await dataManager.updateBalance(userId, 'stars', amount, reason);
+    logger.info('Баланс Stars обновлен', { userId, amount, reason, newBalance });
+    return newBalance;
+  } catch (error) {
+    logger.error('Ошибка обновления баланса Stars', error, { userId, amount, reason });
+    throw error;
   }
-  
-  // Записываем транзакцию
-  addTransaction(userId, 'stars', amount, reason, oldStars, balance.stars);
-  
-  return balance.stars;
 };
 
 // Обновление баланса Magnum Coins
-const updateCoins = (userId, amount, reason = 'transaction') => {
-  const balance = initializeUserBalance(userId);
-  const oldCoins = balance.coins;
-  balance.coins += amount;
-  balance.lastUpdated = new Date();
-  
-  if (amount > 0) {
-    balance.totalEarned.coins += amount;
+const updateCoins = async (userId, amount, reason = 'transaction') => {
+  try {
+    const newBalance = await dataManager.updateBalance(userId, 'coins', amount, reason);
+    logger.info('Баланс Magnum Coins обновлен', { userId, amount, reason, newBalance });
+    return newBalance;
+  } catch (error) {
+    logger.error('Ошибка обновления баланса Magnum Coins', error, { userId, amount, reason });
+    throw error;
   }
-  
-  // Записываем транзакцию
-  addTransaction(userId, 'coins', amount, reason, oldCoins, balance.coins);
-  
-  return balance.coins;
 };
 
 // Обмен Stars на Magnum Coins
-const exchangeStarsToCoins = (userId, starsAmount) => {
-  const balance = getUserBalance(userId);
-  
-  if (balance.stars < starsAmount) {
-    throw new Error('Недостаточно Stars для обмена');
+const exchangeStarsToCoins = async (userId, starsAmount) => {
+  try {
+    const balance = await getUserBalance(userId);
+    
+    if (balance.stars < starsAmount) {
+      throw new Error('Недостаточно Stars для обмена');
+    }
+    
+    const coinsAmount = Math.floor(starsAmount * EXCHANGE_RATES.STAR_TO_COIN);
+    
+    await updateStars(userId, -starsAmount, 'exchange_to_coins');
+    await updateCoins(userId, coinsAmount, 'exchange_from_stars');
+    
+    const newBalance = await getUserBalance(userId);
+    
+    return {
+      starsSpent: starsAmount,
+      coinsReceived: coinsAmount,
+      newStarsBalance: newBalance.stars,
+      newCoinsBalance: newBalance.coins
+    };
+  } catch (error) {
+    logger.error('Ошибка обмена Stars на Coins', error, { userId, starsAmount });
+    throw error;
   }
-  
-  const coinsAmount = Math.floor(starsAmount * EXCHANGE_RATES.STAR_TO_COIN);
-  
-  updateStars(userId, -starsAmount, 'exchange_to_coins');
-  updateCoins(userId, coinsAmount, 'exchange_from_stars');
-  
-  return {
-    starsSpent: starsAmount,
-    coinsReceived: coinsAmount,
-    newStarsBalance: balance.stars - starsAmount,
-    newCoinsBalance: balance.coins + coinsAmount
-  };
 };
 
 // Обмен Magnum Coins на Stars
-const exchangeCoinsToStars = (userId, coinsAmount) => {
-  const balance = getUserBalance(userId);
-  
-  if (balance.coins < coinsAmount) {
-    throw new Error('Недостаточно Magnum Coins для обмена');
-  }
-  
-  const starsAmount = Math.floor(coinsAmount * EXCHANGE_RATES.COIN_TO_STAR);
-  
-  if (starsAmount < 1) {
-    throw new Error('Минимальная сумма для обмена: 10 Magnum Coins = 1 Star');
-  }
-  
-  updateCoins(userId, -coinsAmount, 'exchange_to_stars');
-  updateStars(userId, starsAmount, 'exchange_from_coins');
-  
-  return {
-    coinsSpent: coinsAmount,
-    starsReceived: starsAmount,
-    newCoinsBalance: balance.coins - coinsAmount,
-    newStarsBalance: balance.stars + starsAmount
-  };
-};
-
-// Добавление транзакции в историю
-const addTransaction = (userId, currency, amount, reason, oldBalance, newBalance) => {
-  if (!transactionHistory.has(userId)) {
-    transactionHistory.set(userId, []);
-  }
-  
-  const transaction = {
-    id: Date.now() + Math.random(),
-    currency: currency, // 'stars' или 'coins'
-    amount: amount,
-    reason: reason,
-    oldBalance: oldBalance,
-    newBalance: newBalance,
-    timestamp: new Date()
-  };
-  
-  transactionHistory.get(userId).push(transaction);
-  
-  // Ограничиваем историю последними 50 транзакциями
-  if (transactionHistory.get(userId).length > 50) {
-    transactionHistory.get(userId).shift();
+const exchangeCoinsToStars = async (userId, coinsAmount) => {
+  try {
+    const balance = await getUserBalance(userId);
+    
+    if (balance.coins < coinsAmount) {
+      throw new Error('Недостаточно Magnum Coins для обмена');
+    }
+    
+    const starsAmount = Math.floor(coinsAmount * EXCHANGE_RATES.COIN_TO_STAR);
+    
+    if (starsAmount < 1) {
+      throw new Error('Минимальная сумма для обмена: 10 Magnum Coins = 1 Star');
+    }
+    
+    await updateCoins(userId, -coinsAmount, 'exchange_to_stars');
+    await updateStars(userId, starsAmount, 'exchange_from_coins');
+    
+    const newBalance = await getUserBalance(userId);
+    
+    return {
+      coinsSpent: coinsAmount,
+      starsReceived: starsAmount,
+      newCoinsBalance: newBalance.coins,
+      newStarsBalance: newBalance.stars
+    };
+  } catch (error) {
+    logger.error('Ошибка обмена Coins на Stars', error, { userId, coinsAmount });
+    throw error;
   }
 };
 
-// Получение истории транзакций
-const getTransactionHistory = (userId, limit = 10) => {
-  if (!transactionHistory.has(userId)) {
+// Получение истории транзакций пользователя
+const getUserTransactionHistory = async (userId, limit = 50) => {
+  try {
+    // Здесь будет логика получения истории транзакций из MongoDB
+    // Пока что возвращаем заглушку
+    return [];
+  } catch (error) {
+    logger.error('Ошибка получения истории транзакций', error, { userId });
     return [];
   }
-  
-  return transactionHistory.get(userId)
-    .slice(-limit)
-    .reverse();
 };
 
-// Получение статистики пользователя
-const getUserStats = (userId) => {
-  const balance = getUserBalance(userId);
-  const transactions = getTransactionHistory(userId, 100);
-  
-  const stats = {
-    currentBalance: {
-      stars: balance.stars,
-      coins: balance.coins
-    },
-    totalEarned: balance.totalEarned,
-    totalTransactions: transactions.length,
-    lastTransaction: transactions.length > 0 ? transactions[0] : null,
-    exchangeRates: EXCHANGE_RATES
-  };
-  
-  return stats;
+// Получение статистики по валютам
+const getCurrencyStats = async () => {
+  try {
+    const botStats = await dataManager.getBotStats();
+    return {
+      totalUsers: botStats.totalUsers,
+      totalStarsWithdrawn: botStats.totalStarsWithdrawn,
+      totalCoinsEarned: botStats.totalCoinsEarned,
+      exchangeRates: EXCHANGE_RATES
+    };
+  } catch (error) {
+    logger.error('Ошибка получения статистики по валютам', error);
+    return {
+      totalUsers: 0,
+      totalStarsWithdrawn: 0,
+      totalCoinsEarned: 0,
+      exchangeRates: EXCHANGE_RATES
+    };
+  }
 };
 
 module.exports = {
-  // Основные функции баланса
+  // Основные функции
   getUserBalance,
   updateStars,
   updateCoins,
   
-  // Функции обмена
+  // Обмен валют
   exchangeStarsToCoins,
   exchangeCoinsToStars,
   
-  // Функции истории и статистики
-  getTransactionHistory,
-  getUserStats,
+  // История и статистика
+  getUserTransactionHistory,
+  getCurrencyStats,
   
-  // Константы
-  EXCHANGE_RATES
+  // Утилиты
+  initializeUserBalance
 };

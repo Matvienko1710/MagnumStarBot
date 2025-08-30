@@ -1,41 +1,48 @@
 const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
-const { getUserBalance } = require('../utils/currency');
-const { getReferralStats } = require('../utils/referral');
+const dataManager = require('../utils/dataManager');
 
 // Обработчик команды /start
 async function startHandler(ctx) {
     try {
         const userId = ctx.from.id;
-        const username = ctx.from.username;
+        const startPayload = ctx.startPayload; // Реферальный код
         
-        logger.info('Команда /start', { userId, username });
+        logger.info('Получена команда /start', { userId, startPayload });
         
-        // Получаем баланс пользователя
-        const userBalance = getUserBalance(userId);
+        // Настраиваем реферальную систему для нового пользователя
+        try {
+            if (startPayload) {
+                // Если есть реферальный код, настраиваем реферальную систему
+                await dataManager.setupReferral(userId, startPayload);
+                logger.info('Реферальная система настроена для нового пользователя', { userId, referrerCode: startPayload });
+            } else {
+                // Если нет реферального кода, создаем пользователя без реферера
+                await dataManager.setupReferral(userId);
+                logger.info('Пользователь создан без реферера', { userId });
+            }
+        } catch (error) {
+            logger.error('Ошибка настройки реферальной системы', error, { userId, startPayload });
+            // Продолжаем выполнение, даже если реферальная система не настроена
+        }
         
-        // Получаем реферальную статистику
-        const referralStats = getReferralStats(userId);
-        
-        // Приветственное сообщение согласно новому дизайну
-        const welcomeMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
+        const welcomeMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n\n` +
             `💎 Твой путь к наградам уже начался!\n\n` +
             `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
             `👤 **Профиль**\n` +
             `├ 🆔 ID: \`${userId}\`\n` +
             `└ ✨ Имя: ${ctx.from.first_name || 'Не указано'}\n\n` +
             `💎 **Баланс**\n` +
-            `├ ⭐ Stars: ${userBalance.stars}\n` +
-            `└ 🪙 Magnum Coins: ${userBalance.coins}\n\n` +
+            `├ ⭐ Stars: 0\n` +
+            `└ 🪙 Magnum Coins: 0\n\n` +
             `👥 **Реферальная программа**\n` +
-            `├ 👥 Друзей приглашено: ${referralStats.totalReferrals}\n` +
-            `└ 💰 Доход: ${referralStats.totalEarned.stars} ⭐\n\n` +
+            `├ 👥 Друзей приглашено: 0\n` +
+            `└ 💰 Доход: 0 ⭐\n\n` +
             `📊 **Информация о боте**\n` +
             `├ 👤 Пользователей: 0\n` +
             `└ 💎 Всего выведено: 0 ⭐\n\n` +
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
-        // Главное меню
         const mainMenu = Markup.inlineKeyboard([
             [Markup.button.callback('💰 Майнеры', 'miners')],
             [Markup.button.callback('👤 Профиль', 'profile')],
@@ -45,17 +52,28 @@ async function startHandler(ctx) {
             [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
         ]);
         
-        // Отправляем первое сообщение
         await ctx.reply(welcomeMessage, {
             parse_mode: 'Markdown',
             reply_markup: mainMenu.reply_markup
         });
         
-        logger.info('Приветственное сообщение отправлено', { userId });
+        logger.info('Команда /start успешно обработана', { userId });
         
     } catch (error) {
-        logger.error('Ошибка в обработчике /start', error, { userId: ctx?.from?.id });
-        throw error;
+        logger.error('Ошибка в обработчике команды /start', error, { userId: ctx?.from?.id });
+        
+        const errorMessage = `❌ **Ошибка запуска бота**\n\n` +
+            `🚫 Не удалось запустить бота\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'start')]
+        ]);
+        
+        await ctx.reply(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
     }
 }
 

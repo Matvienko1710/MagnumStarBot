@@ -1,6 +1,7 @@
 const express = require('express');
 const { Telegraf } = require('telegraf');
 const database = require('./bot/utils/database');
+const dataManager = require('./bot/utils/dataManager');
 const logger = require('./bot/utils/logger');
 const cacheManager = require('./bot/utils/cache');
 
@@ -21,6 +22,9 @@ async function initializeDatabase() {
         
         await database.connect();
         isDatabaseConnected = true;
+        
+        // Инициализируем DataManager для работы с данными
+        await dataManager.initialize();
         
         logger.info('✅ База данных успешно подключена');
         return true;
