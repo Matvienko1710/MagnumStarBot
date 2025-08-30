@@ -118,6 +118,22 @@ const activateKey = (key, userId) => {
     keyData.isActive = false;
   }
   
+  // Проверяем реферальную систему
+  try {
+    const { getReferralActivityReward } = require('./referral');
+    const referralData = require('./referral').getUserReferralData(userId);
+    
+    if (referralData.referrerId) {
+      // Даем награду рефереру за активацию ключа
+      const reward = getReferralActivityReward(referralData.referrerId, userId, 'key_activation');
+      if (reward) {
+        console.log(`Реферальная награда: ${referralData.referrerId} получил ${reward.stars} ⭐ ${reward.coins} 🪙 за активацию ключа ${userId}`);
+      }
+    }
+  } catch (error) {
+    console.log('Ошибка при начислении реферальной награды:', error.message);
+  }
+  
   return {
     key: upperKey,
     reward: keyData.reward,

@@ -3,6 +3,7 @@ const { isAdmin } = require('../utils/admin');
 const { activateKey, getUserKeyHistory, createKey } = require('../utils/keys');
 const { getUserMiners, getAvailableRewards, buyMiner, collectRewards, getMinersStats, getMinerTypes } = require('../utils/miners');
 const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle } = require('../utils/titles');
+const { activateReferralCode, getReferralStats, getLevelInfo, getNextLevel } = require('../utils/referral');
 
 // Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
 const userStates = new Map();
@@ -481,31 +482,38 @@ module.exports = (bot) => {
         const currencyStats = getUserStats(userId);
         const keyHistory = getUserKeyHistory(userId);
         
-        const currentTitle = getUserCurrentTitle(userId);
-        const profileMessage = `👤 Профиль пользователя:
-
-👤 Основная информация
-├ ID: ${userId}
-├ Имя: ${userName}
-├ Username: ${user.username || 'Не указан'}
-├ Титул: ${getFormattedTitle(currentTitle)}
-└ Дата регистрации: ${new Date().toLocaleDateString('ru-RU')}
-
-💎 Баланс
-├ ⭐ Stars: ${balance.stars}
-└ 🪙 Magnum Coins: ${balance.coins}
-
-👥 Реферальная система
-├ Рефералы: 0
-├ Заработано: 0 Stars
-└ Уровень: Новичок
-
-📊 Статистика
-├ Всего транзакций: ${currencyStats.totalTransactions}
-├ Всего заработано Stars: ${currencyStats.totalEarned.stars}
-├ Всего заработано Coins: ${currencyStats.totalEarned.coins}
-├ Активировано ключей: ${keyHistory.length}
-└ Последний вход: Сегодня`;
+                 const currentTitle = getUserCurrentTitle(userId);
+         const referralStats = getReferralStats(userId);
+         const levelInfo = getLevelInfo(referralStats.level);
+         const nextLevel = getNextLevel(referralStats.level);
+         
+         const profileMessage = `👤 Профиль пользователя:
+ 
+       👤 Основная информация
+       ├ ID: ${userId}
+       ├ Имя: ${userName}
+       ├ Username: ${user.username || 'Не указан'}
+       ├ Титул: ${getFormattedTitle(currentTitle)}
+       └ Дата регистрации: ${new Date().toLocaleDateString('ru-RU')}
+ 
+       💎 Баланс
+       ├ ⭐ Stars: ${balance.stars}
+       └ 🪙 Magnum Coins: ${balance.coins}
+ 
+       👥 Реферальная система
+       ├ Реферальный код: ${referralStats.referralCode}
+       ├ Рефералы: ${referralStats.totalReferrals}
+       ├ Активные рефералы: ${referralStats.activeReferrals}
+       ├ Заработано: ${referralStats.totalEarned.stars} ⭐ ${referralStats.totalEarned.coins} 🪙
+       ├ Уровень: ${levelInfo.name} (${referralStats.level})
+       └ ${nextLevel ? `До следующего уровня: ${nextLevel.requirement - referralStats.totalEarned.stars} ⭐` : 'Максимальный уровень!'}
+       
+       📊 Статистика
+       ├ Всего транзакций: ${currencyStats.totalTransactions}
+       ├ Всего заработано Stars: ${currencyStats.totalEarned.stars}
+       ├ Всего заработано Coins: ${currencyStats.totalEarned.coins}
+       ├ Активировано ключей: ${keyHistory.length}
+       └ Последний вход: Сегодня`;
         
         await ctx.reply(profileMessage, profileKeyboard(adminStatus));
         break;
@@ -849,6 +857,55 @@ ${unlockedTitles.map(title =>
 💡 Используйте кнопки в меню для удобной навигации!`;
         
         await ctx.reply(withdrawTextMessage, inlineKeyboard(adminStatus));
+        break;
+        
+      case 'реферал':
+      case 'referral':
+        // Проверяем, есть ли реферальный код после команды
+        const referralText = text.toLowerCase().trim();
+        if (referralText === 'реферал' || referralText === 'referral') {
+          await ctx.reply(
+            '🔗 Реферальная система:\n\n' +
+            '💡 Для активации реферального кода напишите:\n' +
+            '• "реферал КОД" (например: реферал ABC12345)\n\n' +
+            '💰 Что дает реферальная система:\n' +
+            '• Награды за приглашенных друзей\n' +
+            '• Бонусы за их активность\n' +
+            '• Повышение уровня и дополнительные награды\n\n' +
+            '📱 Ваш реферальный код можно посмотреть в профиле!',
+            inlineKeyboard(adminStatus)
+          );
+          return;
+        }
+        
+        // Извлекаем реферальный код
+        const referralCode = referralText.replace(/^(реферал|referral)\s+/i, '').trim();
+        if (referralCode.length === 0) {
+          await ctx.reply(
+            '❌ Не указан реферальный код!\n\n' +
+            '💡 Напишите: "реферал КОД"\n' +
+            'Пример: реферал ABC12345',
+            inlineKeyboard(adminStatus)
+          );
+          return;
+        }
+        
+        try {
+          const result = activateReferralCode(referralCode, userId);
+          await ctx.reply(
+            `✅ ${result.message}\n\n` +
+            `🔗 Реферальный код: ${result.referralCode}\n` +
+            `👤 Реферер: ID ${result.referrerId}\n\n` +
+            `💰 Теперь вы будете получать награды за активность реферера!`,
+            inlineKeyboard(adminStatus)
+          );
+        } catch (error) {
+          await ctx.reply(
+            `❌ Ошибка активации реферального кода!\n\n` +
+            `🔍 Причина: ${error.message}`,
+            inlineKeyboard(adminStatus)
+          );
+        }
         break;
         
       default:

@@ -1,10 +1,11 @@
-const { inlineKeyboard, inlineKeyboardWithBack, adminPanelKeyboard, createKeyKeyboard, minersKeyboard, buyMinerKeyboard, titlesKeyboard, changeTitleKeyboard, profileKeyboard, withdrawKeyboard } = require('../keyboards/inline');
+const { inlineKeyboard, inlineKeyboardWithBack, adminPanelKeyboard, createKeyKeyboard, minersKeyboard, buyMinerKeyboard, titlesKeyboard, changeTitleKeyboard, profileKeyboard, withdrawKeyboard, referralsKeyboard } = require('../keyboards/inline');
 const { generateUserProfile } = require('../utils/profile');
 const { getUserBalance, getUserStats, getTransactionHistory } = require('../utils/currency');
 const { isAdmin, getAdminStats, getBotStats } = require('../utils/admin');
 const { activateKey, getUserKeyHistory, createKey, getKeysStats } = require('../utils/keys');
 const { getUserMiners, getAvailableRewards, buyMiner, collectRewards, getMinersStats, getMinerTypes, getMinerType } = require('../utils/miners');
 const { getUserCurrentTitle, getUserUnlockedTitles, setUserTitle, getUserTitlesStats, getAllTitles, getFormattedTitle } = require('../utils/titles');
+const { getReferralStats, getLevelInfo, getNextLevel } = require('../utils/referral');
 
 // Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
 const userStates = new Map();
@@ -25,33 +26,40 @@ module.exports = (bot) => {
         // Получаем данные из системы валюты
         const balance = getUserBalance(userId);
         const currencyStats = getUserStats(userId);
-        const keyHistory = getUserKeyHistory(userId);
-        
-        const userCurrentTitle = getUserCurrentTitle(userId);
-        const profileMessage = `👤 Профиль пользователя:
-
-👤 Основная информация
-├ ID: ${userId}
-├ Имя: ${userName}
-├ Username: ${user.username || 'Не указан'}
-├ Титул: ${getFormattedTitle(userCurrentTitle)}
-└ Дата регистрации: ${new Date().toLocaleDateString('ru-RU')}
-
-💎 Баланс
-├ ⭐ Stars: ${balance.stars}
-└ 🪙 Magnum Coins: ${balance.coins}
-
-👥 Реферальная система
-├ Рефералы: 0
-├ Заработано: 0 Stars
-└ Уровень: Новичок
-
-📊 Статистика
-├ Всего транзакций: ${currencyStats.totalTransactions}
-├ Всего заработано Stars: ${currencyStats.totalEarned.stars}
-├ Всего заработано Coins: ${currencyStats.totalEarned.coins}
-├ Активировано ключей: ${keyHistory.length}
-└ Последний вход: Сегодня`;
+                 const keyHistory = getUserKeyHistory(userId);
+         
+         const userCurrentTitle = getUserCurrentTitle(userId);
+         const referralStats = getReferralStats(userId);
+         const levelInfo = getLevelInfo(referralStats.level);
+         const nextLevel = getNextLevel(referralStats.level);
+         
+         const profileMessage = `👤 Профиль пользователя:
+ 
+       👤 Основная информация
+       ├ ID: ${userId}
+       ├ Имя: ${userName}
+       ├ Username: ${user.username || 'Не указан'}
+       ├ Титул: ${getFormattedTitle(userCurrentTitle)}
+       └ Дата регистрации: ${new Date().toLocaleDateString('ru-RU')}
+ 
+       💎 Баланс
+       ├ ⭐ Stars: ${balance.stars}
+       └ 🪙 Magnum Coins: ${balance.coins}
+ 
+       👥 Реферальная система
+       ├ Реферальный код: ${referralStats.referralCode}
+       ├ Рефералы: ${referralStats.totalReferrals}
+       ├ Активные рефералы: ${referralStats.activeReferrals}
+       ├ Заработано: ${referralStats.totalEarned.stars} ⭐ ${referralStats.totalEarned.coins} 🪙
+       ├ Уровень: ${levelInfo.name} (${referralStats.level})
+       └ ${nextLevel ? `До следующего уровня: ${nextLevel.requirement - referralStats.totalEarned.stars} ⭐` : 'Максимальный уровень!'}
+       
+       📊 Статистика
+       ├ Всего транзакций: ${currencyStats.totalTransactions}
+       ├ Всего заработано Stars: ${currencyStats.totalEarned.stars}
+       ├ Всего заработано Coins: ${currencyStats.totalEarned.coins}
+       ├ Активировано ключей: ${keyHistory.length}
+       └ Последний вход: Сегодня`;
         
         await ctx.editMessageText(profileMessage, profileKeyboard(adminStatus));
         break;
@@ -537,6 +545,135 @@ ${myMinersStats.miners.length > 0 ?
 💡 После первого вывода здесь появится информация о всех операциях.`;
         
         await ctx.editMessageText(historyMessage, withdrawKeyboard());
+        break;
+      
+      case 'referrals':
+        await ctx.answerCbQuery();
+        const userReferralStats = getReferralStats(userId);
+        const userLevelInfo = getLevelInfo(userReferralStats.level);
+        
+        const referralsMessage = `👥 Реферальная система:
+
+📊 Ваша статистика
+├ Реферальный код: ${userReferralStats.referralCode}
+├ Всего рефералов: ${userReferralStats.totalReferrals}
+├ Активных рефералов: ${userReferralStats.activeReferrals}
+        ├ Заработано: ${userReferralStats.totalEarned.stars} ⭐ ${userReferralStats.totalEarned.coins} 🪙
+        └ Текущий уровень: ${userLevelInfo.name} (${userReferralStats.level})
+
+💡 Приглашайте друзей и получайте награды за их активность!`;
+        
+        await ctx.editMessageText(referralsMessage, referralsKeyboard());
+        break;
+      
+      case 'my_referral_code':
+        await ctx.answerCbQuery();
+        const userReferralCode = getUserReferralCode(userId);
+        
+        const referralCodeMessage = `🔗 Ваш реферальный код:
+
+📝 Код: \`${userReferralCode}\`
+
+💡 Как использовать:
+• Отправьте этот код друзьям
+• Они должны написать "реферал ${userReferralCode}"
+• Вы получите награды за их активность
+
+💰 Награды:
+• За регистрацию: 50 ⭐ + 100 🪙
+• За покупку майнера: 10 ⭐ + 20 🪙
+• За активацию ключа: 5 ⭐ + 10 🪙
+• За сбор наград: 3 ⭐ + 7 🪙
+
+📱 Поделитесь кодом: \`${userReferralCode}\``;
+        
+        await ctx.editMessageText(referralCodeMessage, referralsKeyboard());
+        break;
+      
+      case 'my_referrals':
+        await ctx.answerCbQuery();
+        const userReferrals = getUserReferrals(userId);
+        
+        if (userReferrals.length === 0) {
+          await ctx.editMessageText(
+            '👥 У вас пока нет рефералов!\n\n' +
+            '💡 Пригласите друзей, используя ваш реферальный код, ' +
+            'и они появятся в этом списке.',
+            referralsKeyboard()
+          );
+          return;
+        }
+        
+                 const myReferralsMessage = `👥 Ваши рефералы:
+ 
+       📊 Всего рефералов: ${userReferrals.length}
+ 
+       ${userReferrals.map((ref, index) => 
+         `${index + 1}. ID: ${ref.userId}
+          ├ Уровень: ${ref.level}
+          ├ Заработано: ${ref.totalEarned.stars} ⭐ ${ref.totalEarned.coins} 🪙
+          └ Присоединился: ${ref.joinedAt.toLocaleDateString('ru-RU')}`
+       ).join('\n\n')}
+ 
+       💰 Вы заработали: ${getReferralStats(userId).totalEarned.stars} ⭐ ${getReferralStats(userId).totalEarned.coins} 🪙`;
+        
+        await ctx.editMessageText(myReferralsMessage, referralsKeyboard());
+        break;
+      
+      case 'top_referrers':
+        await ctx.answerCbQuery();
+        const topReferrers = getTopReferrers(10);
+        
+        if (topReferrers.length === 0) {
+          await ctx.editMessageText(
+            '🏆 Пока нет данных о топ рефералах!\n\n' +
+            '💡 Приглашайте друзей и поднимайтесь в рейтинге!',
+            referralsKeyboard()
+          );
+          return;
+        }
+        
+        const topReferrersMessage = `🏆 Топ рефералов:
+
+${topReferrers.map((ref, index) => {
+  const refLevelInfo = getLevelInfo(ref.level);
+  return `${index + 1}. ID: ${ref.userId}
+   ├ Рефералов: ${ref.totalReferrals}
+   ├ Заработано: ${ref.totalEarned.stars} ⭐ ${ref.totalEarned.coins} 🪙
+   └ Уровень: ${refLevelInfo.name} (${ref.level})`;
+}).join('\n\n')}`;
+        
+        await ctx.editMessageText(topReferrersMessage, referralsKeyboard());
+        break;
+      
+      case 'referral_levels':
+        await ctx.answerCbQuery();
+        const currentLevel = getReferralStats(userId).level;
+        const nextLevelInfo = getNextLevel(currentLevel);
+        
+        let levelsMessage = `📈 Уровни реферальной системы:
+
+${Array.from({length: 10}, (_, i) => i + 1).map(level => {
+  const levelData = getLevelInfo(level);
+  const isCurrent = level === currentLevel;
+  const isCompleted = referralStats.totalEarned.stars >= levelData.requirement;
+  
+  let status = '';
+  if (isCurrent) status = ' ✅ Текущий';
+  else if (isCompleted) status = ' ✅ Достигнут';
+  else status = ` ❌ Нужно: ${levelData.requirement - referralStats.totalEarned.stars} ⭐`;
+  
+  return `${level}. ${levelData.name}
+   ├ Требование: ${levelData.requirement} ⭐
+   ├ Бонус: ${levelData.bonus.stars} ⭐ ${levelData.bonus.coins} 🪙
+   └ ${status}`;
+}).join('\n\n')}`;
+        
+        if (nextLevelInfo) {
+          levelsMessage += `\n\n🎯 До следующего уровня: ${nextLevelInfo.requirement - referralStats.totalEarned.stars} ⭐`;
+        }
+        
+        await ctx.editMessageText(levelsMessage, referralsKeyboard());
         break;
       
       case 'main_menu':

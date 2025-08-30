@@ -90,6 +90,7 @@ const buyMinerKeyboard = () => {
 const profileKeyboard = (isAdmin = false) => {
   const buttons = [
     [Markup.button.callback('👑 Титулы', 'titles')],
+    [Markup.button.callback('👥 Рефералы', 'referrals')],
     [Markup.button.callback('📊 Статистика', 'profile_stats')],
     [Markup.button.callback('🔙 Назад', 'back')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
@@ -133,6 +134,18 @@ const withdrawKeyboard = () => {
   ]);
 };
 
+// Клавиатура для рефералов
+const referralsKeyboard = () => {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('🔗 Мой реферальный код', 'my_referral_code')],
+    [Markup.button.callback('👥 Мои рефералы', 'my_referrals')],
+    [Markup.button.callback('🏆 Топ рефералов', 'top_referrers')],
+    [Markup.button.callback('📈 Уровни и награды', 'referral_levels')],
+    [Markup.button.callback('🔙 Назад к профилю', 'profile')],
+    [Markup.button.callback('🏠 В главное меню', 'main_menu')]
+  ]);
+};
+
 module.exports = {
   inlineKeyboard,
   inlineKeyboardWithBack,
@@ -143,5 +156,6 @@ module.exports = {
   titlesKeyboard,
   changeTitleKeyboard,
   profileKeyboard,
-  withdrawKeyboard
+  withdrawKeyboard,
+  referralsKeyboard
 };

@@ -99,6 +99,22 @@ const buyMiner = (userId, minerType) => {
   
   userData.miners.push(newMiner);
   
+  // Проверяем реферальную систему
+  try {
+    const { getReferralActivityReward } = require('./referral');
+    const referralData = require('./referral').getUserReferralData(userId);
+    
+    if (referralData.referrerId) {
+      // Даем награду рефереру за покупку майнера
+      const reward = getReferralActivityReward(referralData.referrerId, userId, 'miner_purchase');
+      if (reward) {
+        console.log(`Реферальная награда: ${referralData.referrerId} получил ${reward.stars} ⭐ ${reward.coins} 🪙 за покупку майнера ${userId}`);
+      }
+    }
+  } catch (error) {
+    console.log('Ошибка при начислении реферальной награды:', error.message);
+  }
+  
   return {
     miner: newMiner,
     price: minerInfo.price,
@@ -139,6 +155,22 @@ const collectRewards = (userId) => {
   
   // Обновляем общую статистику
   userData.totalEarned.stars += availableRewards;
+  
+  // Проверяем реферальную систему
+  try {
+    const { getReferralActivityReward } = require('./referral');
+    const referralData = require('./referral').getUserReferralData(userId);
+    
+    if (referralData.referrerId) {
+      // Даем награду рефереру за сбор наград
+      const reward = getReferralActivityReward(referralData.referrerId, userId, 'miner_collection');
+      if (reward) {
+        console.log(`Реферальная награда: ${referralData.referrerId} получил ${reward.stars} ⭐ ${reward.coins} 🪙 за сбор наград ${userId}`);
+      }
+    }
+  } catch (error) {
+    console.log('Ошибка при начислении реферальной награды:', error.message);
+  }
   
   return {
     collected: availableRewards,
