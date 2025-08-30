@@ -10,37 +10,25 @@ class Database {
 
     async connect() {
         try {
-            const uri = process.env.MONGODB_URI;
+            let uri = process.env.MONGODB_URI;
             if (!uri) {
                 throw new Error('MONGODB_URI не установлена в переменных окружения');
             }
 
             console.log('🔧 Подключение к MongoDB Atlas кластеру...');
-            console.log('📊 URI:', uri.substring(0, 30) + '...');
+            console.log('📊 Оригинальный URI:', uri.substring(0, 30) + '...');
 
-            // Оптимизированные настройки для вашего кластера
+            // Создаем альтернативные URI для тестирования
+            const alternativeUris = [
+                uri, // Оригинальный URI
+                uri.replace('?retryWrites=true&w=majority&appName=Cluster0', ''), // Без параметров
+                uri.replace('?retryWrites=true&w=majority&appName=Cluster0', '?retryWrites=false&w=1'), // Минимальные параметры
+                uri.replace('mongodb+srv://', 'mongodb://'), // Попробуем обычный MongoDB протокол
+            ];
+
+            // Специальные настройки для Render и решения SSL проблем
             const connectionConfigs = [
-                // Конфигурация 1: Стандартная для MongoDB Atlas
-                {
-                    serverApi: { 
-                        version: '1', 
-                        strict: true, 
-                        deprecationErrors: true 
-                    },
-                    retryWrites: true,
-                    w: 'majority',
-                    maxPoolSize: 10,
-                    minPoolSize: 1,
-                    maxIdleTimeMS: 30000,
-                    connectTimeoutMS: 30000,
-                    socketTimeoutMS: 45000,
-                    serverSelectionTimeoutMS: 30000,
-                    heartbeatFrequencyMS: 10000,
-                    maxStalenessSeconds: 90,
-                    compressors: ['zlib'],
-                    zlibCompressionLevel: 6,
-                },
-                // Конфигурация 2: С отключенным SSL (для тестирования)
+                // Конфигурация 1: Специально для Render (без SSL)
                 {
                     serverApi: { 
                         version: '1', 
@@ -52,11 +40,37 @@ class Database {
                     retryWrites: true,
                     w: 'majority',
                     maxPoolSize: 5,
-                    connectTimeoutMS: 30000,
-                    socketTimeoutMS: 45000,
-                    serverSelectionTimeoutMS: 30000,
+                    minPoolSize: 1,
+                    connectTimeoutMS: 60000,
+                    socketTimeoutMS: 60000,
+                    serverSelectionTimeoutMS: 60000,
+                    heartbeatFrequencyMS: 30000,
+                    maxStalenessSeconds: 90,
+                    // Специальные настройки для Render
+                    directConnection: false,
+                    compressors: [],
+                    zlibCompressionLevel: 0,
                 },
-                // Конфигурация 3: Минимальная конфигурация
+                // Конфигурация 2: С минимальными SSL настройками
+                {
+                    serverApi: { 
+                        version: '1', 
+                        strict: true, 
+                        deprecationErrors: true 
+                    },
+                    ssl: true,
+                    tls: true,
+                    tlsAllowInvalidCertificates: true,
+                    tlsAllowInvalidHostnames: true,
+                    tlsInsecure: true,
+                    retryWrites: true,
+                    w: 'majority',
+                    maxPoolSize: 5,
+                    connectTimeoutMS: 60000,
+                    socketTimeoutMS: 60000,
+                    serverSelectionTimeoutMS: 60000,
+                },
+                // Конфигурация 3: Стандартная MongoDB Atlas
                 {
                     serverApi: { 
                         version: '1', 
@@ -66,66 +80,95 @@ class Database {
                     retryWrites: true,
                     w: 'majority',
                     maxPoolSize: 5,
-                    connectTimeoutMS: 30000,
-                    socketTimeoutMS: 45000,
+                    connectTimeoutMS: 60000,
+                    socketTimeoutMS: 60000,
+                    serverSelectionTimeoutMS: 60000,
+                },
+                // Конфигурация 4: Экстремально простая (для Render)
+                {
+                    serverApi: { 
+                        version: '1', 
+                        strict: false, 
+                        deprecationErrors: false 
+                    },
+                    retryWrites: false,
+                    w: 1,
+                    maxPoolSize: 1,
+                    connectTimeoutMS: 60000,
+                    socketTimeoutMS: 60000,
+                    serverSelectionTimeoutMS: 60000,
                 }
             ];
 
             let lastError = null;
 
-            for (let i = 0; i < connectionConfigs.length; i++) {
-                const config = connectionConfigs[i];
-                try {
-                    console.log(`🔧 Попытка подключения с конфигурацией ${i + 1}:`, {
-                        ssl: config.ssl,
-                        tls: config.tls,
-                        maxPoolSize: config.maxPoolSize,
-                        connectTimeoutMS: config.connectTimeoutMS
-                    });
+            // Пробуем разные URI и конфигурации
+            for (let uriIndex = 0; uriIndex < alternativeUris.length; uriIndex++) {
+                const currentUri = alternativeUris[uriIndex];
+                console.log(`🔧 Тестирование URI ${uriIndex + 1}:`, currentUri.substring(0, 30) + '...');
 
-                    this.client = new MongoClient(uri, config);
-                    await this.client.connect();
-                    this.db = this.client.db();
-                    this.isConnected = true;
-                    
-                    console.log(`✅ Успешно подключено с конфигурацией ${i + 1}`);
-                    console.log(`📊 База данных: ${this.db.databaseName}`);
-                    
-                    // Тестируем подключение
-                    await this.ping();
-                    return;
-                    
-                } catch (error) {
-                    console.error(`❌ Ошибка с конфигурацией ${i + 1}:`, error.message);
-                    console.error(`🔍 Детали ошибки:`, {
-                        code: error.code,
-                        name: error.name,
-                        stack: error.stack?.split('\n')[0]
-                    });
-                    lastError = error;
-                    
-                    // Закрываем клиент если он был создан
-                    if (this.client) {
-                        try {
-                            await this.client.close();
-                        } catch (closeError) {
-                            console.error('Ошибка закрытия клиента:', closeError.message);
+                for (let configIndex = 0; configIndex < connectionConfigs.length; configIndex++) {
+                    const config = connectionConfigs[configIndex];
+                    try {
+                        console.log(`🔧 Попытка подключения с URI ${uriIndex + 1} и конфигурацией ${configIndex + 1}:`, {
+                            ssl: config.ssl,
+                            tls: config.tls,
+                            tlsAllowInvalidCertificates: config.tlsAllowInvalidCertificates,
+                            maxPoolSize: config.maxPoolSize,
+                            connectTimeoutMS: config.connectTimeoutMS,
+                            retryWrites: config.retryWrites
+                        });
+
+                        this.client = new MongoClient(currentUri, config);
+                        await this.client.connect();
+                        this.db = this.client.db();
+                        this.isConnected = true;
+                        
+                        console.log(`✅ Успешно подключено с URI ${uriIndex + 1} и конфигурацией ${configIndex + 1}`);
+                        console.log(`📊 База данных: ${this.db.databaseName}`);
+                        
+                        // Тестируем подключение
+                        await this.ping();
+                        return;
+                        
+                    } catch (error) {
+                        console.error(`❌ Ошибка с URI ${uriIndex + 1} и конфигурацией ${configIndex + 1}:`, error.message);
+                        console.error(`🔍 Детали ошибки:`, {
+                            code: error.code,
+                            name: error.name,
+                            stack: error.stack?.split('\n')[0]
+                        });
+                        lastError = error;
+                        
+                        // Закрываем клиент если он был создан
+                        if (this.client) {
+                            try {
+                                await this.client.close();
+                            } catch (closeError) {
+                                console.error('Ошибка закрытия клиента:', closeError.message);
+                            }
+                            this.client = null;
+                            this.db = null;
+                            this.isConnected = false;
                         }
-                        this.client = null;
-                        this.db = null;
-                        this.isConnected = false;
+                        
+                        // Небольшая пауза между попытками
+                        if (configIndex < connectionConfigs.length - 1) {
+                            console.log(`⏳ Пауза 3 секунды перед следующей конфигурацией...`);
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+                        }
                     }
-                    
-                    // Небольшая пауза между попытками
-                    if (i < connectionConfigs.length - 1) {
-                        console.log(`⏳ Пауза 3 секунды перед следующей попыткой...`);
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                    }
+                }
+                
+                // Пауза между URI
+                if (uriIndex < alternativeUris.length - 1) {
+                    console.log(`⏳ Пауза 5 секунд перед следующим URI...`);
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                 }
             }
 
-            // Если все конфигурации не сработали
-            throw lastError || new Error('Не удалось подключиться ни с одной конфигурацией');
+            // Если все комбинации не сработали
+            throw lastError || new Error('Не удалось подключиться ни с одной комбинацией URI и конфигурации');
             
         } catch (error) {
             console.error('❌ Критическая ошибка подключения к MongoDB Atlas:', error.message);

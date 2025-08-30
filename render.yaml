@@ -1,17 +1,16 @@
 services:
-  # Веб-сервис для бота
   - type: web
     name: magnum-star-bot
     env: node
+    plan: free
     buildCommand: npm install
     startCommand: npm start
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: BOT_TOKEN
         sync: false
-      - key: WEBAPP_URL
-        value: https://magnumstarbot.onrender.com
-      - key: ADMIN_IDS
-        sync: false
-      - key: PORT
-        value: 10000
+      - key: MONGODB_URI
+        value: mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+    healthCheckPath: /api/health
     autoDeploy: true
