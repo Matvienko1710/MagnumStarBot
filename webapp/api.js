@@ -1,23 +1,23 @@
 const express = require('express');
-const { MongoClient } = require('mongodb');
 const router = express.Router();
 
-// Подключение к MongoDB
-let db = null;
-let client = null;
+// Используем тот же DataManager что и основной бот
+const dataManager = require('../bot/utils/dataManager');
 
-async function connectToDatabase() {
+// Проверяем подключение к DataManager
+async function ensureDataManagerConnection(req, res, next) {
     try {
-        if (!client) {
-            client = new MongoClient(process.env.MONGODB_URI);
-            await client.connect();
-            db = client.db();
-            console.log('✅ WebApp подключен к MongoDB');
+        if (!dataManager.isInitialized) {
+            console.log('❌ DataManager не инициализирован, пытаемся подключиться...');
+            return res.status(500).json({ error: 'DataManager не готов' });
         }
-        return db;
+        
+        console.log('✅ DataManager подключен и готов к работе');
+        req.dataManager = dataManager;
+        next();
     } catch (error) {
-        console.error('❌ Ошибка подключения к MongoDB:', error);
-        throw error;
+        console.error('❌ Ошибка подключения к DataManager:', error);
+        res.status(500).json({ error: 'Ошибка подключения к DataManager' });
     }
 }
 
@@ -32,16 +32,16 @@ async function ensureDatabaseConnection(req, res, next) {
 }
 
 // Получение баланса пользователя
-router.get('/user/balance/:userId', ensureDatabaseConnection, async (req, res) => {
+router.get('/user/balance/:userId', ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
-        const db = req.db;
+        const dm = req.dataManager;
         
         console.log(`🔍 API: Запрос баланса для пользователя ${userId}`);
-        console.log(`🔍 API: База данных подключена: ${!!db}`);
+        console.log(`🔍 API: DataManager готов: ${!!dm && dm.isInitialized}`);
         
-        // Получаем пользователя из базы
-        const user = await db.collection('users').findOne({ userId: Number(userId) });
+        // Получаем пользователя через DataManager
+        const user = await dm.getUser(Number(userId));
         
         console.log(`🔍 API: Пользователь найден: ${!!user}`);
         
@@ -71,48 +71,28 @@ router.get('/user/balance/:userId', ensureDatabaseConnection, async (req, res) =
 });
 
 // Обновление баланса (клик по кнопке)
-router.post('/user/click/:userId', ensureDatabaseConnection, async (req, res) => {
+router.post('/user/click/:userId', ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
-        const db = req.db;
+        const dm = req.dataManager;
         
-        // Получаем пользователя
-        const user = await db.collection('users').findOne({ userId: Number(userId) });
+        console.log(`🔍 API: Клик по кнопке для пользователя ${userId}`);
+        
+        // Получаем пользователя через DataManager
+        const user = await dm.getUser(Number(userId));
         
         if (!user) {
             return res.status(404).json({ error: 'Пользователь не найден' });
         }
         
-        // Увеличиваем баланс Stars на 1
-        const currentStars = user.balance?.stars || 0;
-        const newStars = currentStars + 1;
-        
-        // Обновляем баланс
-        await db.collection('users').updateOne(
-            { userId: Number(userId) },
-            { 
-                $set: { 
-                    'balance.stars': newStars,
-                    'balance.lastUpdated': new Date()
-                },
-                $inc: { 'balance.totalEarned.stars': 1 }
-            }
-        );
-        
-        // Записываем транзакцию
-        await db.collection('transactions').insertOne({
-            userId: Number(userId),
-            currency: 'stars',
-            amount: 1,
-            reason: 'webapp_click',
-            oldBalance: currentStars,
-            newBalance: newStars,
-            timestamp: new Date()
-        });
+        // Увеличиваем баланс Stars на 1 через DataManager
+        await dm.updateBalance(Number(userId), 'stars', 1, 'webapp_click');
         
         // Получаем обновленный баланс
-        const updatedUser = await db.collection('users').findOne({ userId: Number(userId) });
+        const updatedUser = await dm.getUser(Number(userId));
         const balance = updatedUser.balance || { stars: 0, coins: 0 };
+        
+        console.log(`✅ API: Баланс обновлен для ${userId}:`, balance);
         
         res.json({
             success: true,
@@ -125,40 +105,44 @@ router.post('/user/click/:userId', ensureDatabaseConnection, async (req, res) =>
         });
         
     } catch (error) {
-        console.error('Ошибка обновления баланса:', error);
+        console.error('❌ API: Ошибка обновления баланса:', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
 });
 
 // Получение статистики пользователя
-router.get('/user/stats/:userId', ensureDatabaseConnection, async (req, res) => {
+router.get('/user/stats/:userId', ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
-        const db = req.db;
+        const dm = req.dataManager;
         
-        // Получаем пользователя
-        const user = await db.collection('users').findOne({ userId: Number(userId) });
+        console.log(`🔍 API: Запрос статистики для пользователя ${userId}`);
+        
+        // Получаем пользователя через DataManager
+        const user = await dm.getUser(Number(userId));
         
         if (!user) {
             return res.status(404).json({ error: 'Пользователь не найден' });
         }
         
-        // Получаем количество транзакций
-        const transactionCount = await db.collection('transactions').countDocuments({ userId: Number(userId) });
+        // Получаем количество транзакций через DataManager
+        const transactionCount = await dm.db.collection('transactions').countDocuments({ userId: Number(userId) });
         
         // Получаем последнюю транзакцию
-        const lastTransaction = await db.collection('transactions')
+        const lastTransaction = await dm.db.collection('transactions')
             .findOne({ userId: Number(userId) }, { sort: { timestamp: -1 } });
         
         // Получаем статистику по дням
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        const todayTransactions = await db.collection('transactions').countDocuments({
+        const todayTransactions = await dm.db.collection('transactions').countDocuments({
             userId: Number(userId),
             timestamp: { $gte: today },
             reason: 'webapp_click'
         });
+        
+        console.log(`✅ API: Статистика получена для ${userId}`);
         
         res.json({
             success: true,
@@ -176,26 +160,30 @@ router.get('/user/stats/:userId', ensureDatabaseConnection, async (req, res) => 
         });
         
     } catch (error) {
-        console.error('Ошибка получения статистики:', error);
+        console.error('❌ API: Ошибка получения статистики:', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
 });
 
 // Получение информации о пользователе
-router.get('/user/info/:userId', ensureDatabaseConnection, async (req, res) => {
+router.get('/user/info/:userId', ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
-        const db = req.db;
+        const dm = req.dataManager;
         
-        // Получаем пользователя
-        const user = await db.collection('users').findOne({ userId: Number(userId) });
+        console.log(`🔍 API: Запрос информации для пользователя ${userId}`);
+        
+        // Получаем пользователя через DataManager
+        const user = await dm.getUser(Number(userId));
         
         if (!user) {
             return res.status(404).json({ error: 'Пользователь не найден' });
         }
         
-        // Получаем количество рефералов
-        const referralCount = await db.collection('referrals').countDocuments({ referrerId: Number(userId) });
+        // Получаем количество рефералов через DataManager
+        const referralCount = await dm.db.collection('referrals').countDocuments({ referrerId: Number(userId) });
+        
+        console.log(`✅ API: Информация получена для ${userId}`);
         
         res.json({
             success: true,
@@ -215,7 +203,7 @@ router.get('/user/info/:userId', ensureDatabaseConnection, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('Ошибка получения информации о пользователе:', error);
+        console.error('❌ API: Ошибка получения информации о пользователе:', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
 });
@@ -223,20 +211,20 @@ router.get('/user/info/:userId', ensureDatabaseConnection, async (req, res) => {
 // Проверка здоровья API
 router.get('/health', (req, res) => {
     console.log('🔍 API Health check вызван');
-    console.log('🔍 API: Проверяем подключение к MongoDB...');
+    console.log('🔍 API: Проверяем подключение к DataManager...');
     
-    // Проверяем подключение к MongoDB
-    const isConnected = !!db && !!client;
-    console.log(`🔍 API: MongoDB подключен: ${isConnected}`);
+    // Проверяем подключение к DataManager
+    const isConnected = !!dataManager && dataManager.isInitialized;
+    console.log(`🔍 API: DataManager подключен: ${isConnected}`);
     
     res.json({
         success: true,
         message: 'Magnum Stars WebApp API работает!',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
-        mongodb: {
+        dataManager: {
             connected: isConnected,
-            database: db ? 'connected' : 'disconnected'
+            initialized: dataManager ? dataManager.isInitialized : false
         },
         endpoints: [
             '/api/health',
