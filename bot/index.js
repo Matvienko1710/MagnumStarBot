@@ -75,7 +75,7 @@ function initializeBot() {
 
         // Обработчик callback запросов
         logger.info('Обработчик callback зарегистрирован');
-        const callbackHandler = require('./handlers/callback');
+        const { callbackHandler } = require('./handlers/callback');
         bot.on('callback_query', safeAsync(callbackHandler));
 
         // Глобальная обработка ошибок
