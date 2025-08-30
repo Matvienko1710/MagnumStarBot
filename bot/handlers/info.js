@@ -66,24 +66,70 @@ async function handleKeyActivation(ctx, text) {
         return;
     }
     
-    // Здесь будет логика активации ключа
-    // Пока что просто имитируем успешную активацию
+    // Проверяем формат ключа (12 цифр)
+    const { validateKeyFormat, activateKey } = require('../utils/keys');
     
-    logger.info('Ключ успешно активирован', { userId, key: key.substring(0, 10) });
+    if (!validateKeyFormat(key)) {
+        await ctx.reply(
+            '❌ Неверный формат ключа!\n\n' +
+            '🔑 Ключ должен содержать ровно 12 цифр\n\n' +
+            'Попробуйте еще раз или нажмите "Отмена"'
+        );
+        return;
+    }
     
-    // Очищаем состояние
-    userStates.delete(userId);
-    
-    await ctx.reply(
-        `✅ Ключ успешно активирован!\n\n` +
-        `🎁 Получено:\n` +
-        `├ ⭐ Stars: +50\n` +
-        `└ 🪙 Magnum Coins: +25\n\n` +
-        `🔑 Ключ: ${key.substring(0, 10)}...`,
-        Markup.inlineKeyboard([
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]).reply_markup
-    );
+    try {
+        // Активируем ключ
+        const result = activateKey(key, userId);
+        
+        if (result.success) {
+            logger.info('Ключ успешно активирован', { userId, key: key.substring(0, 10) });
+            
+            // Очищаем состояние
+            userStates.delete(userId);
+            
+            const rewardText = [];
+            if (result.reward.stars > 0) {
+                rewardText.push(`⭐ Stars: +${result.reward.stars}`);
+            }
+            if (result.reward.coins > 0) {
+                rewardText.push(`🪙 Magnum Coins: +${result.reward.coins}`);
+            }
+            
+            await ctx.reply(
+                `✅ **Ключ успешно активирован!**\n\n` +
+                `🎁 Получено:\n` +
+                `${rewardText.join('\n')}\n\n` +
+                `🔑 Ключ: ${key.substring(0, 6)}...`,
+                Markup.inlineKeyboard([
+                    [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+                ]).reply_markup
+            );
+        } else {
+            await ctx.reply(
+                `❌ **Ошибка активации ключа**\n\n` +
+                `🚫 ${result.message || 'Неизвестная ошибка'}\n\n` +
+                `🔑 Попробуйте другой ключ или обратитесь к администратору`,
+                Markup.inlineKeyboard([
+                    [Markup.button.callback('🔑 Попробовать еще раз', 'activate_key')],
+                    [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+                ]).reply_markup
+            );
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка при активации ключа', error, { userId, key: key.substring(0, 10) });
+        
+        await ctx.reply(
+            `❌ **Ошибка при активации ключа**\n\n` +
+            `🚫 ${error.message || 'Неизвестная ошибка'}\n\n` +
+            `🔑 Попробуйте еще раз или обратитесь к администратору`,
+            Markup.inlineKeyboard([
+                [Markup.button.callback('🔑 Попробовать еще раз', 'activate_key')],
+                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+            ]).reply_markup
+        );
+    }
 }
 
 // Обработка создания ключа
@@ -96,65 +142,130 @@ async function handleKeyCreation(ctx, text) {
     if (!userState) return;
     
     switch (userState.currentStep) {
-        case 'description':
-            // Ввод описания ключа
-            const description = text.trim();
-            if (description.length === 0) {
-                await ctx.reply(
-                    '❌ Описание не может быть пустым!\n\n' +
-                    '💡 Введите описание ключа\n' +
-                    'Пример: Тестовый ключ для новых пользователей\n\n' +
-                    'Попробуйте еще раз или напишите "отмена" для отмены.'
-                );
-                return;
-            }
+        case 'reward_amount':
+            // Ввод количества награды
+            await handleKeyRewardAmount(ctx, text);
+            break;
             
-            userState.data.description = description;
-            
-            // Создаем ключ
-            try {
-                logger.info('Создание обычного ключа', { userId, data: userState.data });
-                
-                // Здесь будет логика создания ключа
-                const newKey = 'TEST_' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                
-                logger.info('Обычный ключ успешно создан', { userId, key: newKey });
-                
-                // Очищаем состояние
-                userStates.delete(userId);
-                
-                await ctx.reply(
-                    `✅ Ключ успешно создан!\n\n` +
-                    `🔑 Ключ: ${newKey}\n` +
-                    `📝 Описание: ${userState.data.description}\n\n` +
-                    `🎁 Награда:\n` +
-                    `├ ⭐ Stars: ${userState.data.stars}\n` +
-                    `└ 🪙 Magnum Coins: ${userState.data.coins}\n\n` +
-                    `💰 Максимум активаций: ${userState.data.maxUses}`,
-                    Markup.inlineKeyboard([
-                        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
-                    ]).reply_markup
-                );
-            } catch (error) {
-                logger.error('Ошибка создания обычного ключа', error, { userId, data: userState.data });
-                
-                // Очищаем состояние
-                userStates.delete(userId);
-                
-                await ctx.reply(
-                    `❌ Ошибка создания ключа!\n\n` +
-                    `🔍 Причина: ${error.message}`,
-                    Markup.inlineKeyboard([
-                        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
-                    ]).reply_markup
-                );
-            }
+        case 'max_uses':
+            // Ввод максимального количества активаций
+            await handleKeyMaxUses(ctx, text);
             break;
             
         default:
-            await ctx.reply('❌ Неизвестный шаг создания ключа');
+            await ctx.reply(
+                '❌ Неизвестный шаг создания ключа\n\n' +
+                '🔙 Вернитесь в админ панель и попробуйте снова',
+                Markup.inlineKeyboard([
+                    [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+                ]).reply_markup
+            );
             break;
     }
+}
+
+// Обработка ввода количества награды для ключа
+async function handleKeyRewardAmount(ctx, text) {
+    const userId = ctx.from.id;
+    
+    logger.info('Ввод количества награды для ключа', { userId, amount: text });
+    
+    const userState = userStates.get(userId);
+    if (!userState) return;
+    
+    const numAmount = parseInt(text);
+    if (isNaN(numAmount) || numAmount <= 0) {
+        await ctx.reply(
+            '❌ Неверное количество!\n\n' +
+            '💰 Введите положительное число\n\n' +
+            'Попробуйте еще раз'
+        );
+        return;
+    }
+    
+    // Сохраняем количество награды
+    if (userState.data.rewardType === 'stars') {
+        userState.data.stars = numAmount;
+    } else {
+        userState.data.coins = numAmount;
+    }
+    
+    userState.currentStep = 'max_uses';
+    
+    const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+    
+    const message = `🔑 **Создание ключа**\n\n` +
+        `🎯 Тип награды: ${rewardTypeText}\n` +
+        `💰 Количество: ${numAmount}\n\n` +
+        `🔄 Введите максимальное количество активаций ключа:\n\n` +
+        `💡 Пример: 1, 5, 10`;
+    
+    const keyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Назад', 'create_key')],
+        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+    ]);
+    
+    await ctx.reply(message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard.reply_markup
+    });
+}
+
+// Обработка ввода максимального количества активаций для ключа
+async function handleKeyMaxUses(ctx, text) {
+    const userId = ctx.from.id;
+    
+    logger.info('Ввод максимального количества активаций для ключа', { userId, maxUses: text });
+    
+    const userState = userStates.get(userId);
+    if (!userState) return;
+    
+    const numMaxUses = parseInt(text);
+    if (isNaN(numMaxUses) || numMaxUses <= 0) {
+        await ctx.reply(
+            '❌ Неверное количество активаций!\n\n' +
+            '🔄 Введите положительное число\n\n' +
+            'Попробуйте еще раз'
+        );
+        return;
+    }
+    
+    userState.data.maxUses = numMaxUses;
+    
+    // Создаем ключ
+    const { createKey } = require('../utils/keys');
+    
+    let reward;
+    if (userState.data.rewardType === 'stars') {
+        reward = { stars: userState.data.stars, coins: 0 };
+    } else {
+        reward = { stars: 0, coins: userState.data.coins };
+    }
+    
+    const keyData = createKey(userState.data.rewardType, reward, numMaxUses);
+    
+    // Очищаем состояние
+    userStates.delete(userId);
+    
+    const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+    const rewardAmount = userState.data.rewardType === 'stars' ? userState.data.stars : userState.data.coins;
+    
+    const successMessage = `✅ **Ключ успешно создан!**\n\n` +
+        `🔑 Ключ: \`${keyData.key}\`\n` +
+        `🎯 Тип: ${rewardTypeText}\n` +
+        `💰 Награда: ${rewardAmount} ${rewardTypeText}\n` +
+        `🔄 Максимум активаций: ${numMaxUses}\n\n` +
+        `📝 Скопируйте ключ и отправьте пользователям`;
+    
+    const keyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
+        [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+    ]);
+    
+    await ctx.reply(successMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard.reply_markup
+    });
 }
 
 // Обработка создания ключа титула

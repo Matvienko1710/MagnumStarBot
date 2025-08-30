@@ -70,6 +70,14 @@ async function callbackHandler(ctx) {
                 await handleMyTitles(ctx);
                 break;
                 
+            case 'key_reward_stars':
+                await handleKeyRewardType(ctx, 'stars');
+                break;
+                
+            case 'key_reward_coins':
+                await handleKeyRewardType(ctx, 'coins');
+                break;
+                
             default:
                 await ctx.reply('❌ Неизвестная команда');
                 break;
@@ -198,7 +206,7 @@ async function handleActivateKey(ctx) {
         [Markup.button.callback('🔙 Отмена', 'main_menu')]
     ]);
     
-    await ctx.reply(activateMessage, {
+    await ctx.editMessageText(activateMessage, {
         parse_mode: 'Markdown',
         reply_markup: activateKeyboard.reply_markup
     });
@@ -322,10 +330,10 @@ async function handleCreateKey(ctx) {
     // Устанавливаем состояние создания ключа
     userStates.set(userId, {
         state: 'creating_key',
-        currentStep: 'description',
+        currentStep: 'reward_type',
         data: {
-            stars: 50,
-            coins: 25,
+            stars: 0,
+            coins: 0,
             maxUses: 1
         },
         timestamp: Date.now()
@@ -334,11 +342,13 @@ async function handleCreateKey(ctx) {
     logger.userState(userId, 'set', { state: 'creating_key' });
     
     const createKeyMessage = `🔑 **Создание ключа**\n\n` +
-        `📝 Введите описание ключа:\n\n` +
-        `💡 Пример: Тестовый ключ для новых пользователей\n` +
-        `❌ Не используйте пробелы в начале и конце`;
+        `🎯 Выберите тип награды для ключа:\n\n` +
+        `⭐ Stars - валюта для вывода\n` +
+        `🪙 Magnum Coins - игровая валюта`;
     
     const createKeyKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('⭐ Stars', 'key_reward_stars')],
+        [Markup.button.callback('🪙 Magnum Coins', 'key_reward_coins')],
         [Markup.button.callback('🔙 Отмена', 'admin_panel')]
     ]);
     
