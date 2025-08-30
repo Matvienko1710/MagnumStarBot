@@ -3,44 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magnum Star WebApp</title>
+    <title>Magnum Star Bot</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Magnum Star WebApp</h1>
+        <!-- Заголовок -->
+        <header class="header">
+            <h1>⭐ Magnum Star Bot</h1>
+            <p>Платформа для заработка Stars и Magnum Coins</p>
         </header>
-        
-        <main>
-            <div class="card">
-                <h2>Добро пожаловать!</h2>
-                <p>Это Telegram WebApp для Magnum Star Bot.</p>
-                <button id="mainButton" class="button">Действие</button>
-            </div>
-            
-            <div class="features">
-                <div class="feature-item">
-                    <h3>Функция 1</h3>
-                    <p>Описание первой функции</p>
+
+        <!-- Баланс пользователя -->
+        <div class="balance-section">
+            <div class="balance-card">
+                <div class="balance-item">
+                    <span class="balance-icon">⭐</span>
+                    <div class="balance-info">
+                        <span class="balance-label">Stars</span>
+                        <span class="balance-amount" id="stars-balance">0</span>
+                    </div>
                 </div>
-                <div class="feature-item">
-                    <h3>Функция 2</h3>
-                    <p>Описание второй функции</p>
-                </div>
-                <div class="feature-item">
-                    <h3>Функция 3</h3>
-                    <p>Описание третьей функции</p>
+                <div class="balance-item">
+                    <span class="balance-icon">🪙</span>
+                    <div class="balance-info">
+                        <span class="balance-label">Magnum Coins</span>
+                        <span class="balance-amount" id="coins-balance">0</span>
+                    </div>
                 </div>
             </div>
-        </main>
-        
-        <footer>
-            <p>© 2025 Magnum Star Bot</p>
-        </footer>
+        </div>
+
+        <!-- Кнопка клика для заработка -->
+        <div class="click-section">
+            <button class="click-button" id="click-button">
+                <span class="click-icon">👆</span>
+                <span class="click-text">Кликни для заработка!</span>
+            </button>
+            <p class="click-info">Каждый клик = +1 🪙 Magnum Coin</p>
+        </div>
+
+        <!-- Основная кнопка -->
+        <div class="main-action">
+            <button class="earn-button" id="earn-button">
+                <span class="earn-icon">💰</span>
+                <span class="earn-text">Заработать</span>
+            </button>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-icon">📊</span>
+                    <span class="stat-value" id="total-clicks">0</span>
+                    <span class="stat-label">Всего кликов</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">⏰</span>
+                    <span class="stat-value" id="clicks-today">0</span>
+                    <span class="stat-label">Кликов сегодня</span>
+                </div>
+            </div>
+        </div>
     </div>
-    
+
     <script src="script.js"></script>
 </body>
 </html>
