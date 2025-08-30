@@ -10,7 +10,7 @@ const inlineKeyboard = (isAdmin = false) => {
     [Markup.button.callback('👤 Профиль', 'profile')],
     [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
     [Markup.button.callback('⛏️ Майнеры', 'miners')],
-    [Markup.button.callback('👑 Титулы', 'titles')]
+    [Markup.button.callback('💰 Вывести звезды', 'withdraw_stars')]
   ];
   
   // Добавляем кнопки админа только если пользователь является администратором
@@ -29,7 +29,7 @@ const inlineKeyboardWithBack = (isAdmin = false) => {
     [Markup.button.callback('👤 Профиль', 'profile')],
     [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
     [Markup.button.callback('⛏️ Майнеры', 'miners')],
-    [Markup.button.callback('👑 Титулы', 'titles')]
+    [Markup.button.callback('💰 Вывести звезды', 'withdraw_stars')]
   ];
   
   // Добавляем кнопки админа только если пользователь является администратором
@@ -86,12 +86,24 @@ const buyMinerKeyboard = () => {
   ]);
 };
 
+// Клавиатура для профиля
+const profileKeyboard = (isAdmin = false) => {
+  const buttons = [
+    [Markup.button.callback('👑 Титулы', 'titles')],
+    [Markup.button.callback('📊 Статистика', 'profile_stats')],
+    [Markup.button.callback('🔙 Назад', 'back')],
+    [Markup.button.callback('🏠 В главное меню', 'main_menu')]
+  ];
+  
+  return Markup.inlineKeyboard(buttons);
+};
+
 // Клавиатура для титулов
 const titlesKeyboard = () => {
   return Markup.inlineKeyboard([
     [Markup.button.callback('👑 Сменить титул', 'change_title')],
     [Markup.button.callback('📊 Мои титулы', 'my_titles')],
-    [Markup.button.callback('🔙 Назад', 'back')],
+    [Markup.button.callback('🔙 Назад к профилю', 'profile')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
   ]);
 };
@@ -110,6 +122,17 @@ const changeTitleKeyboard = (unlockedTitles, currentTitleId) => {
   return Markup.inlineKeyboard(buttons);
 };
 
+// Клавиатура для вывода звезд
+const withdrawKeyboard = () => {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('💰 Вывести все звезды', 'withdraw_all_stars')],
+    [Markup.button.callback('💳 Указать сумму', 'withdraw_custom_amount')],
+    [Markup.button.callback('📊 История выводов', 'withdraw_history')],
+    [Markup.button.callback('🔙 Назад', 'back')],
+    [Markup.button.callback('🏠 В главное меню', 'main_menu')]
+  ]);
+};
+
 module.exports = {
   inlineKeyboard,
   inlineKeyboardWithBack,
@@ -118,5 +141,7 @@ module.exports = {
   minersKeyboard,
   buyMinerKeyboard,
   titlesKeyboard,
-  changeTitleKeyboard
+  changeTitleKeyboard,
+  profileKeyboard,
+  withdrawKeyboard
 };

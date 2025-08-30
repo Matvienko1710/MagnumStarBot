@@ -1,4 +1,4 @@
-const { inlineKeyboard } = require('../keyboards/inline');
+const { inlineKeyboard, profileKeyboard, withdrawKeyboard } = require('../keyboards/inline');
 const { isAdmin } = require('../utils/admin');
 const { activateKey, getUserKeyHistory, createKey } = require('../utils/keys');
 const { getUserMiners, getAvailableRewards, buyMiner, collectRewards, getMinersStats, getMinerTypes } = require('../utils/miners');
@@ -270,6 +270,55 @@ module.exports = (bot) => {
       return;
     }
     
+    if (userState && userState.state === 'waiting_for_withdraw_amount') {
+      // Пользователь вводит сумму для вывода
+      if (text.toLowerCase() === 'отмена') {
+        userStates.delete(userId);
+        await ctx.reply('❌ Вывод звезд отменен.', inlineKeyboard(adminStatus));
+        return;
+      }
+      
+      const amount = parseInt(text);
+      if (isNaN(amount) || amount < 10) {
+        await ctx.reply(
+          '❌ Неверная сумма!\n\n' +
+          '💡 Введите число больше или равное 10\n' +
+          'Пример: 100\n\n' +
+          'Попробуйте еще раз или напишите "отмена" для отмены.',
+          withdrawKeyboard()
+        );
+        return;
+      }
+      
+      const userBalance = getUserBalance(userId);
+      if (amount > userBalance.stars) {
+        await ctx.reply(
+          '❌ Недостаточно звезд!\n\n' +
+          `💎 Ваш баланс: ${userBalance.stars} ⭐\n` +
+          `💰 Запрошенная сумма: ${amount} ⭐\n\n` +
+          'Попробуйте еще раз или напишите "отмена" для отмены.',
+          withdrawKeyboard()
+        );
+        return;
+      }
+      
+      // Очищаем состояние
+      userStates.delete(userId);
+      
+      await ctx.reply(
+        `💰 Заявка на вывод создана!
+
+💎 Сумма к выводу: ${amount} ⭐
+💳 Способ вывода: Банковская карта
+⏰ Время обработки: 1-3 рабочих дня
+
+✅ Ваша заявка принята в обработку!
+📞 Для уточнения деталей обратитесь к администратору.`,
+        inlineKeyboard(adminStatus)
+      );
+      return;
+    }
+    
     if (userState && userState.state === 'creating_key') {
       // Админ создает ключ
       if (text.toLowerCase() === 'отмена') {
@@ -458,7 +507,7 @@ module.exports = (bot) => {
 ├ Активировано ключей: ${keyHistory.length}
 └ Последний вход: Сегодня`;
         
-        await ctx.reply(profileMessage, inlineKeyboard(adminStatus));
+        await ctx.reply(profileMessage, profileKeyboard(adminStatus));
         break;
         
       case 'ключ':
@@ -777,6 +826,29 @@ ${unlockedTitles.map(title =>
             inlineKeyboard(adminStatus)
           );
         }
+        break;
+        
+      case 'вывести звезды':
+      case 'withdraw stars':
+      case 'вывод':
+      case 'withdraw':
+        const withdrawBalance = getUserBalance(userId);
+        
+        const withdrawTextMessage = `💰 Вывод звезд:
+
+💎 Ваш баланс: ${withdrawBalance.stars} ⭐
+
+Выберите способ вывода:
+
+💳 Указать сумму - вывести определенное количество звезд
+💰 Вывести все - вывести весь доступный баланс
+📊 История - посмотреть историю выводов
+
+⚠️ Минимальная сумма для вывода: 10 ⭐
+
+💡 Используйте кнопки в меню для удобной навигации!`;
+        
+        await ctx.reply(withdrawTextMessage, inlineKeyboard(adminStatus));
         break;
         
       default:

@@ -1,4 +1,4 @@
-const { inlineKeyboard, inlineKeyboardWithBack, adminPanelKeyboard, createKeyKeyboard, minersKeyboard, buyMinerKeyboard, titlesKeyboard, changeTitleKeyboard } = require('../keyboards/inline');
+const { inlineKeyboard, inlineKeyboardWithBack, adminPanelKeyboard, createKeyKeyboard, minersKeyboard, buyMinerKeyboard, titlesKeyboard, changeTitleKeyboard, profileKeyboard, withdrawKeyboard } = require('../keyboards/inline');
 const { generateUserProfile } = require('../utils/profile');
 const { getUserBalance, getUserStats, getTransactionHistory } = require('../utils/currency');
 const { isAdmin, getAdminStats, getBotStats } = require('../utils/admin');
@@ -53,7 +53,7 @@ module.exports = (bot) => {
 ├ Активировано ключей: ${keyHistory.length}
 └ Последний вход: Сегодня`;
         
-        await ctx.editMessageText(profileMessage, inlineKeyboardWithBack(adminStatus));
+        await ctx.editMessageText(profileMessage, profileKeyboard(adminStatus));
         break;
       
       case 'titles':
@@ -464,6 +464,79 @@ ${myMinersStats.miners.length > 0 ?
             titlesKeyboard()
           );
         }
+        break;
+      
+      case 'withdraw_stars':
+        await ctx.answerCbQuery();
+        const userBalance = getUserBalance(userId);
+        
+        const withdrawMessage = `💰 Вывод звезд:
+
+💎 Ваш баланс: ${userBalance.stars} ⭐
+
+Выберите способ вывода:
+
+💳 Указать сумму - вывести определенное количество звезд
+💰 Вывести все - вывести весь доступный баланс
+📊 История - посмотреть историю выводов
+
+⚠️ Минимальная сумма для вывода: 10 ⭐`;
+        
+        await ctx.editMessageText(withdrawMessage, withdrawKeyboard());
+        break;
+      
+      case 'withdraw_all_stars':
+        await ctx.answerCbQuery();
+        const allBalance = getUserBalance(userId);
+        
+        if (allBalance.stars < 10) {
+          await ctx.editMessageText(
+            '❌ Недостаточно звезд для вывода!\n\n' +
+            '⚠️ Минимальная сумма для вывода: 10 ⭐\n' +
+            `💎 Ваш баланс: ${allBalance.stars} ⭐`,
+            withdrawKeyboard()
+          );
+          return;
+        }
+        
+        await ctx.editMessageText(
+          `💰 Вывод всех звезд:
+
+💎 Сумма к выводу: ${allBalance.stars} ⭐
+💳 Способ вывода: Банковская карта
+⏰ Время обработки: 1-3 рабочих дня
+
+⚠️ Для подтверждения вывода напишите "подтвердить"`,
+          withdrawKeyboard()
+        );
+        break;
+      
+      case 'withdraw_custom_amount':
+        await ctx.answerCbQuery();
+        
+        // Устанавливаем состояние ожидания ввода суммы
+        userStates.set(userId, { state: 'waiting_for_withdraw_amount', timestamp: Date.now() });
+        
+        await ctx.editMessageText(
+          '💰 Вывод звезд:\n\n' +
+          'Введите сумму для вывода:\n\n' +
+          '💡 Пример: 100\n' +
+          '⚠️ Минимальная сумма: 10 ⭐\n' +
+          '❌ Для отмены напишите "отмена"',
+          withdrawKeyboard()
+        );
+        break;
+      
+      case 'withdraw_history':
+        await ctx.answerCbQuery();
+        
+        const historyMessage = `📊 История выводов:
+
+У вас пока нет истории выводов.
+
+💡 После первого вывода здесь появится информация о всех операциях.`;
+        
+        await ctx.editMessageText(historyMessage, withdrawKeyboard());
         break;
       
       case 'main_menu':
