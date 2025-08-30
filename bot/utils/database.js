@@ -214,9 +214,9 @@ class Database {
             }
 
             console.log('🔧 Инициализация коллекций...');
-            console.log('✅ Версия кода: 2.0 - исправлена ошибка с пустыми индексами');
+            console.log('✅ Версия кода: 3.0 - полностью переписана функция инициализации');
 
-            // Создаем коллекции и индексы
+            // Список коллекций для создания
             const collections = [
                 'users',
                 'keys', 
@@ -228,79 +228,120 @@ class Database {
                 'minerTypes'
             ];
 
+            console.log(`📋 Создание ${collections.length} коллекций...`);
+
             for (const collectionName of collections) {
-                const collection = this.db.collection(collectionName);
-                
-                console.log(`🔍 Проверка коллекции: ${collectionName}`);
-                
-                // Проверяем, существует ли коллекция
-                const collectionExists = await this.db.listCollections({ name: collectionName }).hasNext();
-                
-                if (!collectionExists) {
-                    // Создаем коллекцию с одним документом и сразу удаляем его
-                    console.log(`📝 Создание коллекции ${collectionName} через временный документ...`);
-                    await collection.insertOne({ _temp: true });
-                    await collection.deleteOne({ _temp: true });
-                    console.log(`✅ Коллекция ${collectionName} создана`);
-                } else {
-                    console.log(`✅ Коллекция ${collectionName} уже существует`);
+                try {
+                    console.log(`🔍 Обработка коллекции: ${collectionName}`);
+                    
+                    const collection = this.db.collection(collectionName);
+                    
+                    // Проверяем, существует ли коллекция
+                    const collectionExists = await this.db.listCollections({ name: collectionName }).hasNext();
+                    
+                    if (!collectionExists) {
+                        console.log(`📝 Коллекция ${collectionName} не существует, создаем...`);
+                        
+                        // Создаем коллекцию через временный документ
+                        const tempDoc = { 
+                            _temp: true, 
+                            createdAt: new Date(),
+                            collectionName: collectionName 
+                        };
+                        
+                        await collection.insertOne(tempDoc);
+                        console.log(`✅ Временный документ вставлен в ${collectionName}`);
+                        
+                        await collection.deleteOne(tempDoc);
+                        console.log(`✅ Временный документ удален из ${collectionName}`);
+                        
+                        console.log(`✅ Коллекция ${collectionName} успешно создана`);
+                    } else {
+                        console.log(`✅ Коллекция ${collectionName} уже существует`);
+                    }
+                    
+                } catch (collectionError) {
+                    console.error(`❌ Ошибка при работе с коллекцией ${collectionName}:`, collectionError.message);
+                    // Продолжаем с другими коллекциями
                 }
             }
 
+            console.log('🔧 Создание индексов...');
+            
             // Создаем специальные индексы
             await this.createIndexes();
             
             console.log('✅ Все коллекции инициализированы');
             
         } catch (error) {
-            console.error('❌ Ошибка инициализации коллекций:', error.message);
+            console.error('❌ Критическая ошибка инициализации коллекций:', error.message);
+            console.error('🔍 Детали ошибки:', error);
             throw error;
         }
     }
 
     async createIndexes() {
         try {
+            console.log('🔧 Начинаем создание индексов...');
+            
             // Индексы для users
+            console.log('📊 Создание индексов для users...');
             const usersCollection = this.db.collection('users');
             await usersCollection.createIndex({ userId: 1 }, { unique: true, background: true });
             await usersCollection.createIndex({ username: 1 }, { sparse: true, background: true });
+            console.log('✅ Индексы для users созданы');
 
             // Индексы для keys
+            console.log('📊 Создание индексов для keys...');
             const keysCollection = this.db.collection('keys');
             await keysCollection.createIndex({ key: 1 }, { unique: true, background: true });
             await keysCollection.createIndex({ isUsed: 1 }, { background: true });
+            console.log('✅ Индексы для keys созданы');
 
             // Индексы для miners
+            console.log('📊 Создание индексов для miners...');
             const minersCollection = this.db.collection('miners');
             await minersCollection.createIndex({ userId: 1 }, { background: true });
             await minersCollection.createIndex({ type: 1 }, { background: true });
+            console.log('✅ Индексы для miners созданы');
 
             // Индексы для transactions
+            console.log('📊 Создание индексов для transactions...');
             const transactionsCollection = this.db.collection('transactions');
             await transactionsCollection.createIndex({ userId: 1 }, { background: true });
             await transactionsCollection.createIndex({ timestamp: 1 }, { background: true });
+            console.log('✅ Индексы для transactions созданы');
 
             // Индексы для referrals
+            console.log('📊 Создание индексов для referrals...');
             const referralsCollection = this.db.collection('referrals');
             await referralsCollection.createIndex({ userId: 1 }, { unique: true, background: true });
             await referralsCollection.createIndex({ referrerId: 1 }, { background: true });
+            console.log('✅ Индексы для referrals созданы');
 
             // Индексы для userTitles
+            console.log('📊 Создание индексов для userTitles...');
             const userTitlesCollection = this.db.collection('userTitles');
             await userTitlesCollection.createIndex({ userId: 1 }, { unique: true, background: true });
+            console.log('✅ Индексы для userTitles созданы');
 
             // Индексы для titles
+            console.log('📊 Создание индексов для titles...');
             const titlesCollection = this.db.collection('titles');
             await titlesCollection.createIndex({ id: 1 }, { unique: true, background: true });
+            console.log('✅ Индексы для titles созданы');
 
             // Индексы для minerTypes
+            console.log('📊 Создание индексов для minerTypes...');
             const minerTypesCollection = this.db.collection('minerTypes');
             await minerTypesCollection.createIndex({ id: 1 }, { unique: true, background: true });
+            console.log('✅ Индексы для minerTypes созданы');
 
-            console.log('✅ Все индексы созданы');
+            console.log('✅ Все индексы успешно созданы');
             
         } catch (error) {
             console.error('❌ Ошибка создания индексов:', error.message);
+            console.error('🔍 Детали ошибки:', error);
             throw error;
         }
     }
