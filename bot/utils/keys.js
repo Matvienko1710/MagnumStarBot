@@ -2,18 +2,19 @@
 
 const logger = require('./logger');
 
-// Генерация уникального ключа из 12 цифр
+// Генерация уникального ключа из 16 символов (буквы и цифры)
 function generateKey() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let key = '';
-    for (let i = 0; i < 12; i++) {
-        key += Math.floor(Math.random() * 10);
+    for (let i = 0; i < 16; i++) {
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return key;
 }
 
-// Проверка формата ключа (12 цифр)
+// Проверка формата ключа (16 символов: буквы и цифры)
 function validateKeyFormat(key) {
-    return /^\d{12}$/.test(key);
+    return /^[A-Z0-9]{16}$/.test(key);
 }
 
 // Создание нового ключа
@@ -38,7 +39,7 @@ function createKey(type, reward, maxUses = 1) {
     }
     
     logger.info('Создан новый ключ', { 
-        key: key.substring(0, 6) + '...', 
+        key: key.substring(0, 8) + '...', 
         type, 
         reward: JSON.stringify(reward),
         maxUses 
@@ -53,7 +54,7 @@ function activateKey(key, userId) {
     // Пока что возвращаем заглушку
     
     logger.info('Попытка активации ключа', { 
-        key: key.substring(0, 6) + '...', 
+        key: key.substring(0, 8) + '...', 
         userId 
     });
     
