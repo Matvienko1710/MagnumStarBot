@@ -278,15 +278,48 @@ const getRarityInfo = (rarity) => {
   return rarityInfo[rarity] || rarityInfo.common;
 };
 
+// Получить майнер по странице (для постраничного показа)
+const getMinerByPage = (page) => {
+  const minerIds = Object.keys(MINER_TYPES);
+  const totalPages = minerIds.length;
+  
+  if (page < 1 || page > totalPages) {
+    return null;
+  }
+  
+  const minerId = minerIds[page - 1];
+  const minerType = MINER_TYPES[minerId];
+  const rarityInfo = getRarityInfo(minerType.rarity);
+  const priceSymbol = minerType.priceType === 'stars' ? '⭐' : '🪙';
+  const rewardSymbol = minerType.rewardType === 'stars' ? '⭐' : '🪙';
+  
+  return {
+    ...minerType,
+    page,
+    totalPages,
+    rarityInfo,
+    priceSymbol,
+    rewardSymbol,
+    availableOnServer: serverMinerCounts[minerId] || 0
+  };
+};
+
+// Получить общее количество страниц майнеров
+const getTotalMinerPages = () => {
+  return Object.keys(MINER_TYPES).length;
+};
+
 module.exports = {
   getUserMiners,
   getAvailableRewards,
   buyMiner,
   collectRewards,
   getMinersStats,
-  getMinerTypes,
   getMinerType,
+  getMinerTypes,
   getServerMinerCounts,
   getRarityInfo,
+  getMinerByPage,
+  getTotalMinerPages,
   MINER_TYPES
 };

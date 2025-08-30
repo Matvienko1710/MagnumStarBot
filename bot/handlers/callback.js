@@ -51,7 +51,7 @@ module.exports = (bot, safeAsync) => {
        ├ Реферальный код: ${referralStats.referralCode}
        ├ Рефералы: ${referralStats.totalReferrals}
        ├ Активные рефералы: ${referralStats.activeReferrals}
-       ├ Заработано: ${referralStats.totalEarned.stars} ⭐ ${referralStats.totalEarned.coins} 🪙
+               ├ Заработано: ${referralStats.totalEarned.stars} ⭐
        ├ Уровень: ${levelInfo.name} (${referralStats.level})
        └ ${nextLevel ? `До следующего уровня: ${nextLevel.requirement - referralStats.totalEarned.stars} ⭐` : 'Максимальный уровень!'}
        
@@ -326,26 +326,82 @@ ${minersStats.miners.map(miner => {
       
       case 'buy_miner':
         await ctx.answerCbQuery();
-        const minerTypes = getMinerTypes();
+        const { getMinerByPage } = require('../utils/miners');
+        const firstMiner = getMinerByPage(1);
         
         const buyMinerMessage = `⛏️ Покупка майнера:
 
-Выберите тип майнера для покупки:
+${firstMiner.rarityInfo.color} **${firstMiner.name}** (${firstMiner.rarityInfo.name})
 
-${minerTypes.map(type => {
+💰 **Цена:** ${firstMiner.price} ${firstMiner.priceSymbol}
+⚡ **Доход/мин:** ${firstMiner.rewardPerMinute} ${firstMiner.rewardSymbol}
+📈 **Максимум:** ${firstMiner.maxReward} ${firstMiner.rewardSymbol}
+🎯 **Доступно на сервере:** ${firstMiner.availableOnServer} шт
+📝 **${firstMiner.description}**
+
+💡 Используйте кнопки навигации для просмотра всех майнеров!`;
+        
+        await ctx.editMessageText(buyMinerMessage, buyMinerKeyboard(1));
+        break;
+      
+      // Обработка постраничной навигации майнеров
+      case (() => {
+        const match = callbackData.match(/^miner_page_(\d+)$/);
+        return match ? match[1] : null;
+      })():
+        if (callbackData.startsWith('miner_page_')) {
+          await ctx.answerCbQuery();
+          const page = parseInt(callbackData.replace('miner_page_', ''));
+          const { getMinerByPage } = require('../utils/miners');
+          const miner = getMinerByPage(page);
+          
+          if (!miner) {
+            await ctx.editMessageText(
+              '❌ Страница не найдена!',
+              buyMinerKeyboard(1)
+            );
+            return;
+          }
+          
+          const minerMessage = `⛏️ Покупка майнера:
+
+${miner.rarityInfo.color} **${miner.name}** (${miner.rarityInfo.name})
+
+💰 **Цена:** ${miner.price} ${miner.priceSymbol}
+⚡ **Доход/мин:** ${miner.rewardPerMinute} ${miner.rewardSymbol}
+📈 **Максимум:** ${miner.maxReward} ${miner.rewardSymbol}
+🎯 **Доступно на сервере:** ${miner.availableOnServer} шт
+📝 **${miner.description}**
+
+💡 Используйте кнопки навигации для просмотра всех майнеров!`;
+          
+          await ctx.editMessageText(minerMessage, buyMinerKeyboard(page));
+        }
+        break;
+      
+      case 'miner_info':
+        await ctx.answerCbQuery();
+        const { getMinerTypes } = require('../utils/miners');
+        const allMinerTypes = getMinerTypes();
+        
+        const infoMessage = `📋 **Все доступные майнеры:**
+
+${allMinerTypes.map((type, index) => {
   const { getRarityInfo } = require('../utils/miners');
   const rarityInfo = getRarityInfo(type.rarity);
   const priceSymbol = type.priceType === 'stars' ? '⭐' : '🪙';
   const rewardSymbol = type.rewardType === 'stars' ? '⭐' : '🪙';
-  return `🔸 ${rarityInfo.color} ${type.name} (${rarityInfo.name})
-  ├ 💰 Цена: ${type.price} ${priceSymbol}
-  ├ ⚡ Доход/мин: ${type.rewardPerMinute} ${rewardSymbol}
-  ├ 📈 Максимум: ${type.maxReward} ${rewardSymbol}
-  ├ 🎯 Доступно на сервере: ${type.availableOnServer} шт
-  └ 📝 ${type.description}`;
-}).join('\n\n')}`;
+  return `${index + 1}. ${rarityInfo.color} **${type.name}** (${rarityInfo.name})
+   ├ 💰 Цена: ${type.price} ${priceSymbol}
+   ├ ⚡ Доход/мин: ${type.rewardPerMinute} ${rewardSymbol}
+   ├ 📈 Максимум: ${type.maxReward} ${rewardSymbol}
+   ├ 🎯 Доступно: ${type.availableOnServer} шт
+   └ 📝 ${type.description}`;
+}).join('\n\n')}
+
+💡 Используйте кнопки навигации для просмотра каждого майнера отдельно!`;
         
-        await ctx.editMessageText(buyMinerMessage, buyMinerKeyboard());
+        await ctx.editMessageText(infoMessage, buyMinerKeyboard(1));
         break;
       
       case 'buy_novice_miner':
@@ -565,13 +621,13 @@ ${collectedText}
         const userReferralStats = getReferralStats(userId);
         const userLevelInfo = getLevelInfo(userReferralStats.level);
         
-        const referralsMessage = `👥 Реферальная система:
+                 const referralsMessage = `👥 Реферальная система:
 
 📊 Ваша статистика
 ├ Реферальный код: ${userReferralStats.referralCode}
 ├ Всего рефералов: ${userReferralStats.totalReferrals}
 ├ Активных рефералов: ${userReferralStats.activeReferrals}
-        ├ Заработано: ${userReferralStats.totalEarned.stars} ⭐ ${userReferralStats.totalEarned.coins} 🪙
+        ├ Заработано: ${userReferralStats.totalEarned.stars} ⭐
         └ Текущий уровень: ${userLevelInfo.name} (${userReferralStats.level})
 
 💡 Приглашайте друзей и получайте награды за их активность!`;
@@ -583,7 +639,7 @@ ${collectedText}
         await ctx.answerCbQuery();
         const userReferralCode = getUserReferralCode(userId);
         
-        const referralCodeMessage = `🔗 Ваш реферальный код:
+                 const referralCodeMessage = `🔗 Ваш реферальный код:
 
 📝 Код: \`${userReferralCode}\`
 
@@ -592,11 +648,11 @@ ${collectedText}
 • Они должны написать "реферал ${userReferralCode}"
 • Вы получите награды за их активность
 
-💰 Награды:
-• За регистрацию: 50 ⭐ + 100 🪙
-• За покупку майнера: 10 ⭐ + 20 🪙
-• За активацию ключа: 5 ⭐ + 10 🪙
-• За сбор наград: 3 ⭐ + 7 🪙
+💰 Награды (только Stars):
+• За регистрацию: 50 ⭐
+• За покупку майнера: 10 ⭐
+• За активацию ключа: 5 ⭐
+• За сбор наград: 3 ⭐
 
 📱 Поделитесь кодом: \`${userReferralCode}\``;
         
@@ -617,18 +673,18 @@ ${collectedText}
           return;
         }
         
-                 const myReferralsMessage = `👥 Ваши рефералы:
- 
-       📊 Всего рефералов: ${userReferrals.length}
- 
-       ${userReferrals.map((ref, index) => 
-         `${index + 1}. ID: ${ref.userId}
-          ├ Уровень: ${ref.level}
-          ├ Заработано: ${ref.totalEarned.stars} ⭐ ${ref.totalEarned.coins} 🪙
-          └ Присоединился: ${ref.joinedAt.toLocaleDateString('ru-RU')}`
-       ).join('\n\n')}
- 
-       💰 Вы заработали: ${getReferralStats(userId).totalEarned.stars} ⭐ ${getReferralStats(userId).totalEarned.coins} 🪙`;
+                                   const myReferralsMessage = `👥 Ваши рефералы:
+
+        📊 Всего рефералов: ${userReferrals.length}
+
+        ${userReferrals.map((ref, index) => 
+          `${index + 1}. ID: ${ref.userId}
+           ├ Уровень: ${ref.level}
+           ├ Заработано: ${ref.totalEarned.stars} ⭐
+           └ Присоединился: ${ref.joinedAt.toLocaleDateString('ru-RU')}`
+        ).join('\n\n')}
+
+        💰 Вы заработали: ${getReferralStats(userId).totalEarned.stars} ⭐`;
         
         await ctx.editMessageText(myReferralsMessage, referralsKeyboard());
         break;
@@ -646,13 +702,13 @@ ${collectedText}
           return;
         }
         
-        const topReferrersMessage = `🏆 Топ рефералов:
+                 const topReferrersMessage = `🏆 Топ рефералов:
 
 ${topReferrers.map((ref, index) => {
   const refLevelInfo = getLevelInfo(ref.level);
   return `${index + 1}. ID: ${ref.userId}
    ├ Рефералов: ${ref.totalReferrals}
-   ├ Заработано: ${ref.totalEarned.stars} ⭐ ${ref.totalEarned.coins} 🪙
+   ├ Заработано: ${ref.totalEarned.stars} ⭐
    └ Уровень: ${refLevelInfo.name} (${ref.level})`;
 }).join('\n\n')}`;
         
@@ -676,10 +732,10 @@ ${Array.from({length: 10}, (_, i) => i + 1).map(level => {
   else if (isCompleted) status = ' ✅ Достигнут';
   else status = ` ❌ Нужно: ${levelData.requirement - referralStats.totalEarned.stars} ⭐`;
   
-  return `${level}. ${levelData.name}
-   ├ Требование: ${levelData.requirement} ⭐
-   ├ Бонус: ${levelData.bonus.stars} ⭐ ${levelData.bonus.coins} 🪙
-   └ ${status}`;
+     return `${level}. ${levelData.name}
+    ├ Требование: ${levelData.requirement} ⭐
+    ├ Бонус: ${levelData.bonus.stars} ⭐
+    └ ${status}`;
 }).join('\n\n')}`;
         
         if (nextLevelInfo) {

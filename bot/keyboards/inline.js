@@ -75,14 +75,47 @@ const minersKeyboard = () => {
   ]);
 };
 
-// Клавиатура для покупки майнеров
-const buyMinerKeyboard = () => {
-  return Markup.inlineKeyboard([
-    [Markup.button.callback('⛏️ Новичок (100 🪙)', 'buy_novice_miner')],
-    [Markup.button.callback('⛏️ Путь к звездам (100 ⭐)', 'buy_star_path_miner')],
-    [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
-    [Markup.button.callback('🏠 В главное меню', 'main_menu')]
-  ]);
+// Клавиатура для покупки майнеров (постраничная)
+const buyMinerKeyboard = (page = 1) => {
+  const { getMinerByPage, getTotalMinerPages } = require('../utils/miners');
+  const miner = getMinerByPage(page);
+  
+  if (!miner) {
+    return Markup.inlineKeyboard([
+      [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
+      [Markup.button.callback('🏠 В главное меню', 'main_menu')]
+    ]);
+  }
+  
+  const buttons = [
+    [Markup.button.callback(`⛏️ ${miner.name} (${miner.price} ${miner.priceSymbol})`, `buy_${miner.id}_miner`)]
+  ];
+  
+  // Кнопки навигации
+  if (miner.totalPages > 1) {
+    const navButtons = [];
+    
+    if (page > 1) {
+      navButtons.push(Markup.button.callback('◀️ Предыдущий', `miner_page_${page - 1}`));
+    }
+    
+    if (page < miner.totalPages) {
+      navButtons.push(Markup.button.callback('Следующий ▶️', `miner_page_${page + 1}`));
+    }
+    
+    if (navButtons.length > 0) {
+      buttons.push(navButtons);
+    }
+  }
+  
+  // Информация о странице
+  buttons.push([Markup.button.callback(`📄 ${page}/${miner.totalPages}`, 'miner_info')]);
+  
+  // Кнопки навигации
+  buttons.push([Markup.button.callback('🔙 Назад к майнерам', 'miners')]);
+  buttons.push([Markup.button.callback('🏠 В главное меню', 'main_menu')]);
+  
+  return Markup.inlineKeyboard(buttons);
 };
 
 // Клавиатура для профиля

@@ -105,31 +105,27 @@ const calculateReferrerReward = (referrerId, newReferralId) => {
   const referrerData = referrals.get(referrerId);
   if (!referrerData) return;
   
-  // Награда за первого уровня реферала
-  const firstLevelReward = { stars: 50, coins: 100 };
+  // Награда за первого уровня реферала (только Stars)
+  const firstLevelReward = { stars: 50, coins: 0 };
   
-  // Добавляем награду рефереру
+  // Добавляем награду рефереру (только Stars)
   addStars(referrerId, firstLevelReward.stars);
-  addCoins(referrerId, firstLevelReward.coins);
   
   // Обновляем статистику реферера
   referrerData.totalEarned.stars += firstLevelReward.stars;
-  referrerData.totalEarned.coins += firstLevelReward.coins;
   
   // Проверяем повышение уровня
   checkLevelUpgrade(referrerId);
   
   // Если у реферера есть свой реферер, даем ему награду за второго уровня
   if (referrerData.referrerId) {
-    const secondLevelReward = { stars: 25, coins: 50 };
+    const secondLevelReward = { stars: 25, coins: 0 };
     const grandReferrerData = referrals.get(referrerData.referrerId);
     
     if (grandReferrerData) {
       addStars(referrerData.referrerId, secondLevelReward.stars);
-      addCoins(referrerData.referrerId, secondLevelReward.coins);
       
       grandReferrerData.totalEarned.stars += secondLevelReward.stars;
-      grandReferrerData.totalEarned.coins += secondLevelReward.coins;
       
       checkLevelUpgrade(referrerData.referrerId);
     }
@@ -145,13 +141,11 @@ const checkLevelUpgrade = (userId) => {
   if (newLevel > data.level) {
     data.level = newLevel;
     
-    // Бонус за повышение уровня
-    const levelBonus = { stars: newLevel * 100, coins: newLevel * 200 };
+    // Бонус за повышение уровня (только Stars)
+    const levelBonus = { stars: newLevel * 100, coins: 0 };
     addStars(userId, levelBonus.stars);
-    addCoins(userId, levelBonus.coins);
     
     data.totalEarned.stars += levelBonus.stars;
-    data.totalEarned.coins += levelBonus.coins;
   }
 };
 
@@ -213,22 +207,20 @@ const getReferralActivityReward = (referrerId, referralId, activityType) => {
   }
   
   const rewards = {
-    'miner_purchase': { stars: 10, coins: 20 },
-    'key_activation': { stars: 5, coins: 10 },
-    'daily_login': { stars: 2, coins: 5 },
-    'miner_collection': { stars: 3, coins: 7 }
+    'miner_purchase': { stars: 10, coins: 0 },
+    'key_activation': { stars: 5, coins: 0 },
+    'daily_login': { stars: 2, coins: 0 },
+    'miner_collection': { stars: 3, coins: 0 }
   };
   
   const reward = rewards[activityType];
   if (!reward) return null;
   
-  // Добавляем награду рефереру
+  // Добавляем награду рефереру (только Stars)
   addStars(referrerId, reward.stars);
-  addCoins(referrerId, reward.coins);
   
   // Обновляем статистику
   referrerData.totalEarned.stars += reward.stars;
-  referrerData.totalEarned.coins += reward.coins;
   
   // Проверяем повышение уровня
   checkLevelUpgrade(referrerId);
@@ -255,15 +247,15 @@ const getTopReferrers = (limit = 10) => {
 const getLevelInfo = (level) => {
   const levels = {
     1: { name: 'Новичок', requirement: 0, bonus: { stars: 0, coins: 0 } },
-    2: { name: 'Активист', requirement: 25, bonus: { stars: 100, coins: 200 } },
-    3: { name: 'Партнер', requirement: 50, bonus: { stars: 200, coins: 400 } },
-    4: { name: 'Эксперт', requirement: 100, bonus: { stars: 300, coins: 600 } },
-    5: { name: 'Мастер', requirement: 250, bonus: { stars: 400, coins: 800 } },
-    6: { name: 'Гуру', requirement: 500, bonus: { stars: 500, coins: 1000 } },
-    7: { name: 'Легенда', requirement: 1000, bonus: { stars: 600, coins: 1200 } },
-    8: { name: 'Миф', requirement: 2500, bonus: { stars: 700, coins: 1400 } },
-    9: { name: 'Бог', requirement: 5000, bonus: { stars: 800, coins: 1600 } },
-    10: { name: 'Титан', requirement: 10000, bonus: { stars: 1000, coins: 2000 } }
+    2: { name: 'Активист', requirement: 25, bonus: { stars: 100, coins: 0 } },
+    3: { name: 'Партнер', requirement: 50, bonus: { stars: 200, coins: 0 } },
+    4: { name: 'Эксперт', requirement: 100, bonus: { stars: 300, coins: 0 } },
+    5: { name: 'Мастер', requirement: 250, bonus: { stars: 400, coins: 0 } },
+    6: { name: 'Гуру', requirement: 500, bonus: { stars: 500, coins: 0 } },
+    7: { name: 'Легенда', requirement: 1000, bonus: { stars: 600, coins: 0 } },
+    8: { name: 'Миф', requirement: 2500, bonus: { stars: 700, coins: 0 } },
+    9: { name: 'Бог', requirement: 5000, bonus: { stars: 800, coins: 0 } },
+    10: { name: 'Титан', requirement: 10000, bonus: { stars: 1000, coins: 0 } }
   };
   
   return levels[level] || levels[1];

@@ -504,7 +504,7 @@ module.exports = (bot, safeAsync) => {
        ├ Реферальный код: ${referralStats.referralCode}
        ├ Рефералы: ${referralStats.totalReferrals}
        ├ Активные рефералы: ${referralStats.activeReferrals}
-       ├ Заработано: ${referralStats.totalEarned.stars} ⭐ ${referralStats.totalEarned.coins} 🪙
+               ├ Заработано: ${referralStats.totalEarned.stars} ⭐
        ├ Уровень: ${levelInfo.name} (${referralStats.level})
        └ ${nextLevel ? `До следующего уровня: ${nextLevel.requirement - referralStats.totalEarned.stars} ⭐` : 'Максимальный уровень!'}
        
@@ -566,35 +566,31 @@ ${minersStats.miners.map(miner => {
          await ctx.reply(minersMessage, inlineKeyboard(adminStatus));
          break;
         
-      case 'купить майнер':
-      case 'buy miner':
-      case 'купить':
-      case 'buy':
-        const minerTypes = getMinerTypes();
-        
-                 const buyMinerMessage = `⛏️ Покупка майнера:
+             case 'купить майнер':
+       case 'buy miner':
+       case 'купить':
+       case 'buy':
+         const { getMinerByPage } = require('../utils/miners');
+         const firstMiner = getMinerByPage(1);
+         
+         const buyMinerMessage = `⛏️ Покупка майнера:
 
-Выберите тип майнера для покупки:
+${firstMiner.rarityInfo.color} **${firstMiner.name}** (${firstMiner.rarityInfo.name})
 
-${minerTypes.map(type => {
-  const { getRarityInfo } = require('../utils/miners');
-  const rarityInfo = getRarityInfo(type.rarity);
-  const priceSymbol = type.priceType === 'stars' ? '⭐' : '🪙';
-  const rewardSymbol = type.rewardType === 'stars' ? '⭐' : '🪙';
-  return `🔸 ${rarityInfo.color} ${type.name} (${rarityInfo.name})
-  ├ 💰 Цена: ${type.price} ${priceSymbol}
-  ├ ⚡ Доход/мин: ${type.rewardPerMinute} ${rewardSymbol}
-  ├ 📈 Максимум: ${type.maxReward} ${rewardSymbol}
-  ├ 🎯 Доступно на сервере: ${type.availableOnServer} шт
-  └ 📝 ${type.description}`;
-}).join('\n\n')}
+💰 **Цена:** ${firstMiner.price} ${firstMiner.priceSymbol}
+⚡ **Доход/мин:** ${firstMiner.rewardPerMinute} ${firstMiner.rewardSymbol}
+📈 **Максимум:** ${firstMiner.maxReward} ${firstMiner.rewardSymbol}
+🎯 **Доступно на сервере:** ${firstMiner.availableOnServer} шт
+📝 **${firstMiner.description}**
 
 💡 Для покупки используйте кнопки в меню или напишите:
 • "новичок" - купить майнер Новичок (100 🪙)
-• "путь к звездам" - купить майнер Путь к звездам (100 ⭐)`;
-        
-        await ctx.reply(buyMinerMessage, inlineKeyboard(adminStatus));
-        break;
+• "путь к звездам" - купить майнер Путь к звездам (100 ⭐)
+
+📱 В меню доступна постраничная навигация по майнерам!`;
+         
+         await ctx.reply(buyMinerMessage, inlineKeyboard(adminStatus));
+         break;
         
       case 'новичок':
       case 'novice':
