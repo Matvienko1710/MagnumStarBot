@@ -44,9 +44,9 @@ class DataManager {
                 }
             }
             
-            // Индексы для пользователей
+            // Индексы для пользователей (только userId, username уже создан в database.js)
             await this.db.collection('users').createIndex({ userId: 1 }, { unique: true });
-            await this.db.collection('users').createIndex({ username: 1 });
+            // Убираем дублирующий индекс username - он уже создается в database.js
             
             // Индексы для транзакций
             await this.db.collection('transactions').createIndex({ userId: 1 });
@@ -262,7 +262,7 @@ class DataManager {
             const user = await this.getUser(userId);
             
             // Если у пользователя уже есть реферальный код, значит система настроена
-            if (user.referral.code) {
+            if (user.referral && user.referral.code) {
                 logger.info('Реферальная система уже настроена', { userId, existingCode: user.referral.code });
                 return user.referral;
             }
@@ -300,6 +300,10 @@ class DataManager {
                 // Начисляем награду рефереру (5 звезд)
                 await this.updateBalance(referrerId, 'stars', 5, 'referral_reward');
                 logger.info('Начислена награда за реферала', { referrerId, newUserId: userId, reward: 5 });
+                
+                // Также начисляем награду новому пользователю за регистрацию по реферальному коду
+                await this.updateBalance(userId, 'coins', 1000, 'referral_registration_bonus');
+                logger.info('Начислен бонус за регистрацию по реферальному коду', { userId, reward: 1000, currency: 'coins' });
             }
             
             logger.info('Реферальная система настроена', { userId, referrerId, referralCode });
@@ -317,11 +321,23 @@ class DataManager {
             const referrer = await this.getUser(referrerId);
             const newReferrals = [...referrer.referral.referrals, newUserId];
             
+            // Обновляем список рефералов
             await this.updateUser(referrerId, {
                 'referral.referrals': newReferrals
             });
             
-            logger.info('Реферал добавлен к пользователю', { referrerId, newUserId });
+            // Обновляем общий заработок реферера
+            const currentEarned = referrer.referral.totalEarned || { stars: 0, coins: 0 };
+            const newEarned = {
+                stars: currentEarned.stars + 5, // 5 звезд за реферала
+                coins: currentEarned.coins
+            };
+            
+            await this.updateUser(referrerId, {
+                'referral.totalEarned': newEarned
+            });
+            
+            logger.info('Реферал добавлен к пользователю', { referrerId, newUserId, newEarned });
             
         } catch (error) {
             logger.error('Ошибка добавления реферала', error, { referrerId, newUserId });

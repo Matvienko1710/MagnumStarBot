@@ -14,8 +14,19 @@ async function startHandler(ctx) {
         try {
             if (startPayload) {
                 // Если есть реферальный код, настраиваем реферальную систему
-                await dataManager.setupReferral(userId, startPayload);
+                const referralData = await dataManager.setupReferral(userId, startPayload);
                 logger.info('Реферальная система настроена для нового пользователя', { userId, referrerCode: startPayload });
+                
+                // Добавляем уведомление о реферальной награде
+                if (referralData.referrerId) {
+                    const referralBonusMessage = `🎉 **Реферальная награда!**\n\n` +
+                        `✅ Вы зарегистрировались по реферальному коду\n` +
+                        `💰 Получили бонус: **1000 🪙 Magnum Coins**\n` +
+                        `👥 Ваш реферер получил: **5 ⭐ Stars**\n\n` +
+                        `🎯 Продолжайте зарабатывать вместе!`;
+                    
+                    await ctx.reply(referralBonusMessage, { parse_mode: 'Markdown' });
+                }
             } else {
                 // Если нет реферального кода, создаем пользователя без реферера
                 await dataManager.setupReferral(userId);
@@ -45,6 +56,7 @@ async function startHandler(ctx) {
             [Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
+            [Markup.button.callback('👥 Рефералы', 'referrals')],
             [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
         ]);

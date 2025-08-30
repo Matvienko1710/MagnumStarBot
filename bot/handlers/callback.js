@@ -265,7 +265,7 @@ async function handleReferrals(ctx) {
         
         const referralsMessage = `👥 **Реферальная система**\n\n` +
             `🔗 Ваша реферальная ссылка:\n` +
-            `\`https://t.me/MagnumStarBot?start=${userId}\`\n\n` +
+            `\`https://t.me/MagnumStarBot?start=${referralStats.referralCode}\`\n\n` +
             `📊 Статистика:\n` +
             `├ 👥 Всего рефералов: ${referralStats.totalReferrals}\n` +
             `├ ⭐ Заработано: ${referralStats.totalEarned.stars}\n` +
@@ -341,6 +341,7 @@ async function handleMainMenu(ctx) {
             [Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
+            [Markup.button.callback('👥 Рефералы', 'referrals')],
             [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
         ]);
