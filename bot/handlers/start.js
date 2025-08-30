@@ -15,7 +15,7 @@ async function startHandler(ctx) {
         logger.info('Получена команда /start', { userId, startPayload });
         
         // Проверяем подписку пользователя на канал
-        const subscriptionCheck = await dataManager.checkUserSubscription(userId);
+        const subscriptionCheck = await dataManager.checkUserSubscription(userId, null, ctx.telegram);
         
         if (!subscriptionCheck.isSubscribed) {
             // Пользователь не подписан - показываем экран подписки
@@ -29,8 +29,7 @@ async function startHandler(ctx) {
             
             const subscriptionKeyboard = Markup.inlineKeyboard([
                 [Markup.button.url('📢 Подписаться на канал', 'https://t.me/magnumtap')],
-                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')],
-                [Markup.button.callback('🔄 Попробовать снова', 'start')]
+                [Markup.button.callback('✅ Проверить подписку', 'check_subscription')]
             ]);
             
             // Удаляем старое сообщение бота, если оно есть

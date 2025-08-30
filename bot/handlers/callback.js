@@ -1747,7 +1747,7 @@ async function handleCheckSubscription(ctx) {
     
     try {
         // Проверяем подписку пользователя
-        const subscriptionCheck = await dataManager.checkUserSubscription(userId);
+        const subscriptionCheck = await dataManager.checkUserSubscription(userId, null, ctx.telegram);
         
         if (subscriptionCheck.isSubscribed) {
             // Подписка подтверждена - показываем главное меню
