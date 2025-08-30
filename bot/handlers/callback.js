@@ -660,7 +660,7 @@ async function handleReferrals(ctx) {
         
         const referralsMessage = `👥 **Реферальная система**\n\n` +
             `🔗 Ваша реферальная ссылка:\n` +
-            `\`https://t.me/MagnumStarBot?start=${referralStats.referralCode}\`\n\n` +
+            `\`https://t.me/MagnumStarBot?start=${referralStats.referralId}\`\n\n` +
             `📊 Статистика:\n` +
             `├ 👥 Всего рефералов: ${referralStats.totalReferrals}\n` +
             `├ ⭐ Заработано: ${referralStats.totalEarned.stars}\n` +

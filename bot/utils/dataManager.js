@@ -272,7 +272,7 @@ class DataManager {
         }
     }
     
-    async setupReferral(userId, referrerCode = null) {
+    async setupReferral(userId, referrerId = null) {
         try {
             // Сначала получаем или создаем пользователя
             const user = await this.getUser(userId);
@@ -285,22 +285,22 @@ class DataManager {
             
             // Генерируем новый реферальный код
             let referralCode = this.generateReferralCode();
-            let referrerId = null;
+            let actualReferrerId = null;
             
-            // Если передан реферальный код, находим реферера
-            if (referrerCode) {
-                const referrer = await this.getUserByReferralCode(referrerCode);
+            // Если передан ID реферера, проверяем его существование
+            if (referrerId) {
+                const referrer = await this.getUser(Number(referrerId));
                 if (referrer && referrer.userId !== userId) {
-                    referrerId = referrer.userId;
-                    logger.info('Найден реферер', { userId, referrerId, referrerCode });
+                    actualReferrerId = Number(referrerId);
+                    logger.info('Найден реферер по ID', { userId, referrerId: actualReferrerId });
                 } else {
-                    logger.warn('Реферер не найден или некорректный', { userId, referrerCode, referrerFound: !!referrer });
+                    logger.warn('Реферер не найден или некорректный', { userId, referrerId, referrerFound: !!referrer });
                 }
             }
             
             const referralData = {
                 code: referralCode,
-                referrerId: referrerId,
+                referrerId: actualReferrerId,
                 referrals: [],
                 totalEarned: { stars: 0, coins: 0 },
                 level: 1
@@ -310,34 +310,34 @@ class DataManager {
             await this.updateUser(userId, { referral: referralData });
             
             // Если есть реферер, добавляем пользователя в его список и начисляем награду
-            if (referrerId) {
-                logger.info('Начинаем начисление наград за реферала', { referrerId, newUserId: userId });
+            if (actualReferrerId) {
+                logger.info('Начинаем начисление наград за реферала', { referrerId: actualReferrerId, newUserId: userId });
                 
-                await this.addReferralToUser(referrerId, userId);
+                await this.addReferralToUser(actualReferrerId, userId);
                 
                 // Начисляем награду рефереру (5 звезд)
-                logger.info('Начисляем награду рефереру', { referrerId, reward: 5, currency: 'stars' });
-                await this.updateBalance(referrerId, 'stars', 5, 'referral_reward');
-                logger.info('Начислена награда за реферала', { referrerId, newUserId: userId, reward: 5 });
+                logger.info('Начисляем награду рефереру', { referrerId: actualReferrerId, reward: 5, currency: 'stars' });
+                await this.updateBalance(actualReferrerId, 'stars', 5, 'referral_reward');
+                logger.info('Начислена награда за реферала', { referrerId: actualReferrerId, newUserId: userId, reward: 5 });
                 
                 // Также начисляем награду новому пользователю за регистрацию по реферальному коду
                 logger.info('Начисляем бонус новому пользователю', { userId, reward: 1000, currency: 'coins' });
                 await this.updateBalance(userId, 'coins', 1000, 'referral_registration_bonus');
                 logger.info('Начислен бонус за регистрацию по реферальному коду', { userId, reward: 1000, currency: 'coins' });
-            } else if (referrerCode) {
-                // Если реферальный код передан, но реферер не найден, все равно начисляем бонус новому пользователю
+            } else if (referrerId) {
+                // Если ID реферера передан, но реферер не найден, все равно начисляем бонус новому пользователю
                 // Это нужно для тестирования и чтобы пользователи не теряли бонусы
-                logger.info('Реферер не найден, но начисляем бонус новому пользователю', { userId, reward: 1000, currency: 'coins', referrerCode });
+                logger.info('Реферер не найден, но начисляем бонус новому пользователю', { userId, reward: 1000, currency: 'coins', referrerId });
                 await this.updateBalance(userId, 'coins', 1000, 'referral_registration_bonus');
-                logger.info('Начислен бонус за регистрацию по реферальному коду (реферер не найден)', { userId, reward: 1000, currency: 'coins', referrerCode });
+                logger.info('Начислен бонус за регистрацию по реферальному коду (реферер не найден)', { userId, reward: 1000, currency: 'coins', referrerId });
             }
             
-            logger.info('Реферальная система настроена', { userId, referrerId, referralCode });
+            logger.info('Реферальная система настроена', { userId, referrerId: actualReferrerId, referralCode });
             
             return referralData;
             
         } catch (error) {
-            logger.error('Ошибка настройки реферальной системы', error, { userId, referrerCode });
+            logger.error('Ошибка настройки реферальной системы', error, { userId, referrerId });
             throw error;
         }
     }
@@ -383,6 +383,7 @@ class DataManager {
             
             return {
                 referralCode: user.referral.code,
+                referralId: userId, // ID пользователя для реферальной ссылки
                 totalReferrals: referrals.length,
                 activeReferrals: referrals.length, // Пока упрощенно
                 totalEarned: user.referral.totalEarned,
