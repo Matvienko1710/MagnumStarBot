@@ -588,7 +588,7 @@ async function handleStartMining(ctx) {
             
             await ctx.answerCbQuery(rewardMessage);
             
-            // Обновляем сообщение с таймером
+            // Обновляем сообщение с временем следующего запуска
             await updateMiningTimer(ctx, userId, miningResult.startTime);
             
         } else {
@@ -616,7 +616,7 @@ async function updateMiningTimer(ctx, userId, startTime) {
             // Время истекло, показываем кнопку "Запустить майнинг"
             await showMiningReady(ctx, userId);
         } else {
-            // Показываем таймер
+            // Показываем время следующего запуска (без обновления каждую секунду)
             await showMiningTimer(ctx, userId, nextMiningTime);
         }
         
@@ -664,7 +664,7 @@ async function showMiningReady(ctx, userId) {
     }
 }
 
-// Показать таймер майнинга
+// Показать время следующего запуска майнинга
 async function showMiningTimer(ctx, userId, nextMiningTime) {
     try {
         const userMiners = await dataManager.getUserMiners(userId);
@@ -679,15 +679,13 @@ async function showMiningTimer(ctx, userId, nextMiningTime) {
             }
         });
         
-        const now = Date.now();
-        const timeLeft = nextMiningTime - now;
-        
-        // Рассчитываем часы, минуты и секунды
-        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-        
-        const timerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        // Форматируем время следующего запуска
+        const nextMiningDate = new Date(nextMiningTime);
+        const nextMiningTimeString = nextMiningDate.toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
         
         const myMinersMessage = `📊 **Мои майнеры**\n\n` +
             `⛏️ **Всего майнеров:** ${userMiners.length}\n\n` +
@@ -695,11 +693,11 @@ async function showMiningTimer(ctx, userId, nextMiningTime) {
             `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
             `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
             `⏰ **Майнинг активен**\n` +
-            `🔄 **Следующий запуск через:** ${timerText}\n\n` +
+            `🔄 **Следующий запуск в:** ${nextMiningTimeString}\n\n` +
             `💡 Доход начисляется автоматически каждую минуту!`;
         
         const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback(`⏰ Майнинг активен (${timerText})`, 'mining_active')],
+            [Markup.button.callback(`⏰ Майнинг активен (${nextMiningTimeString})`, 'mining_active')],
             [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
@@ -709,14 +707,6 @@ async function showMiningTimer(ctx, userId, nextMiningTime) {
             parse_mode: 'Markdown',
             reply_markup: myMinersKeyboard.reply_markup
         });
-        
-        // Если время еще не истекло, обновляем таймер через секунду
-        if (timeLeft > 1000) {
-            setTimeout(() => {
-                const cooldownTime = 4 * 60 * 60 * 1000; // 4 часа в миллисекундах
-                updateMiningTimer(ctx, userId, nextMiningTime - cooldownTime);
-            }, 1000);
-        }
         
     } catch (error) {
         logger.error('Ошибка показа таймера майнинга', error, { userId });
