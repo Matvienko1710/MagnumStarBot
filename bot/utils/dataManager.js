@@ -995,6 +995,206 @@ class DataManager {
             return false;
         }
     }
+    
+    // === УПРАВЛЕНИЕ ТИТУЛАМИ ===
+    
+    // Получение информации о титуле
+    getTitleInfo(titleId) {
+        const titles = {
+            novice: {
+                id: 'novice',
+                name: 'Новичок',
+                description: 'Первый титул для новых пользователей',
+                rarity: 'Обычный',
+                requirements: { level: 1, stars: 0, coins: 0 },
+                bonuses: { stars: 0, coins: 0 }
+            },
+            miner: {
+                id: 'miner',
+                name: 'Майнер',
+                description: 'Титул для активных майнеров',
+                rarity: 'Обычный',
+                requirements: { level: 5, stars: 100, coins: 500 },
+                bonuses: { stars: 5, coins: 10 }
+            },
+            trader: {
+                id: 'trader',
+                name: 'Трейдер',
+                description: 'Титул для опытных трейдеров',
+                rarity: 'Редкий',
+                requirements: { level: 10, stars: 500, coins: 1000 },
+                bonuses: { stars: 15, coins: 25 }
+            },
+            investor: {
+                id: 'investor',
+                name: 'Инвестор',
+                description: 'Титул для крупных инвесторов',
+                rarity: 'Эпический',
+                requirements: { level: 20, stars: 1000, coins: 5000 },
+                bonuses: { stars: 30, coins: 50 }
+            },
+            master: {
+                id: 'master',
+                name: 'Мастер',
+                description: 'Титул для мастеров своего дела',
+                rarity: 'Легендарный',
+                requirements: { level: 30, stars: 2500, coins: 10000 },
+                bonuses: { stars: 50, coins: 100 }
+            },
+            legend: {
+                id: 'legend',
+                name: 'Легенда',
+                description: 'Титул для легендарных игроков',
+                rarity: 'Мифический',
+                requirements: { level: 50, stars: 5000, coins: 25000 },
+                bonuses: { stars: 100, coins: 200 }
+            },
+            owner: {
+                id: 'owner',
+                name: 'Владелец',
+                description: 'Эксклюзивный титул владельца бота',
+                rarity: 'Эксклюзивный',
+                requirements: { level: 100, stars: 10000, coins: 50000 },
+                bonuses: { stars: 200, coins: 500 },
+                adminOnly: true
+            }
+        };
+        
+        return titles[titleId] || null;
+    }
+    
+    // Выдача титула пользователю
+    async grantTitle(userId, titleId, adminId) {
+        try {
+            const user = await this.getUser(userId);
+            const titleInfo = this.getTitleInfo(titleId);
+            
+            if (!titleInfo) {
+                return { success: false, message: 'Титул не найден' };
+            }
+            
+            // Проверяем, есть ли уже этот титул
+            if (user.titles.unlocked.includes(titleId)) {
+                return { success: false, message: 'У пользователя уже есть этот титул' };
+            }
+            
+            // Обновляем титулы пользователя
+            const updateData = {
+                'titles.unlocked': [...user.titles.unlocked, titleId],
+                'titles.history': [...user.titles.history, {
+                    titleId: titleId,
+                    grantedAt: new Date(),
+                    grantedBy: adminId,
+                    reason: 'Выдан администратором'
+                }]
+            };
+            
+            // Если это первый титул, устанавливаем его как текущий
+            if (user.titles.unlocked.length === 1 && user.titles.unlocked[0] === 'novice') {
+                updateData['titles.current'] = titleId;
+            }
+            
+            await this.updateUser(userId, updateData);
+            
+            logger.info('Титул выдан пользователю', { userId, titleId, adminId });
+            
+            return { 
+                success: true, 
+                message: `Титул "${titleInfo.name}" успешно выдан пользователю`,
+                titleInfo: titleInfo
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка выдачи титула', error, { userId, titleId, adminId });
+            throw error;
+        }
+    }
+    
+    // Забирание титула у пользователя
+    async revokeTitle(userId, titleId, adminId) {
+        try {
+            const user = await this.getUser(userId);
+            const titleInfo = this.getTitleInfo(titleId);
+            
+            if (!titleInfo) {
+                return { success: false, message: 'Титул не найден' };
+            }
+            
+            // Проверяем, есть ли у пользователя этот титул
+            if (!user.titles.unlocked.includes(titleId)) {
+                return { success: false, message: 'У пользователя нет этого титула' };
+            }
+            
+            // Нельзя забрать титул "Новичок"
+            if (titleId === 'novice') {
+                return { success: false, message: 'Нельзя забрать титул "Новичок"' };
+            }
+            
+            // Нельзя забрать титул "Владелец" у владельца
+            if (titleId === 'owner' && user.isAdmin) {
+                return { success: false, message: 'Нельзя забрать титул "Владелец" у владельца' };
+            }
+            
+            // Обновляем титулы пользователя
+            const newUnlocked = user.titles.unlocked.filter(id => id !== titleId);
+            const updateData = {
+                'titles.unlocked': newUnlocked,
+                'titles.history': [...user.titles.history, {
+                    titleId: titleId,
+                    revokedAt: new Date(),
+                    revokedBy: adminId,
+                    reason: 'Забран администратором'
+                }]
+            };
+            
+            // Если текущий титул был забран, устанавливаем "Новичок" как текущий
+            if (user.titles.current === titleId) {
+                updateData['titles.current'] = 'novice';
+            }
+            
+            await this.updateUser(userId, updateData);
+            
+            logger.info('Титул забран у пользователя', { userId, titleId, adminId });
+            
+            return { 
+                success: true, 
+                message: `Титул "${titleInfo.name}" успешно забран у пользователя`,
+                titleInfo: titleInfo
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка забирания титула', error, { userId, titleId, adminId });
+            throw error;
+        }
+    }
+    
+    // Получение титулов пользователя
+    async getUserTitles(userId) {
+        try {
+            const user = await this.getUser(userId);
+            const unlockedTitles = [];
+            
+            for (const titleId of user.titles.unlocked) {
+                const titleInfo = this.getTitleInfo(titleId);
+                if (titleInfo) {
+                    unlockedTitles.push({
+                        ...titleInfo,
+                        isCurrent: user.titles.current === titleId
+                    });
+                }
+            }
+            
+            return {
+                current: user.titles.current,
+                unlocked: unlockedTitles,
+                history: user.titles.history || []
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка получения титулов пользователя', error, { userId });
+            return { current: 'novice', unlocked: [], history: [] };
+        }
+    }
 }
 
 // Создаем и экспортируем экземпляр
