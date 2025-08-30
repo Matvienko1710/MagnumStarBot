@@ -13,7 +13,7 @@
 ### 2. **MONGODB_URI** (Обязательно)
 - **Описание**: URI для подключения к MongoDB Atlas
 - **Формат**: `mongodb+srv://username:password@cluster.mongodb.net/database`
-- **Текущее значение**: `mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/?retryWrites=true&w=majority&appApp=Cluster0`
+- **Текущее значение**: `mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/?retryWrites=true&w=majority`
 
 ### 3. **NODE_ENV** (Автоматически)
 - **Описание**: Окружение выполнения
@@ -40,7 +40,7 @@ Value: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 ### **Шаг 4: Проверьте MONGODB_URI**
 ```
 Key: MONGODB_URI
-Value: mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/?retryWrites=true&w=majority&appApp=Cluster0
+Value: mongodb+srv://magnumstar:Indesi474848@cluster0.flbhe9f.mongodb.net/?retryWrites=true&w=majority
 ```
 
 ### **Шаг 5: Сохраните и перезапустите**

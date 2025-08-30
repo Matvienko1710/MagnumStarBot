@@ -21,8 +21,8 @@ class Database {
             // Создаем альтернативные URI для тестирования
             const alternativeUris = [
                 uri, // Оригинальный URI
-                uri.replace('?retryWrites=true&w=majority&appName=Cluster0', ''), // Без параметров
-                uri.replace('?retryWrites=true&w=majority&appName=Cluster0', '?retryWrites=false&w=1'), // Минимальные параметры
+                uri.replace('?retryWrites=true&w=majority', ''), // Без параметров
+                uri.replace('?retryWrites=true&w=majority', '?retryWrites=false&w=1'), // Минимальные параметры
                 uri.replace('mongodb+srv://', 'mongodb://'), // Попробуем обычный MongoDB протокол
             ];
 
@@ -37,8 +37,6 @@ class Database {
                     },
                     ssl: false,
                     tls: false,
-                    retryWrites: true,
-                    w: 'majority',
                     maxPoolSize: 5,
                     minPoolSize: 1,
                     connectTimeoutMS: 60000,
@@ -63,8 +61,6 @@ class Database {
                     tlsAllowInvalidCertificates: true,
                     tlsAllowInvalidHostnames: true,
                     tlsInsecure: true,
-                    retryWrites: true,
-                    w: 'majority',
                     maxPoolSize: 5,
                     connectTimeoutMS: 60000,
                     socketTimeoutMS: 60000,
@@ -77,8 +73,6 @@ class Database {
                         strict: true, 
                         deprecationErrors: true 
                     },
-                    retryWrites: true,
-                    w: 'majority',
                     maxPoolSize: 5,
                     connectTimeoutMS: 60000,
                     socketTimeoutMS: 60000,
@@ -91,8 +85,6 @@ class Database {
                         strict: false, 
                         deprecationErrors: false 
                     },
-                    retryWrites: false,
-                    w: 1,
                     maxPoolSize: 1,
                     connectTimeoutMS: 60000,
                     socketTimeoutMS: 60000,
