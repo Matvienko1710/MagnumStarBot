@@ -8,7 +8,13 @@ const cacheManager = require('./bot/utils/cache');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Middleware для измерения времени ответа (должен быть ПЕРЕД всеми маршрутами)
+app.use((req, res, next) => {
+    req.startTime = Date.now();
+    next();
+});
+
+// Основные middleware
 app.use(express.json());
 app.use(express.static('webapp'));
 
@@ -183,11 +189,7 @@ app.post('/api/cache/clear', (req, res) => {
     }
 });
 
-// Middleware для измерения времени ответа
-app.use((req, res, next) => {
-    req.startTime = Date.now();
-    next();
-});
+
 
 // Обработка ошибок
 app.use((error, req, res, next) => {

@@ -8,6 +8,13 @@ const PORT = process.env.PORT || 10000;
 console.log('🔍 API роуты загружены:', typeof apiRoutes);
 console.log('🔍 API роуты:', apiRoutes);
 
+// Проверяем структуру API роутов
+if (apiRoutes && typeof apiRoutes === 'function') {
+    console.log('✅ API роуты загружены корректно');
+} else {
+    console.error('❌ Ошибка загрузки API роутов:', apiRoutes);
+}
+
 // Middleware для парсинга JSON
 app.use(express.json());
 
@@ -23,7 +30,26 @@ app.get('/test', (req, res) => {
         success: true,
         message: 'Тестовый endpoint работает!',
         timestamp: new Date().toISOString(),
-        apiRoutes: typeof apiRoutes
+        apiRoutes: typeof apiRoutes,
+        apiRoutesLoaded: !!apiRoutes
+    });
+});
+
+// Тестовый endpoint для проверки API
+app.get('/api-test', (req, res) => {
+    res.json({
+        success: true,
+        message: 'API тестовый endpoint работает!',
+        timestamp: new Date().toISOString(),
+        apiRoutes: typeof apiRoutes,
+        apiRoutesLoaded: !!apiRoutes,
+        availableEndpoints: [
+            '/api/health',
+            '/api/user/balance/:userId',
+            '/api/user/click/:userId',
+            '/api/user/stats/:userId',
+            '/api/user/info/:userId'
+        ]
     });
 });
 
@@ -40,15 +66,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Magnum Stars WebApp запущен на порту ${PORT}`);
-    console.log(`🌐 WebApp доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
-    console.log(`🔌 API доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}/api`);
-    console.log(`📁 Статические файлы из: ${__dirname}`);
-    console.log(`🔧 Режим: ${process.env.NODE_ENV || 'development'}`);
-});
-
-// Обработка ошибок сервера
+// Обработка ошибок сервера (должен быть ПЕРЕД app.listen)
 app.use((err, req, res, next) => {
     console.error('❌ Ошибка сервера:', err);
     res.status(500).json({
@@ -57,4 +75,12 @@ app.use((err, req, res, next) => {
         message: err.message,
         timestamp: new Date().toISOString()
     });
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 Magnum Stars WebApp запущен на порту ${PORT}`);
+    console.log(`🌐 WebApp доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
+    console.log(`🔌 API доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}/api`);
+    console.log(`📁 Статические файлы из: ${__dirname}`);
+    console.log(`🔧 Режим: ${process.env.NODE_ENV || 'development'}`);
 });
