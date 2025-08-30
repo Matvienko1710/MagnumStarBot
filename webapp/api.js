@@ -214,11 +214,53 @@ router.get('/user/info/:userId', ensureDatabaseConnection, async (req, res) => {
 
 // Проверка здоровья API
 router.get('/health', (req, res) => {
+    console.log('🔍 API Health check вызван');
     res.json({
         success: true,
         message: 'Magnum Stars WebApp API работает!',
         timestamp: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.0',
+        endpoints: [
+            '/api/health',
+            '/api/user/balance/:userId',
+            '/api/user/click/:userId',
+            '/api/user/stats/:userId',
+            '/api/user/info/:userId'
+        ]
+    });
+});
+
+// Логирование всех API запросов
+router.use((req, res, next) => {
+    console.log(`📡 API запрос: ${req.method} ${req.path}`);
+    next();
+});
+
+// Обработка ошибок для API
+router.use((err, req, res, next) => {
+    console.error('❌ API ошибка:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Внутренняя ошибка API',
+        message: err.message,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Обработка 404 для API
+router.use('*', (req, res) => {
+    console.log(`❌ API endpoint не найден: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({
+        success: false,
+        error: 'API endpoint не найден',
+        requestedPath: req.originalUrl,
+        availableEndpoints: [
+            '/api/health',
+            '/api/user/balance/:userId',
+            '/api/user/click/:userId',
+            '/api/user/stats/:userId',
+            '/api/user/info/:userId'
+        ]
     });
 });
 

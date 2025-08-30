@@ -7,13 +7,13 @@ const PORT = process.env.PORT || 10000;
 // Middleware для парсинга JSON
 app.use(express.json());
 
-// API роуты
-app.use('/api', apiRoutes);
-
 // Раздаем статические файлы из корневой папки
 app.use(express.static(__dirname));
 
-// Все остальные маршруты ведут на index.html
+// API роуты (должны быть после статических файлов, но перед catch-all)
+app.use('/api', apiRoutes);
+
+// Все остальные маршруты ведут на index.html (должен быть последним)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });

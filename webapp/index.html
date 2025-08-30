@@ -533,38 +533,67 @@
                 // Тест 1: Проверка здоровья API
                 console.log('1️⃣ Тестируем /api/health');
                 const healthResponse = await fetch('/api/health');
+                console.log('Health Response Status:', healthResponse.status);
+                console.log('Health Response Headers:', healthResponse.headers);
+                
+                if (!healthResponse.ok) {
+                    const errorText = await healthResponse.text();
+                    console.error('Health API Error Response:', errorText);
+                    throw new Error(`Health API вернул ${healthResponse.status}: ${errorText}`);
+                }
+                
                 const healthData = await healthResponse.json();
                 console.log('Health API:', healthData);
 
                 // Тест 2: Получение баланса
                 console.log('2️⃣ Тестируем /api/user/balance/' + currentUserId);
                 const balanceResponse = await fetch(`/api/user/balance/${currentUserId}`);
+                console.log('Balance Response Status:', balanceResponse.status);
+                
+                if (!balanceResponse.ok) {
+                    const errorText = await balanceResponse.text();
+                    console.error('Balance API Error Response:', errorText);
+                    throw new Error(`Balance API вернул ${balanceResponse.status}: ${errorText}`);
+                }
+                
                 const balanceData = await balanceResponse.json();
                 console.log('Balance API:', balanceData);
 
                 // Тест 3: Получение статистики
                 console.log('3️⃣ Тестируем /api/user/stats/' + currentUserId);
                 const statsResponse = await fetch(`/api/user/stats/${currentUserId}`);
+                console.log('Stats Response Status:', statsResponse.status);
+                
+                if (!statsResponse.ok) {
+                    const errorText = await statsResponse.text();
+                    console.error('Stats API Error Response:', errorText);
+                    throw new Error(`Stats API вернул ${statsResponse.status}: ${errorText}`);
+                }
+                
                 const statsData = await statsResponse.json();
                 console.log('Stats API:', statsData);
 
                 // Показываем результаты
                 let resultMessage = '🧪 Результаты тестирования API:\n\n';
-                resultMessage += `1️⃣ Health: ${healthResponse.ok ? '✅' : '❌'} ${healthResponse.status}\n`;
-                resultMessage += `2️⃣ Balance: ${balanceResponse.ok ? '✅' : '❌'} ${balanceResponse.status}\n`;
-                resultMessage += `3️⃣ Stats: ${statsResponse.ok ? '✅' : '❌'} ${statsResponse.status}\n\n`;
-
-                if (healthResponse.ok && balanceResponse.ok && statsResponse.ok) {
-                    resultMessage += '🎉 Все API работают корректно!';
-                } else {
-                    resultMessage += '⚠️ Есть проблемы с API. Проверьте консоль браузера.';
-                }
+                resultMessage += `1️⃣ Health: ✅ ${healthResponse.status}\n`;
+                resultMessage += `2️⃣ Balance: ✅ ${balanceResponse.status}\n`;
+                resultMessage += `3️⃣ Stats: ✅ ${statsResponse.status}\n\n`;
+                resultMessage += '🎉 Все API работают корректно!';
 
                 alert(resultMessage);
 
             } catch (error) {
-                console.error('Ошибка тестирования API:', error);
-                alert(`❌ Ошибка тестирования API:\n${error.message}`);
+                console.error('❌ Ошибка тестирования API:', error);
+                
+                let errorMessage = `❌ Ошибка тестирования API:\n\n`;
+                errorMessage += `🔍 Детали ошибки:\n`;
+                errorMessage += `${error.message}\n\n`;
+                errorMessage += `💡 Проверьте:\n`;
+                errorMessage += `• Консоль браузера (F12)\n`;
+                errorMessage += `• Логи сервера\n`;
+                errorMessage += `• URL API endpoints`;
+                
+                alert(errorMessage);
             }
         }
 
