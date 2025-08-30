@@ -90,14 +90,25 @@ async function handleProfile(ctx) {
     
     logger.info('Обработка профиля', { userId });
     
-    const profileMessage = `👤 **Профиль пользователя**\n\n` +
+    // Получаем баланс пользователя
+    const userBalance = getUserBalance(userId);
+    
+    // Получаем реферальную статистику
+    const referralStats = getReferralStats(userId);
+    
+    // Получаем текущий титул пользователя
+    const { getUserCurrentTitle } = require('../utils/titles');
+    const currentTitle = getUserCurrentTitle(userId);
+    
+    const profileMessage = `🎮 **Твой профиль в Magnum Stars**\n\n` +
+        `✨ Ник: ${ctx.from.first_name || 'Не указано'}\n` +
         `🆔 ID: \`${userId}\`\n` +
-        `👤 Имя: ${ctx.from.first_name || 'Не указано'}\n` +
-        `⭐ Stars: 0\n` +
-        `🪙 Magnum Coins: 0\n` +
-        `📅 Дата регистрации: ${new Date().toLocaleDateString('ru-RU')}\n\n` +
-        `🎯 Уровень: 1\n` +
-        `📊 Опыт: 0/100`;
+        `🏅 Титул: ${currentTitle.name}\n\n` +
+        `💎 **Баланс:**\n` +
+        `⭐ Stars → ${userBalance.stars}\n` +
+        `🪙 Magnum Coins → ${userBalance.coins}\n\n` +
+        `👥 Друзья: ${referralStats.totalReferrals}\n` +
+        `💰 Реф. доход: ${referralStats.totalEarned.stars} ⭐`;
     
     const profileKeyboard = Markup.inlineKeyboard([
         [Markup.button.callback('👑 Титулы', 'titles')],
