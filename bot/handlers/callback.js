@@ -732,13 +732,11 @@ async function handleMainMenu(ctx) {
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
         const mainMenuKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('💰 Майнеры', 'miners')],
-            [Markup.button.callback('👤 Профиль', 'profile')],
+            [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
+            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
-            [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
             [Markup.button.callback('👥 Рефералы', 'referrals')],
             [Markup.button.callback(`🔔 Уведомления ${notificationCount > 0 ? `(${notificationCount})` : ''}`, 'notifications')],
-            [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
         ]);
         
