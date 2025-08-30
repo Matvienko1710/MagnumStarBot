@@ -439,7 +439,7 @@ async function handleWithdrawalAmount(ctx, text) {
 // Отправка заявки на вывод в канал для админов
 async function sendWithdrawalToChannel(ctx, withdrawalRequest) {
     try {
-        const channelUsername = '@magnumwithdrawal';
+        const channelUsername = '@magnumwithdraw';
         
         const adminMessage = `📋 **Новая заявка на вывод**\n\n` +
             `👤 **Пользователь:**\n` +
