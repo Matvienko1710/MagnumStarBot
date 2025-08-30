@@ -96,10 +96,11 @@ class DataManager {
                         totalCoinsAwarded += result.coins;
                         totalStarsAwarded += result.stars;
                         
-                        logger.debug('Пользователь обработан (автоматический доход)', { 
+                        logger.info('Пользователь обработан (автоматический доход)', { 
                             userId: user.userId, 
                             coins: result.coins, 
-                            stars: result.stars 
+                            stars: result.stars,
+                            timestamp: new Date().toISOString()
                         });
                     }
                 } catch (userError) {
@@ -215,9 +216,18 @@ class DataManager {
     
     async getUser(userId) {
         try {
+            logger.info('🔍 Запрос пользователя из базы данных', {
+                userId,
+                instanceId: this.constructor.name,
+                isInitialized: this.isInitialized,
+                timestamp: new Date().toISOString()
+            });
+
             const user = await this.db.collection('users').findOne({ userId: Number(userId) });
-            
+
             if (!user) {
+                logger.info('👤 Пользователь не найден, создаем нового', { userId });
+
                 // Создаем нового пользователя
                 const newUser = {
                     userId: Number(userId),
@@ -249,20 +259,34 @@ class DataManager {
                     createdAt: new Date(),
                     lastActivity: new Date()
                 };
-                
+
                 await this.db.collection('users').insertOne(newUser);
-                
+
                 // Обновляем статистику бота
                 await this.updateBotStats('totalUsers', 1);
-                
-                logger.info('Создан новый пользователь', { userId });
+
+                logger.info('✅ Создан новый пользователь', {
+                    userId,
+                    balance: newUser.balance,
+                    timestamp: new Date().toISOString()
+                });
                 return newUser;
             }
-            
+
+            logger.info('✅ Пользователь найден в базе данных', {
+                userId,
+                balance: user.balance,
+                lastActivity: user.lastActivity,
+                timestamp: new Date().toISOString()
+            });
+
             return user;
-            
+
         } catch (error) {
-            logger.error('Ошибка получения пользователя', error, { userId });
+            logger.error('❌ Ошибка получения пользователя', error, {
+                userId,
+                errorStack: error.stack
+            });
             throw error;
         }
     }
@@ -305,33 +329,73 @@ class DataManager {
     
     async updateBalance(userId, currency, amount, reason = 'transaction') {
         try {
-            logger.info('Начинаем обновление баланса', { userId, currency, amount, reason });
-            
+            logger.info('🔄 Начинаем обновление баланса', {
+                userId,
+                currency,
+                amount,
+                reason,
+                instanceId: this.constructor.name,
+                isInitialized: this.isInitialized,
+                timestamp: new Date().toISOString()
+            });
+
             const user = await this.getUser(userId);
-            logger.info('Пользователь получен для обновления баланса', { userId, currentBalance: user.balance });
-            
+            logger.info('👤 Пользователь получен для обновления баланса', {
+                userId,
+                currentBalance: user.balance,
+                lastActivity: user.lastActivity
+            });
+
             const oldBalance = user.balance[currency] || 0;
             const newBalance = oldBalance + amount;
-            
-            logger.info('Рассчитываем новый баланс', { userId, currency, oldBalance, amount, newBalance });
-            
+
+            logger.info('🔢 Рассчитываем новый баланс', {
+                userId,
+                currency,
+                oldBalance,
+                amount,
+                newBalance,
+                operation: amount > 0 ? 'increase' : 'decrease'
+            });
+
             // Обновляем баланс
             const updateResult = await this.updateUser(userId, {
                 [`balance.${currency}`]: newBalance,
                 [`balance.totalEarned.${currency}`]: (user.balance.totalEarned?.[currency] || 0) + (amount > 0 ? amount : 0)
             });
-            
-            logger.info('Баланс обновлен в базе', { userId, currency, updateResult });
-            
+
+            logger.info('💾 Баланс обновлен в базе данных', {
+                userId,
+                currency,
+                updateResult: updateResult.modifiedCount,
+                acknowledged: updateResult.acknowledged
+            });
+
             // Записываем транзакцию
             await this.addTransaction(userId, currency, amount, reason, oldBalance, newBalance);
-            
-            logger.info('Баланс успешно обновлен', { userId, currency, amount, reason, oldBalance, newBalance });
-            
+
+            logger.info('✅ Баланс успешно обновлен', {
+                userId,
+                currency,
+                amount,
+                reason,
+                oldBalance,
+                newBalance,
+                totalEarned: user.balance.totalEarned?.[currency] || 0,
+                timestamp: new Date().toISOString(),
+                source: 'DataManager.updateBalance'
+            });
+
             return newBalance;
-            
+
         } catch (error) {
-            logger.error('Ошибка обновления баланса', error, { userId, currency, amount, reason });
+            logger.error('❌ Ошибка обновления баланса', error, {
+                userId,
+                currency,
+                amount,
+                reason,
+                errorStack: error.stack
+            });
             throw error;
         }
     }
@@ -383,7 +447,7 @@ class DataManager {
             
             if (user) {
                 logger.info('Пользователь найден по ID', { referralId, userId: user.userId });
-                return user;
+            return user;
             } else {
                 logger.warn('Пользователь не найден по ID', { referralId });
                 return null;

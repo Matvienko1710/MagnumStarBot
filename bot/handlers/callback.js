@@ -274,18 +274,18 @@ async function handleMiners(ctx) {
             `├ 🌐 Активные майнеры на сервере: ${minerAvailability.activeCount}/${minerAvailability.globalLimit}\n` +
             `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
-        
-        const minersKeyboard = Markup.inlineKeyboard([
+    
+    const minersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
             [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(minersMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: minersKeyboard.reply_markup
-        });
+        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+    ]);
+    
+    await ctx.editMessageText(minersMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: minersKeyboard.reply_markup
+    });
         
     } catch (error) {
         logger.error('Ошибка обработки главного меню майнеров', error, { userId });
@@ -1265,12 +1265,12 @@ async function handleTitles(ctx) {
     
     logger.info('Обработка титулов', { userId });
     
-            const titlesMessage = `👑 **Доступные титулы**\n\n` +
+    const titlesMessage = `👑 **Доступные титулы**\n\n` +
             `🎯 **Всего титулов:** 7\n\n` +
             `🆕 **Новичок** (Обычный)\n` +
             `├ 📝 Первый титул для новых пользователей\n` +
-            `├ 🎯 Требования: Уровень 1\n` +
-            `└ ✅ Статус: Разблокирован\n\n` +
+        `├ 🎯 Требования: Уровень 1\n` +
+        `└ ✅ Статус: Разблокирован\n\n` +
             `⛏️ **Майнер** (Обычный)\n` +
             `├ 📝 Титул для активных майнеров\n` +
             `├ 🎯 Требования: Уровень 5, 100 ⭐, 500 🪙\n` +
@@ -1294,7 +1294,7 @@ async function handleTitles(ctx) {
             `👑 **Владелец** (Эксклюзивный)\n` +
             `├ 📝 Эксклюзивный титул владельца бота\n` +
             `├ 🎯 Требования: Уровень 100, 10000 ⭐, 50000 🪙\n` +
-            `└ 🔒 Статус: Заблокирован`;
+        `└ 🔒 Статус: Заблокирован`;
     
     const titlesKeyboard = Markup.inlineKeyboard([
         [Markup.button.callback('📊 Мои титулы', 'my_titles')],
@@ -1444,24 +1444,24 @@ async function handleKeyCreation(ctx, text) {
                 const createResult = await dataManager.createKey(keyData);
                 
                 if (createResult.success) {
-                    const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
-                    
-                    const successMessage = `✅ **Ключ успешно создан!**\n\n` +
-                        `🔑 Ключ: \`${key}\`\n` +
-                        `🎯 Тип: ${rewardTypeText}\n` +
-                        `💰 Награда: ${userState.data[userState.data.rewardType]} ${rewardTypeText}\n` +
-                        `🔄 Максимум активаций: ${maxUses}\n\n` +
-                        `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
-                    
-                    const keyboard = Markup.inlineKeyboard([
-                        [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
-                        [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
-                    ]);
-                    
-                    await ctx.reply(successMessage, {
-                        parse_mode: 'Markdown',
-                        reply_markup: keyboard.reply_markup
-                    });
+            const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
+            
+            const successMessage = `✅ **Ключ успешно создан!**\n\n` +
+                `🔑 Ключ: \`${key}\`\n` +
+                `🎯 Тип: ${rewardTypeText}\n` +
+                `💰 Награда: ${userState.data[userState.data.rewardType]} ${rewardTypeText}\n` +
+                `🔄 Максимум активаций: ${maxUses}\n\n` +
+                `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
+            
+            const keyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
+                [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+            ]);
+            
+            await ctx.reply(successMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: keyboard.reply_markup
+            });
                 } else {
                     await ctx.reply('❌ Ошибка создания ключа в базе данных');
                 }

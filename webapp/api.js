@@ -7,17 +7,31 @@ const dataManager = require('../bot/utils/dataManager');
 // Проверяем подключение к DataManager
 async function ensureDataManagerConnection(req, res, next) {
     try {
+        console.log('🔍 Проверка DataManager:', {
+            isInitialized: dataManager.isInitialized,
+            hasDb: !!dataManager.db,
+            isConnected: dataManager.db ? dataManager.db.serverConfig.isConnected() : false
+        });
+
         if (!dataManager.isInitialized) {
             console.log('❌ DataManager не инициализирован, пытаемся подключиться...');
-            return res.status(500).json({ error: 'DataManager не готов' });
+
+            // Пытаемся инициализировать DataManager
+            try {
+                await dataManager.initialize();
+                console.log('✅ DataManager успешно инициализирован в API');
+            } catch (initError) {
+                console.error('❌ Ошибка инициализации DataManager в API:', initError);
+                return res.status(500).json({ error: 'DataManager не готов', details: initError.message });
+            }
         }
-        
+
         console.log('✅ DataManager подключен и готов к работе');
         req.dataManager = dataManager;
         next();
     } catch (error) {
         console.error('❌ Ошибка подключения к DataManager:', error);
-        res.status(500).json({ error: 'Ошибка подключения к DataManager' });
+        res.status(500).json({ error: 'Ошибка подключения к DataManager', details: error.message });
     }
 }
 
@@ -36,37 +50,47 @@ router.get('/user/balance/:userId', ensureDataManagerConnection, async (req, res
     try {
         const { userId } = req.params;
         const dm = req.dataManager;
-        
+
         console.log(`🔍 API: Запрос баланса для пользователя ${userId}`);
         console.log(`🔍 API: DataManager готов: ${!!dm && dm.isInitialized}`);
-        
+        console.log(`🔍 API: Время начала запроса: ${new Date().toISOString()}`);
+
         // Получаем пользователя через DataManager
         const user = await dm.getUser(Number(userId));
-        
+
         console.log(`🔍 API: Пользователь найден: ${!!user}`);
-        
+        console.log(`🔍 API: Данные пользователя:`, user ? {
+            userId: user.userId,
+            balance: user.balance,
+            lastActivity: user.lastActivity
+        } : 'null');
+
         if (!user) {
             console.log(`❌ API: Пользователь ${userId} не найден`);
             return res.status(404).json({ error: 'Пользователь не найден' });
         }
-        
+
         // Возвращаем баланс
         const balance = user.balance || { stars: 0, coins: 0 };
-        
+
         console.log(`✅ API: Баланс успешно получен для ${userId}:`, balance);
-        
+        console.log(`📊 API: Время завершения запроса: ${new Date().toISOString()}`);
+
         res.json({
             success: true,
             balance: {
                 stars: balance.stars || 0,
                 coins: balance.coins || 0,
                 totalEarned: balance.totalEarned || { stars: 0, coins: 0 }
-            }
+            },
+            timestamp: new Date().toISOString(),
+            lastActivity: user.lastActivity
         });
-        
+
     } catch (error) {
         console.error('❌ API: Ошибка получения баланса:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+        console.error('❌ API: Стек ошибки:', error.stack);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера', details: error.message });
     }
 });
 
@@ -75,25 +99,32 @@ router.post('/user/click/:userId', ensureDataManagerConnection, async (req, res)
     try {
         const { userId } = req.params;
         const dm = req.dataManager;
-        
+
         console.log(`🔍 API: Клик по кнопке для пользователя ${userId}`);
-        
+        console.log(`🔍 API: Время начала клика: ${new Date().toISOString()}`);
+
         // Получаем пользователя через DataManager
         const user = await dm.getUser(Number(userId));
-        
+
         if (!user) {
+            console.log(`❌ API: Пользователь ${userId} не найден`);
             return res.status(404).json({ error: 'Пользователь не найден' });
         }
-        
+
+        console.log(`🔍 API: Баланс до клика:`, user.balance);
+
         // Увеличиваем баланс Stars на 1 через DataManager
-        await dm.updateBalance(Number(userId), 'stars', 1, 'webapp_click');
-        
+        const newBalance = await dm.updateBalance(Number(userId), 'stars', 1, 'webapp_click');
+
+        console.log(`✅ API: updateBalance вернул:`, newBalance);
+
         // Получаем обновленный баланс
         const updatedUser = await dm.getUser(Number(userId));
         const balance = updatedUser.balance || { stars: 0, coins: 0 };
-        
-        console.log(`✅ API: Баланс обновлен для ${userId}:`, balance);
-        
+
+        console.log(`✅ API: Баланс после обновления:`, balance);
+        console.log(`📊 API: Время завершения клика: ${new Date().toISOString()}`);
+
         res.json({
             success: true,
             message: 'Баланс обновлен!',
@@ -103,10 +134,11 @@ router.post('/user/click/:userId', ensureDataManagerConnection, async (req, res)
                 totalEarned: balance.totalEarned || { stars: 0, coins: 0 }
             }
         });
-        
+
     } catch (error) {
         console.error('❌ API: Ошибка обновления баланса:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+        console.error('❌ API: Стек ошибки:', error.stack);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера', details: error.message });
     }
 });
 
