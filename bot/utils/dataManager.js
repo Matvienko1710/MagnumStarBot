@@ -123,7 +123,7 @@ class DataManager {
                         totalEarned: { stars: 0, coins: 0 }
                     },
                     referral: {
-                        code: null,
+                        referralId: null,
                         referrerId: null,
                         referrals: [],
                         totalEarned: { stars: 0, coins: 0 },
@@ -254,20 +254,20 @@ class DataManager {
 
     // === УПРАВЛЕНИЕ РЕФЕРАЛАМИ ===
     
-    async getUserByReferralCode(referralCode) {
+    async getUserByReferralId(referralId) {
         try {
-            // Ищем пользователя по реферальному коду
-            const user = await this.db.collection('users').findOne({ 'referral.code': referralCode });
+            // Ищем пользователя по ID
+            const user = await this.db.collection('users').findOne({ userId: Number(referralId) });
             
             if (user) {
-                logger.info('Пользователь найден по реферальному коду', { referralCode, userId: user.userId });
+                logger.info('Пользователь найден по ID', { referralId, userId: user.userId });
                 return user;
             } else {
-                logger.warn('Пользователь не найден по реферальному коду', { referralCode });
+                logger.warn('Пользователь не найден по ID', { referralId });
                 return null;
             }
         } catch (error) {
-            logger.error('Ошибка поиска пользователя по реферальному коду', error, { referralCode });
+            logger.error('Ошибка поиска пользователя по ID', error, { referralId });
             return null;
         }
     }
@@ -277,14 +277,14 @@ class DataManager {
             // Сначала получаем или создаем пользователя
             const user = await this.getUser(userId);
             
-            // Если у пользователя уже есть реферальный код, значит система настроена
-            if (user.referral && user.referral.code) {
-                logger.info('Реферальная система уже настроена', { userId, existingCode: user.referral.code });
+            // Если у пользователя уже есть referralId, значит система настроена
+            if (user.referral && user.referral.referralId) {
+                logger.info('Реферальная система уже настроена', { userId, existingReferralId: user.referral.referralId });
                 return user.referral;
             }
             
-            // Генерируем новый реферальный код
-            let referralCode = this.generateReferralCode();
+            // Генерируем новый referralId (используем userId пользователя)
+            let referralId = userId;
             let actualReferrerId = null;
             
             // Если передан ID реферера, проверяем его существование
@@ -299,7 +299,7 @@ class DataManager {
             }
             
             const referralData = {
-                code: referralCode,
+                referralId: referralId,
                 referrerId: actualReferrerId,
                 referrals: [],
                 totalEarned: { stars: 0, coins: 0 },
@@ -332,7 +332,7 @@ class DataManager {
                 logger.info('Начислен бонус за регистрацию по реферальному коду (реферер не найден)', { userId, reward: 1000, currency: 'coins', referrerId });
             }
             
-            logger.info('Реферальная система настроена', { userId, referrerId: actualReferrerId, referralCode });
+            logger.info('Реферальная система настроена', { userId, referrerId: actualReferrerId, referralId });
             
             return referralData;
             
@@ -385,7 +385,6 @@ class DataManager {
             const numericUserId = Number(userId);
             
             return {
-                referralCode: user.referral.code,
                 referralId: numericUserId, // ID пользователя для реферальной ссылки
                 totalReferrals: referrals.length,
                 activeReferrals: referrals.length, // Пока упрощенно
@@ -400,14 +399,7 @@ class DataManager {
         }
     }
 
-    generateReferralCode() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = '';
-        for (let i = 0; i < 8; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return code;
-    }
+
 
     // === УПРАВЛЕНИЕ ТИТУЛАМИ ===
     
