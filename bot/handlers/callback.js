@@ -4,6 +4,7 @@ const cacheManager = require('../utils/cache');
 const { getUserBalance } = require('../utils/currency');
 const { getReferralStats } = require('../utils/referral');
 const { isAdmin } = require('../utils/admin');
+const dataManager = require('../utils/dataManager');
 
 // Состояния пользователей для создания ключей
 const userStates = new Map();
@@ -199,9 +200,21 @@ async function handleMiners(ctx) {
         // Получаем баланс пользователя
         const userBalance = await getUserBalance(userId);
         
-        // Получаем информацию о майнерах пользователя (пока заглушка)
-        const userMiners = await getUserMiners(userId);
-        const totalIncome = calculateTotalMiningIncome(userMiners);
+        // Получаем информацию о майнерах пользователя
+        const userMiners = await dataManager.getUserMiners(userId);
+        
+        // Рассчитываем общий доход
+        let totalCoinsPerMin = 0;
+        let totalStarsPerMin = 0;
+        
+        userMiners.forEach(miner => {
+            if (miner.isActive) {
+                totalCoinsPerMin += miner.speed.coins;
+                totalStarsPerMin += miner.speed.stars;
+            }
+        });
+        
+        const totalIncome = { coins: totalCoinsPerMin, stars: totalStarsPerMin };
         
         const minersMessage = `⛏️ **Главное меню майнеров**\n\n` +
             `💰 **Ваш баланс:**\n` +
@@ -244,16 +257,7 @@ async function handleMiners(ctx) {
     }
 }
 
-// Вспомогательные функции для майнеров (заглушки)
-async function getUserMiners(userId) {
-    // Пока возвращаем заглушку, позже заменим на реальную логику
-    return [];
-}
 
-function calculateTotalMiningIncome(miners) {
-    // Пока возвращаем заглушку, позже заменим на реальную логику
-    return { coins: 0, stars: 0 };
-}
 
 // Обработка магазина майнеров
 async function handleMinersShop(ctx) {
@@ -266,7 +270,10 @@ async function handleMinersShop(ctx) {
         const userBalance = await getUserBalance(userId);
         
         // Получаем список доступных майнеров
-        const availableMiners = getAvailableMiners();
+        const availableMiners = [
+            dataManager.getMinerInfo('novice'),
+            dataManager.getMinerInfo('star_path')
+        ];
         
         const shopMessage = `🛒 **Магазин майнеров**\n\n` +
             `💰 **Ваш баланс:**\n` +
@@ -316,27 +323,7 @@ async function handleMinersShop(ctx) {
     }
 }
 
-// Получение списка доступных майнеров
-function getAvailableMiners() {
-    return [
-        {
-            id: 'novice',
-            name: 'Новичок',
-            price: { coins: 100, stars: 0 },
-            speed: { coins: 0.25, stars: 0 },
-            rarity: 'Обычный',
-            available: 100
-        },
-        {
-            id: 'star_path',
-            name: 'Путь к звездам',
-            price: { coins: 0, stars: 100 },
-            speed: { coins: 0, stars: 0.01 },
-            rarity: 'Редкий',
-            available: 100
-        }
-    ];
-}
+
 
 // Обработка "Мои майнеры"
 async function handleMyMiners(ctx) {
@@ -345,8 +332,8 @@ async function handleMyMiners(ctx) {
     logger.info('Обработка "Мои майнеры"', { userId });
     
     try {
-        // Получаем майнеры пользователя (пока заглушка)
-        const userMiners = await getUserMiners(userId);
+        // Получаем майнеры пользователя
+        const userMiners = await dataManager.getUserMiners(userId);
         
         if (userMiners.length === 0) {
             const noMinersMessage = `📊 **Мои майнеры**\n\n` +
@@ -366,11 +353,22 @@ async function handleMyMiners(ctx) {
             return;
         }
         
+        // Рассчитываем общий доход
+        let totalCoinsPerMin = 0;
+        let totalStarsPerMin = 0;
+        
+        userMiners.forEach(miner => {
+            if (miner.isActive) {
+                totalCoinsPerMin += miner.speed.coins;
+                totalStarsPerMin += miner.speed.stars;
+            }
+        });
+        
         const myMinersMessage = `📊 **Мои майнеры**\n\n` +
             `⛏️ **Всего майнеров:** ${userMiners.length}\n\n` +
             `💰 **Общий доход:**\n` +
-            `├ 🪙 Magnum Coins: ${calculateTotalMiningIncome(userMiners).coins}/мин\n` +
-            `└ ⭐ Stars: ${calculateTotalMiningIncome(userMiners).stars}/мин\n\n` +
+            `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
+            `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
             `🎯 **Выберите действие:**`;
         
         const myMinersKeyboard = Markup.inlineKeyboard([
@@ -455,8 +453,8 @@ async function handleCollectMiningIncome(ctx) {
     logger.info('Обработка сбора дохода от майнинга', { userId });
     
     try {
-        // Получаем майнеры пользователя (пока заглушка)
-        const userMiners = await getUserMiners(userId);
+        // Получаем майнеры пользователя
+        const userMiners = await dataManager.getUserMiners(userId);
         
         if (userMiners.length === 0) {
             const noMinersMessage = `💰 **Сбор дохода**\n\n` +
@@ -475,13 +473,13 @@ async function handleCollectMiningIncome(ctx) {
             return;
         }
         
-        // Пока заглушка для сбора дохода
-        const collectedIncome = { coins: 0, stars: 0 };
+        // Собираем реальный доход от майнеров
+        const collectedIncome = await dataManager.collectMiningIncome(userId);
         
         const collectMessage = `💰 **Доход собран!**\n\n` +
             `⛏️ **Собрано:**\n` +
-            `├ 🪙 Magnum Coins: +${collectedIncome.coins}\n` +
-            `└ ⭐ Stars: +${collectedIncome.stars}\n\n` +
+            `├ 🪙 Magnum Coins: +${collectedIncome.coins.toFixed(2)}\n` +
+            `└ ⭐ Stars: +${collectedIncome.stars.toFixed(2)}\n\n` +
             `💡 Доход автоматически начисляется каждые 10 минут\n` +
             `🔄 Следующий сбор через: 10:00`;
         
@@ -526,7 +524,7 @@ async function handleBuyMiner(ctx, minerType) {
         const userBalance = await getUserBalance(userId);
         
         // Получаем информацию о майнере
-        const minerInfo = getMinerInfo(minerType);
+        const minerInfo = dataManager.getMinerInfo(minerType);
         
         if (!minerInfo) {
             await ctx.reply('❌ Майнер не найден');
@@ -559,16 +557,21 @@ async function handleBuyMiner(ctx, minerType) {
             return;
         }
         
-        // Пока заглушка для покупки
+        // Выполняем реальную покупку майнера
+        const purchasedMiner = await dataManager.buyMiner(userId, minerType);
+        
         const successMessage = `✅ **Майнер успешно куплен!**\n\n` +
             `⛏️ **${minerInfo.name}**\n` +
+            `├ 🆔 ID: ${purchasedMiner.id}\n` +
             `├ 💰 Цена: ${minerInfo.price.coins > 0 ? minerInfo.price.coins + ' 🪙' : minerInfo.price.stars + ' ⭐'}\n` +
             `├ ⚡ Скорость: ${minerInfo.speed.coins > 0 ? minerInfo.speed.coins + ' 🪙/мин' : minerInfo.speed.stars + ' ⭐/мин'}\n` +
-            `└ 🎯 Редкость: ${minerInfo.rarity}\n\n` +
+            `├ 🎯 Редкость: ${minerInfo.rarity}\n` +
+            `└ 📅 Дата покупки: ${new Date().toLocaleDateString('ru-RU')}\n\n` +
             `🎉 Теперь вы можете собирать доход от майнинга!`;
         
         const successKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('💰 Собрать доход', 'collect_mining_income')],
+            [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
             [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
         ]);
@@ -597,29 +600,7 @@ async function handleBuyMiner(ctx, minerType) {
     }
 }
 
-// Получение информации о майнере
-function getMinerInfo(minerType) {
-    const miners = {
-        'novice': {
-            id: 'novice',
-            name: 'Новичок',
-            price: { coins: 100, stars: 0 },
-            speed: { coins: 0.25, stars: 0 },
-            rarity: 'Обычный',
-            available: 100
-        },
-        'star_path': {
-            id: 'star_path',
-            name: 'Путь к звездам',
-            price: { coins: 0, stars: 100 },
-            speed: { coins: 0, stars: 0.01 },
-            rarity: 'Редкий',
-            available: 100
-        }
-    };
-    
-    return miners[minerType];
-}
+
 
 // Обработка следующего майнера (заглушка)
 async function handleNextMiner(ctx) {
@@ -729,7 +710,6 @@ async function handleMainMenu(ctx) {
         const referralStats = await getReferralStats(userId);
         
         // Получаем статистику бота
-        const dataManager = require('../utils/dataManager');
         const botStats = await dataManager.getBotStats();
         
         // Получаем количество непрочитанных уведомлений
@@ -800,7 +780,6 @@ async function handleAdminPanel(ctx) {
     
     try {
         // Получаем статистику бота
-        const dataManager = require('../utils/dataManager');
         const botStats = await dataManager.getBotStats();
         const totalUsers = await dataManager.getTotalUsers();
         const totalStarsWithdrawn = await dataManager.getTotalStarsWithdrawn();
@@ -1063,8 +1042,6 @@ async function handleMarkAllNotificationsRead(ctx) {
     logger.info('Отметить все уведомления как прочитанные', { userId });
     
     try {
-        const dataManager = require('../utils/dataManager');
-        
         // Отмечаем все уведомления как прочитанные
         await dataManager.markAllNotificationsAsRead(userId);
         
@@ -1108,8 +1085,6 @@ async function handleClearOldNotifications(ctx) {
     logger.info('Очистить старые уведомления', { userId });
     
     try {
-        const dataManager = require('../utils/dataManager');
-        
         // Очищаем старые уведомления (старше 30 дней)
         await dataManager.cleanupOldNotifications();
         
@@ -1153,8 +1128,6 @@ async function handleNotifications(ctx) {
     logger.info('Обработка уведомлений', { userId });
     
     try {
-        const dataManager = require('../utils/dataManager');
-        
         // Получаем все уведомления пользователя
         const notifications = await dataManager.getUserNotifications(userId, 20);
         

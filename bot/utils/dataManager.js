@@ -145,6 +145,7 @@ class DataManager {
                         unlocked: ['novice'],
                         history: []
                     },
+                    miners: [],
                     createdAt: new Date(),
                     lastActivity: new Date()
                 };
@@ -640,6 +641,169 @@ class DataManager {
         } catch (error) {
             logger.error('Ошибка очистки старых уведомлений', error);
         }
+    }
+
+    // === УПРАВЛЕНИЕ МАЙНЕРАМИ ===
+    
+    // Покупка майнера
+    async buyMiner(userId, minerType) {
+        try {
+            logger.info('Начинаем покупку майнера', { userId, minerType });
+            
+            // Получаем информацию о майнере
+            const minerInfo = this.getMinerInfo(minerType);
+            if (!minerInfo) {
+                throw new Error('Майнер не найден');
+            }
+            
+            // Получаем пользователя
+            const user = await this.getUser(userId);
+            
+            // Проверяем, хватает ли средств
+            const canAfford = (user.balance.coins >= minerInfo.price.coins) && 
+                             (user.balance.stars >= minerInfo.price.stars);
+            
+            if (!canAfford) {
+                throw new Error('Недостаточно средств для покупки майнера');
+            }
+            
+            // Списываем средства
+            if (minerInfo.price.coins > 0) {
+                await this.updateBalance(userId, 'coins', -minerInfo.price.coins, 'miner_purchase');
+            }
+            if (minerInfo.price.stars > 0) {
+                await this.updateBalance(userId, 'stars', -minerInfo.price.stars, 'miner_purchase');
+            }
+            
+            // Создаем майнер
+            const miner = {
+                id: this.generateMinerId(),
+                type: minerType,
+                name: minerInfo.name,
+                speed: minerInfo.speed,
+                rarity: minerInfo.rarity,
+                purchaseDate: new Date(),
+                lastCollection: new Date(),
+                isActive: true,
+                level: 1,
+                experience: 0
+            };
+            
+            // Добавляем майнер пользователю
+            const userMiners = user.miners || [];
+            userMiners.push(miner);
+            
+            await this.updateUser(userId, { miners: userMiners });
+            
+            logger.info('Майнер успешно куплен', { userId, minerType, minerId: miner.id });
+            
+            return miner;
+            
+        } catch (error) {
+            logger.error('Ошибка покупки майнера', error, { userId, minerType });
+            throw error;
+        }
+    }
+    
+    // Получение майнеров пользователя
+    async getUserMiners(userId) {
+        try {
+            const user = await this.getUser(userId);
+            return user.miners || [];
+            
+        } catch (error) {
+            logger.error('Ошибка получения майнеров пользователя', error, { userId });
+            return [];
+        }
+    }
+    
+    // Сбор дохода от майнеров
+    async collectMiningIncome(userId) {
+        try {
+            logger.info('Начинаем сбор дохода от майнеров', { userId });
+            
+            const user = await this.getUser(userId);
+            const miners = user.miners || [];
+            
+            if (miners.length === 0) {
+                return { coins: 0, stars: 0, message: 'У вас нет майнеров для сбора дохода' };
+            }
+            
+            let totalCoins = 0;
+            let totalStars = 0;
+            const now = new Date();
+            
+            // Рассчитываем доход для каждого майнера
+            for (const miner of miners) {
+                if (!miner.isActive) continue;
+                
+                const timeDiff = now - new Date(miner.lastCollection);
+                const minutesPassed = Math.floor(timeDiff / (1000 * 60));
+                
+                if (minutesPassed >= 10) { // Сбор каждые 10 минут
+                    const coinsEarned = (miner.speed.coins * minutesPassed) / 10;
+                    const starsEarned = (miner.speed.stars * minutesPassed) / 10;
+                    
+                    totalCoins += coinsEarned;
+                    totalStars += starsEarned;
+                    
+                    // Обновляем время последнего сбора
+                    miner.lastCollection = now;
+                }
+            }
+            
+            // Начисляем доход
+            if (totalCoins > 0) {
+                await this.updateBalance(userId, 'coins', totalCoins, 'mining_income');
+            }
+            if (totalStars > 0) {
+                await this.updateBalance(userId, 'stars', totalStars, 'mining_income');
+            }
+            
+            // Обновляем майнеры пользователя
+            await this.updateUser(userId, { miners: miners });
+            
+            logger.info('Доход от майнеров собран', { userId, totalCoins, totalStars });
+            
+            return { 
+                coins: totalCoins, 
+                stars: totalStars, 
+                message: `Собрано: ${totalCoins.toFixed(2)} 🪙, ${totalStars.toFixed(2)} ⭐` 
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка сбора дохода от майнеров', error, { userId });
+            throw error;
+        }
+    }
+    
+    // Получение информации о майнере
+    getMinerInfo(minerType) {
+        const miners = {
+            'novice': {
+                id: 'novice',
+                name: 'Новичок',
+                price: { coins: 100, stars: 0 },
+                speed: { coins: 0.25, stars: 0 },
+                rarity: 'Обычный',
+                available: 100
+            },
+            'star_path': {
+                id: 'star_path',
+                name: 'Путь к звездам',
+                price: { coins: 0, stars: 100 },
+                speed: { coins: 0, stars: 0.01 },
+                rarity: 'Редкий',
+                available: 100
+            }
+        };
+        
+        return miners[minerType];
+    }
+    
+    // Генерация уникального ID для майнера
+    generateMinerId() {
+        return 'miner_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 }
 
