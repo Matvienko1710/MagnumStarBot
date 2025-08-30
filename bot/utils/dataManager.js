@@ -136,9 +136,9 @@ class DataManager {
                     referral: {
                         referralId: null,
                         referrerId: null,
-                        referrals: [],
                         totalEarned: { stars: 0, coins: 0 },
-                        level: 1
+                        level: 1,
+                        hasReceivedReferralBonus: false
                     },
                     titles: {
                         current: 'novice',
@@ -192,6 +192,16 @@ class DataManager {
     }
 
     // === УПРАВЛЕНИЕ БАЛАНСОМ ===
+    
+    async getUserBalance(userId) {
+        try {
+            const user = await this.getUser(userId);
+            return user.balance;
+        } catch (error) {
+            logger.error('Ошибка получения баланса пользователя', error, { userId });
+            return { stars: 0, coins: 0, totalEarned: { stars: 0, coins: 0 } };
+        }
+    }
     
     async updateBalance(userId, currency, amount, reason = 'transaction') {
         try {
@@ -295,6 +305,12 @@ class DataManager {
                 return user.referral;
             }
             
+            // Проверяем, получал ли пользователь уже награду за реферальную регистрацию
+            if (user.referral && user.referral.hasReceivedReferralBonus) {
+                logger.info('Пользователь уже получал награду за реферальную регистрацию', { userId });
+                return user.referral;
+            }
+            
             // Генерируем новый referralId (используем userId пользователя)
             let referralId = userId;
             let actualReferrerId = null;
@@ -313,9 +329,9 @@ class DataManager {
             const referralData = {
                 referralId: referralId,
                 referrerId: actualReferrerId,
-                referrals: [],
                 totalEarned: { stars: 0, coins: 0 },
-                level: 1
+                level: 1,
+                hasReceivedReferralBonus: false
             };
             
             // Обновляем реферальные данные пользователя
@@ -335,12 +351,20 @@ class DataManager {
                 // Также начисляем награду новому пользователю за регистрацию по реферальному коду
                 logger.info('Начисляем бонус новому пользователю', { userId, reward: 1000, currency: 'coins' });
                 await this.updateBalance(userId, 'coins', 1000, 'referral_registration_bonus');
+                
+                // Устанавливаем флаг, что пользователь получил награду
+                await this.updateUser(userId, { 'referral.hasReceivedReferralBonus': true });
+                
                 logger.info('Начислен бонус за регистрацию по реферальному коду', { userId, reward: 1000, currency: 'coins' });
             } else if (referrerId) {
                 // Если ID реферера передан, но реферер не найден, все равно начисляем бонус новому пользователю
                 // Это нужно для тестирования и чтобы пользователи не теряли бонусы
                 logger.info('Реферер не найден, но начисляем бонус новому пользователю', { userId, reward: 1000, currency: 'coins', referrerId });
                 await this.updateBalance(userId, 'coins', 1000, 'referral_registration_bonus');
+                
+                // Устанавливаем флаг, что пользователь получил награду
+                await this.updateUser(userId, { 'referral.hasReceivedReferralBonus': true });
+                
                 logger.info('Начислен бонус за регистрацию по реферальному коду (реферер не найден)', { userId, reward: 1000, currency: 'coins', referrerId });
             }
             
@@ -358,18 +382,21 @@ class DataManager {
         try {
             logger.info('Начинаем добавление реферала к пользователю', { referrerId, newUserId });
             
+            // Создаем запись в коллекции referrals
+            const referralRecord = {
+                userId: Number(newUserId),
+                referrerId: Number(referrerId),
+                createdAt: new Date(),
+                isActive: true,
+                reward: 5 // 5 звезд за реферала
+            };
+            
+            // Сохраняем в коллекцию referrals
+            await this.db.collection('referrals').insertOne(referralRecord);
+            logger.info('Запись о реферале сохранена в коллекции referrals', { referrerId, newUserId, referralId: referralRecord._id });
+            
+            // Обновляем статистику реферера в коллекции users
             const referrer = await this.getUser(referrerId);
-            logger.info('Реферер получен для добавления реферала', { referrerId, currentReferrals: referrer.referral.referrals });
-            
-            const newReferrals = [...referrer.referral.referrals, newUserId];
-            
-            // Обновляем список рефералов
-            logger.info('Обновляем список рефералов', { referrerId, newReferrals });
-            await this.updateUser(referrerId, {
-                'referral.referrals': newReferrals
-            });
-            
-            // Обновляем общий заработок реферера
             const currentEarned = referrer.referral.totalEarned || { stars: 0, coins: 0 };
             const newEarned = {
                 stars: currentEarned.stars + 5, // 5 звезд за реферала
@@ -427,7 +454,13 @@ class DataManager {
     async getReferralStats(userId) {
         try {
             const user = await this.getUser(userId);
-            const referrals = user.referral.referrals;
+            
+            // Получаем рефералов из коллекции referrals
+            const referrals = await this.db.collection('referrals')
+                .find({ referrerId: Number(userId) })
+                .toArray();
+            
+            logger.info('Получены рефералы из коллекции referrals', { userId, referralsCount: referrals.length });
             
             // Убеждаемся, что userId - это число
             const numericUserId = Number(userId);
@@ -435,15 +468,23 @@ class DataManager {
             return {
                 referralId: numericUserId, // ID пользователя для реферальной ссылки
                 totalReferrals: referrals.length,
-                activeReferrals: referrals.length, // Пока упрощенно
-                totalEarned: user.referral.totalEarned,
-                level: user.referral.level,
+                activeReferrals: referrals.filter(r => r.isActive).length,
+                totalEarned: user.referral.totalEarned || { stars: 0, coins: 0 },
+                level: user.referral.level || 1,
                 referrals: referrals
             };
             
         } catch (error) {
             logger.error('Ошибка получения реферальной статистики', error, { userId });
-            throw error;
+            
+            return {
+                referralId: Number(userId),
+                totalReferrals: 0,
+                activeReferrals: 0,
+                totalEarned: { stars: 0, coins: 0 },
+                level: 1,
+                referrals: []
+            };
         }
     }
 
