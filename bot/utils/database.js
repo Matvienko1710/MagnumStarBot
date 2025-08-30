@@ -15,11 +15,38 @@ class Database {
                 throw new Error('MONGODB_URI не установлена в переменных окружения');
             }
 
-            // Пробуем разные конфигурации подключения
+            console.log('🔧 Подключение к MongoDB Atlas кластеру...');
+            console.log('📊 URI:', uri.substring(0, 30) + '...');
+
+            // Оптимизированные настройки для вашего кластера
             const connectionConfigs = [
-                // Конфигурация 1: Без SSL
+                // Конфигурация 1: Стандартная для MongoDB Atlas
                 {
-                    serverApi: { version: '1', strict: true, deprecationErrors: true },
+                    serverApi: { 
+                        version: '1', 
+                        strict: true, 
+                        deprecationErrors: true 
+                    },
+                    retryWrites: true,
+                    w: 'majority',
+                    maxPoolSize: 10,
+                    minPoolSize: 1,
+                    maxIdleTimeMS: 30000,
+                    connectTimeoutMS: 30000,
+                    socketTimeoutMS: 45000,
+                    serverSelectionTimeoutMS: 30000,
+                    heartbeatFrequencyMS: 10000,
+                    maxStalenessSeconds: 90,
+                    compressors: ['zlib'],
+                    zlibCompressionLevel: 6,
+                },
+                // Конфигурация 2: С отключенным SSL (для тестирования)
+                {
+                    serverApi: { 
+                        version: '1', 
+                        strict: true, 
+                        deprecationErrors: true 
+                    },
                     ssl: false,
                     tls: false,
                     retryWrites: true,
@@ -29,23 +56,13 @@ class Database {
                     socketTimeoutMS: 45000,
                     serverSelectionTimeoutMS: 30000,
                 },
-                // Конфигурация 2: С SSL но без проверки сертификатов
-                {
-                    serverApi: { version: '1', strict: true, deprecationErrors: true },
-                    ssl: true,
-                    tls: true,
-                    tlsAllowInvalidCertificates: true,
-                    tlsAllowInvalidHostnames: true,
-                    retryWrites: true,
-                    w: 'majority',
-                    maxPoolSize: 5,
-                    connectTimeoutMS: 30000,
-                    socketTimeoutMS: 45000,
-                    serverSelectionTimeoutMS: 30000,
-                },
                 // Конфигурация 3: Минимальная конфигурация
                 {
-                    serverApi: { version: '1', strict: true, deprecationErrors: true },
+                    serverApi: { 
+                        version: '1', 
+                        strict: true, 
+                        deprecationErrors: true 
+                    },
                     retryWrites: true,
                     w: 'majority',
                     maxPoolSize: 5,
@@ -62,7 +79,8 @@ class Database {
                     console.log(`🔧 Попытка подключения с конфигурацией ${i + 1}:`, {
                         ssl: config.ssl,
                         tls: config.tls,
-                        tlsAllowInvalidCertificates: config.tlsAllowInvalidCertificates
+                        maxPoolSize: config.maxPoolSize,
+                        connectTimeoutMS: config.connectTimeoutMS
                     });
 
                     this.client = new MongoClient(uri, config);
@@ -71,6 +89,7 @@ class Database {
                     this.isConnected = true;
                     
                     console.log(`✅ Успешно подключено с конфигурацией ${i + 1}`);
+                    console.log(`📊 База данных: ${this.db.databaseName}`);
                     
                     // Тестируем подключение
                     await this.ping();
@@ -78,6 +97,11 @@ class Database {
                     
                 } catch (error) {
                     console.error(`❌ Ошибка с конфигурацией ${i + 1}:`, error.message);
+                    console.error(`🔍 Детали ошибки:`, {
+                        code: error.code,
+                        name: error.name,
+                        stack: error.stack?.split('\n')[0]
+                    });
                     lastError = error;
                     
                     // Закрываем клиент если он был создан
@@ -94,7 +118,8 @@ class Database {
                     
                     // Небольшая пауза между попытками
                     if (i < connectionConfigs.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        console.log(`⏳ Пауза 3 секунды перед следующей попыткой...`);
+                        await new Promise(resolve => setTimeout(resolve, 3000));
                     }
                 }
             }
@@ -103,7 +128,8 @@ class Database {
             throw lastError || new Error('Не удалось подключиться ни с одной конфигурацией');
             
         } catch (error) {
-            console.error('❌ Ошибка подключения к MongoDB Atlas:', error.message);
+            console.error('❌ Критическая ошибка подключения к MongoDB Atlas:', error.message);
+            console.error('🔍 Полная ошибка:', error);
             this.isConnected = false;
             throw error;
         }
@@ -126,8 +152,8 @@ class Database {
                 throw new Error('Клиент MongoDB не инициализирован');
             }
             
-            await this.client.db('admin').command({ ping: 1 });
-            console.log('✅ Ping к MongoDB успешен');
+            const result = await this.client.db('admin').command({ ping: 1 });
+            console.log('✅ Ping к MongoDB успешен:', result);
             return true;
         } catch (error) {
             console.error('❌ Ошибка ping к MongoDB:', error.message);
@@ -262,6 +288,8 @@ class Database {
 
                 await titlesCollection.insertMany(defaultTitles);
                 console.log('✅ Титулы по умолчанию созданы');
+            } else {
+                console.log(`📊 Найдено ${titlesCount} существующих титулов`);
             }
 
             // Создаем типы майнеров по умолчанию
@@ -296,9 +324,11 @@ class Database {
 
                 await minerTypesCollection.insertMany(defaultMinerTypes);
                 console.log('✅ Типы майнеров по умолчанию созданы');
+            } else {
+                console.log(`📊 Найдено ${minerTypesCount} существующих типов майнеров`);
             }
 
-            console.log('✅ Данные по умолчанию созданы');
+            console.log('✅ Данные по умолчанию проверены/созданы');
             
         } catch (error) {
             console.error('❌ Ошибка создания данных по умолчанию:', error.message);
