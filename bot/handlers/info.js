@@ -1,9 +1,6 @@
 const { Markup } = require('telegraf');
 const logger = require('../utils/logger');
 
-// Состояния пользователей для создания ключей
-const userStates = new Map();
-
 // Обработчик текстовых сообщений
 async function infoHandler(ctx) {
     try {
@@ -11,6 +8,9 @@ async function infoHandler(ctx) {
         const text = ctx.message.text;
         
         logger.info('Получено текстовое сообщение', { userId, text: text.substring(0, 50) });
+        
+        // Импортируем userStates из callback.js
+        const { userStates } = require('./callback');
         
         // Проверяем состояние пользователя
         const userState = userStates.get(userId);
@@ -88,6 +88,7 @@ async function handleKeyActivation(ctx, text) {
             logger.info('Ключ успешно активирован', { userId, key: key.substring(0, 10) });
             
             // Очищаем состояние
+            const { userStates } = require('./callback');
             userStates.delete(userId);
             
             const rewardText = [];
@@ -179,7 +180,7 @@ async function handleKeyRewardAmount(ctx, text) {
     if (isNaN(numAmount) || numAmount <= 0) {
         await ctx.reply(
             '❌ Неверное количество!\n\n' +
-            '💰 Введите положительное число\n\n' +
+            '�� Введите положительное число\n\n' +
             'Попробуйте еще раз'
         );
         return;

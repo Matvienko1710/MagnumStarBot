@@ -642,7 +642,8 @@ async function handleMyTitles(ctx) {
 module.exports = {
     callbackHandler,
     handleKeyCreation,
-    handleTitleKeyCreation
+    handleTitleKeyCreation,
+    userStates
 };
 
 // === ФУНКЦИИ ДЛЯ СОЗДАНИЯ КЛЮЧЕЙ ===
