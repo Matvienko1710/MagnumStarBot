@@ -112,6 +112,7 @@ async function handleProfile(ctx) {
     
     const profileKeyboard = Markup.inlineKeyboard([
         [Markup.button.callback('👑 Титулы', 'titles')],
+        [Markup.button.callback('👥 Рефералы', 'referrals')],
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
@@ -267,7 +268,6 @@ async function handleMainMenu(ctx) {
         [Markup.button.callback('👤 Профиль', 'profile')],
         [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
         [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-        [Markup.button.callback('👥 Рефералы', 'referrals')],
         [Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
         [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
     ]);
