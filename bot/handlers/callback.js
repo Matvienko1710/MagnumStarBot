@@ -10,9 +10,9 @@ const { getReferralStats, getLevelInfo, getNextLevel } = require('../utils/refer
 // Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
 const userStates = new Map();
 
-module.exports = (bot) => {
+module.exports = (bot, safeAsync) => {
   // Обработка колбэков от инлайн-кнопок
-  bot.on('callback_query', async (ctx) => {
+  bot.on('callback_query', safeAsync(async (ctx) => {
     const callbackData = ctx.callbackQuery.data;
     const userId = ctx.from.id;
     const adminStatus = isAdmin(userId);
@@ -687,5 +687,5 @@ ${Array.from({length: 10}, (_, i) => i + 1).map(level => {
       default:
         await ctx.answerCbQuery('Неизвестная команда');
     }
-  });
+  }));
 };

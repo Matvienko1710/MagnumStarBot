@@ -8,9 +8,9 @@ const { activateReferralCode, getReferralStats, getLevelInfo, getNextLevel } = r
 // Временное хранилище состояний пользователей (в реальном проекте заменить на БД)
 const userStates = new Map();
 
-module.exports = (bot) => {
+module.exports = (bot, safeAsync) => {
   // Обработка команды /info
-  bot.command('info', async (ctx) => {
+  bot.command('info', safeAsync(async (ctx) => {
     const adminStatus = isAdmin(ctx.from.id);
     await ctx.reply(
       'ℹ️ Информация о боте:\n\n' +
@@ -25,16 +25,16 @@ module.exports = (bot) => {
       '\nИспользуйте кнопки ниже для навигации:',
       inlineKeyboard(adminStatus)
     );
-  });
+  }));
 
   // Обработка команды /menu
-  bot.command('menu', async (ctx) => {
+  bot.command('menu', safeAsync(async (ctx) => {
     const adminStatus = isAdmin(ctx.from.id);
     await ctx.reply('Выберите действие:', inlineKeyboard(adminStatus));
-  });
+  }));
 
   // Обработка текстовых сообщений
-  bot.on('text', async (ctx) => {
+  bot.on('text', safeAsync(async (ctx) => {
     const text = ctx.message.text;
     const userId = ctx.from.id;
     const adminStatus = isAdmin(userId);
@@ -914,5 +914,5 @@ ${unlockedTitles.map(title =>
           inlineKeyboard(adminStatus)
         );
     }
-  });
+  }));
 };

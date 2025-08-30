@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const dotenv = require('dotenv');
-const bot = require('./bot');
+const { bot, launchBot } = require('./bot');
 
 // Загрузка переменных окружения
 dotenv.config();
@@ -27,23 +27,50 @@ app.post('/api/webhook', (req, res) => {
 });
 
 // Запуск сервера
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   
   // Запуск бота
-  bot.launch()
-    .then(() => {
-      console.log('Бот успешно запущен');
-    })
-    .catch((err) => {
-      console.error('Ошибка при запуске бота:', err);
-    });
+  launchBot();
 });
 
 // Корректное завершение работы
-process.once('SIGINT', () => {
-  bot.stop('SIGINT');
+const gracefulShutdown = async (signal) => {
+  console.log(`\n🔄 Получен сигнал ${signal}. Начинаю graceful shutdown...`);
+  
+  try {
+    // Останавливаем бота
+    await bot.stop(signal);
+    console.log('✅ Бот успешно остановлен');
+    
+    // Останавливаем сервер
+    server.close(() => {
+      console.log('✅ HTTP сервер успешно остановлен');
+      process.exit(0);
+    });
+    
+    // Таймаут для принудительного завершения
+    setTimeout(() => {
+      console.error('❌ Принудительное завершение из-за таймаута');
+      process.exit(1);
+    }, 10000);
+    
+  } catch (error) {
+    console.error('❌ Ошибка при graceful shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Обработка необработанных ошибок процесса
+process.on('uncaughtException', (error) => {
+  console.error('❌ Необработанная ошибка процесса:', error);
+  gracefulShutdown('uncaughtException');
 });
-process.once('SIGTERM', () => {
-  bot.stop('SIGTERM');
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Необработанное отклонение промиса:', reason);
+  gracefulShutdown('unhandledRejection');
 });
