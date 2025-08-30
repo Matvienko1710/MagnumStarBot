@@ -253,6 +253,10 @@ async function handleMiners(ctx) {
         
         const totalIncome = { coins: totalCoinsPerMin, stars: totalStarsPerMin };
         
+        // Получаем информацию о лимитах майнеров
+        const minerAvailability = await dataManager.getMinerAvailability('novice');
+        const userMinerCount = await dataManager.getUserMinerCount(userId, 'novice');
+        
         const minersMessage = `⛏️ **Главное меню майнеров**\n\n` +
             `💰 **Ваш баланс:**\n` +
             `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
@@ -261,6 +265,10 @@ async function handleMiners(ctx) {
             `├ 📊 Всего майнеров: ${userMiners.length}\n` +
             `├ ⚡ Общий доход: ${totalIncome.coins} 🪙/мин\n` +
             `└ 💎 Доход в Stars: ${totalIncome.stars} ⭐/мин\n\n` +
+            `📊 **Лимиты:**\n` +
+            `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
+            `├ 🌐 На сервере: ${minerAvailability.globalCount}/${minerAvailability.globalLimit} майнеров\n` +
+            `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
         
         const minersKeyboard = Markup.inlineKeyboard([
@@ -325,6 +333,10 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
         
         const currentMiner = availableMiners[currentMinerIndex];
         
+        // Получаем информацию о доступности майнера
+        const minerAvailability = await dataManager.getMinerAvailability(currentMiner.id);
+        const userMinerCount = await dataManager.getUserMinerCount(userId, currentMiner.id);
+        
         // Формируем сообщение о текущем майнере
         const priceText = currentMiner.price.coins > 0 
             ? `${currentMiner.price.coins} 🪙 Magnum Coins`
@@ -342,18 +354,43 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
             `├ 💰 Цена: ${priceText}\n` +
             `├ ⚡ Скорость: ${speedText}\n` +
             `├ 🎯 Редкость: ${currentMiner.rarity}\n` +
-            `├ 📝 Описание: ${currentMiner.description}\n` +
-            `└ 📦 Доступно: 100 шт\n\n` +
+            `├ 📝 Описание: ${currentMiner.description}\n\n` +
+            `📊 **Лимиты:**\n` +
+            `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
+            `├ 🌐 На сервере: ${minerAvailability.globalCount}/${minerAvailability.globalLimit} майнеров\n` +
+            `└ 🆕 Доступно для покупки: ${minerAvailability.available} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
+        
+        // Проверяем, можно ли купить майнер
+        const canBuy = minerAvailability.isAvailable && 
+                      userMinerCount < minerAvailability.maxPerUser &&
+                      userBalance.coins >= currentMiner.price.coins;
         
         // Создаем клавиатуру с кнопками
         const shopKeyboard = [];
         
-        // Кнопка покупки
-        shopKeyboard.push([Markup.button.callback(
-            `🛒 Купить ${currentMiner.name}`, 
-            `buy_miner_${currentMiner.id}`
-        )]);
+        // Кнопка покупки (активна только если можно купить)
+        if (canBuy) {
+            shopKeyboard.push([Markup.button.callback(
+                `🛒 Купить ${currentMiner.name}`, 
+                `buy_miner_${currentMiner.id}`
+            )]);
+        } else {
+            // Показываем причину недоступности
+            let reason = '';
+            if (!minerAvailability.isAvailable) {
+                reason = '❌ Достигнут общий лимит на сервере';
+            } else if (userMinerCount >= minerAvailability.maxPerUser) {
+                reason = '❌ Достигнут лимит на пользователя';
+            } else if (userBalance.coins < currentMiner.price.coins) {
+                reason = '❌ Недостаточно средств';
+            }
+            
+            shopKeyboard.push([Markup.button.callback(
+                reason, 
+                'miners_shop'
+            )]);
+        }
         
         // Навигационные кнопки
         shopKeyboard.push([
@@ -426,11 +463,19 @@ async function handleMyMiners(ctx) {
             }
         });
         
+        // Получаем информацию о лимитах майнеров
+        const minerAvailability = await dataManager.getMinerAvailability('novice');
+        const userMinerCount = await dataManager.getUserMinerCount(userId, 'novice');
+        
         const myMinersMessage = `📊 **Мои майнеры**\n\n` +
             `⛏️ **Всего майнеров:** ${userMiners.length}\n\n` +
             `💰 **Общий доход:**\n` +
             `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
             `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
+            `📊 **Лимиты:**\n` +
+            `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
+            `├ 🌐 На сервере: ${minerAvailability.globalCount}/${minerAvailability.globalLimit} майнеров\n` +
+            `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
         
         const myMinersKeyboard = Markup.inlineKeyboard([

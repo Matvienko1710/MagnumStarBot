@@ -580,6 +580,29 @@ class DataManager {
             // Получаем пользователя
             const user = await this.getUser(userId);
             
+            // Проверяем лимиты майнеров
+            const userMinerCount = await this.getUserMinerCount(userId, minerType);
+            const globalMinerCount = await this.getGlobalMinerCount(minerType);
+            
+            logger.info('Проверка лимитов майнеров', { 
+                userId, 
+                minerType, 
+                userMinerCount, 
+                globalMinerCount,
+                maxPerUser: minerInfo.maxPerUser,
+                globalLimit: minerInfo.globalLimit
+            });
+            
+            // Проверяем лимит на пользователя
+            if (userMinerCount >= minerInfo.maxPerUser) {
+                throw new Error(`Достигнут лимит майнеров "${minerInfo.name}" на пользователя (${minerInfo.maxPerUser})`);
+            }
+            
+            // Проверяем общий лимит на сервере
+            if (globalMinerCount >= minerInfo.globalLimit) {
+                throw new Error(`Достигнут общий лимит майнеров "${minerInfo.name}" на сервере (${minerInfo.globalLimit})`);
+            }
+            
             // Проверяем, хватает ли средств
             const canAfford = (user.balance.coins >= minerInfo.price.coins) && 
                              (user.balance.stars >= minerInfo.price.stars);
@@ -793,7 +816,8 @@ class DataManager {
                 price: { coins: 100, stars: 0 },
                 speed: { coins: 1, stars: 0 }, // 1 Magnum Coin в минуту
                 rarity: 'Обычный',
-                available: 100
+                maxPerUser: 10, // Максимум 10 майнеров на пользователя
+                globalLimit: 100 // Общий лимит на сервере
             }
         };
         
@@ -803,6 +827,75 @@ class DataManager {
     // Генерация уникального ID для майнера
     generateMinerId() {
         return 'miner_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // Получение количества майнеров определенного типа у пользователя
+    async getUserMinerCount(userId, minerType) {
+        try {
+            const user = await this.getUser(userId);
+            const userMiners = user.miners || [];
+            
+            // Подсчитываем майнеры указанного типа
+            const count = userMiners.filter(miner => miner.type === minerType).length;
+            
+            logger.info('Подсчет майнеров пользователя', { userId, minerType, count });
+            return count;
+            
+        } catch (error) {
+            logger.error('Ошибка подсчета майнеров пользователя', error, { userId, minerType });
+            return 0;
+        }
+    }
+    
+    // Получение общего количества майнеров определенного типа на сервере
+    async getGlobalMinerCount(minerType) {
+        try {
+            // Агрегация для подсчета всех майнеров указанного типа
+            const result = await this.db.collection('users').aggregate([
+                { $unwind: '$miners' },
+                { $match: { 'miners.type': minerType } },
+                { $count: 'total' }
+            ]).toArray();
+            
+            const count = result.length > 0 ? result[0].total : 0;
+            
+            logger.info('Подсчет общих майнеров на сервере', { minerType, count });
+            return count;
+            
+        } catch (error) {
+            logger.error('Ошибка подсчета общих майнеров на сервере', error, { minerType });
+            return 0;
+        }
+    }
+    
+    // Получение информации о доступности майнеров для покупки
+    async getMinerAvailability(minerType) {
+        try {
+            const minerInfo = this.getMinerInfo(minerType);
+            if (!minerInfo) {
+                return null;
+            }
+            
+            const globalCount = await this.getGlobalMinerCount(minerType);
+            const available = Math.max(0, minerInfo.globalLimit - globalCount);
+            
+            return {
+                type: minerType,
+                name: minerInfo.name,
+                price: minerInfo.price,
+                speed: minerInfo.speed,
+                rarity: minerInfo.rarity,
+                maxPerUser: minerInfo.maxPerUser,
+                globalLimit: minerInfo.globalLimit,
+                globalCount: globalCount,
+                available: available,
+                isAvailable: available > 0
+            };
+            
+        } catch (error) {
+            logger.error('Ошибка получения доступности майнера', error, { minerType });
+            return null;
+        }
     }
     
     // Создание заявки на вывод звезд
