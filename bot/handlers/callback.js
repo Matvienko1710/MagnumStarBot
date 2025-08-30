@@ -944,7 +944,7 @@ async function handleMainMenu(ctx) {
         // Создаем основное меню
         const mainMenuButtons = [
             [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
-            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
+            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
         ];
         
@@ -1630,8 +1630,7 @@ async function handleApproveWithdrawal(ctx, action) {
     
     try {
         // Проверяем, является ли пользователь админом
-        const user = await dataManager.getUser(userId);
-        if (!user.isAdmin) {
+        if (!isAdmin(userId)) {
             await ctx.answerCbQuery('❌ У вас нет прав для одобрения заявок');
             return;
         }
@@ -1690,8 +1689,7 @@ async function handleRejectWithdrawal(ctx, action) {
     
     try {
         // Проверяем, является ли пользователь админом
-        const user = await dataManager.getUser(userId);
-        if (!user.isAdmin) {
+        if (!isAdmin(userId)) {
             await ctx.answerCbQuery('❌ У вас нет прав для отклонения заявок');
             return;
         }
@@ -1761,18 +1759,17 @@ async function handleCheckSubscription(ctx) {
                 `🚀 Добро пожаловать в Magnum Stars!`;
             
             // Проверяем, является ли пользователь админом
-            const user = await dataManager.getUser(userId);
-            const isAdmin = user.isAdmin;
+            const userIsAdmin = isAdmin(userId);
             
             // Создаем основное меню
             const mainMenuButtons = [
                 [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
-                [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
+                [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
                 [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
             ];
             
             // Добавляем кнопку админ панели только для админов
-            if (isAdmin) {
+            if (userIsAdmin) {
                 mainMenuButtons.push([Markup.button.callback('⚙️ Админ панель', 'admin_panel')]);
             }
             
@@ -1831,8 +1828,7 @@ async function handleManageTitles(ctx) {
     
     try {
         // Проверяем, является ли пользователь админом
-        const user = await dataManager.getUser(userId);
-        if (!user.isAdmin) {
+        if (!isAdmin(userId)) {
             await ctx.answerCbQuery('❌ У вас нет прав для управления титулами');
             return;
         }

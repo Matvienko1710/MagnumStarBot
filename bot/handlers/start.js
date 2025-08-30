@@ -117,7 +117,7 @@ async function startHandler(ctx) {
         // Создаем основное меню
         const mainMenuButtons = [
             [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
-            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
+            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
         ];
         

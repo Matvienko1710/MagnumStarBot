@@ -56,24 +56,21 @@ export const TelegramProvider = ({ children }) => {
   const loadUserBalance = async (userId) => {
     try {
       setIsLoading(true)
-      // Здесь будет API запрос к боту для получения баланса
-      // Пока используем заглушку
-      const response = await fetch(`/api/user/balance?userId=${userId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setBalance(data)
+      // Для разработки используем localStorage или заглушку
+      const savedBalance = localStorage.getItem(`balance_${userId}`)
+      if (savedBalance) {
+        setBalance(JSON.parse(savedBalance))
       } else {
-        // Если API недоступен, используем данные из localStorage или заглушку
-        const savedBalance = localStorage.getItem(`balance_${userId}`)
-        if (savedBalance) {
-          setBalance(JSON.parse(savedBalance))
-        } else {
-          setBalance({ stars: 0, coins: 0 })
-        }
+        // Устанавливаем начальный баланс
+        const initialBalance = { stars: 100, coins: 500 }
+        setBalance(initialBalance)
+        localStorage.setItem(`balance_${userId}`, JSON.stringify(initialBalance))
       }
     } catch (error) {
       console.error('Ошибка загрузки баланса:', error)
       setError('Не удалось загрузить баланс')
+      // Устанавливаем базовый баланс при ошибке
+      setBalance({ stars: 100, coins: 500 })
     } finally {
       setIsLoading(false)
     }
@@ -90,21 +87,9 @@ export const TelegramProvider = ({ children }) => {
         localStorage.setItem(`balance_${user.id}`, JSON.stringify(newBalance))
       }
       
-      // Отправляем обновление в бот (если доступно)
-      if (window.Telegram?.WebApp) {
-        try {
-          await fetch('/api/user/click', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: user.id,
-              amount: amount
-            })
-          })
-        } catch (error) {
-          console.log('Бот API недоступен, баланс обновлен локально')
-        }
-      }
+      // Для разработки - логируем обновление
+      console.log(`Баланс обновлен: +${amount} ⭐, новый баланс: ${newBalance.stars} ⭐`)
+      
     } catch (error) {
       console.error('Ошибка обновления баланса:', error)
       setError('Не удалось обновить баланс')
