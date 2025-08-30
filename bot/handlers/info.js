@@ -535,33 +535,36 @@ module.exports = (bot, safeAsync) => {
         );
         break;
         
-      case 'майнеры':
-      case 'miners':
-      case 'майнер':
-      case 'miner':
-        const minersStats = getMinersStats(userId);
-        const availableRewards = getAvailableRewards(userId);
-        
-        const minersMessage = `⛏️ Майнеры:
+             case 'майнеры':
+       case 'miners':
+       case 'майнер':
+       case 'miner':
+         const minersStats = getMinersStats(userId);
+         const availableRewards = getAvailableRewards(userId);
+         
+         const minersMessage = `⛏️ Майнеры:
 
 📊 Общая статистика
 ├ Всего майнеров: ${minersStats.totalMiners}
 ├ Активных майнеров: ${minersStats.activeMiners}
-├ Доступно наград: ${availableRewards} ⭐
-└ Всего заработано: ${minersStats.totalEarned.stars} ⭐
+├ Доступно наград: ${availableRewards.stars > 0 ? `${availableRewards.stars} ⭐` : ''} ${availableRewards.coins > 0 ? `${availableRewards.coins} 🪙` : ''}
+└ Всего заработано: ${minersStats.totalEarned.stars} ⭐ ${minersStats.totalEarned.coins} 🪙
 
 ${minersStats.miners.length > 0 ? 
   `📋 Ваши майнеры:
-${minersStats.miners.map(miner => 
-  `├ ${miner.name}
-  │  ├ Доход/час: ${miner.rewardPerHour} ⭐
-  │  ├ Заработано: ${miner.totalEarned}/${miner.maxReward} ⭐
-  │  └ Осталось: ${miner.remainingReward} ⭐`
-).join('\n')}` : 
+${minersStats.miners.map(miner => {
+  const { getRarityInfo } = require('../utils/miners');
+  const rarityInfo = getRarityInfo(miner.rarity);
+  const rewardSymbol = miner.rewardType === 'stars' ? '⭐' : '🪙';
+  return `├ ${rarityInfo.color} ${miner.name} (${rarityInfo.name})
+  │  ├ Доход/мин: ${miner.rewardPerMinute} ${rewardSymbol}
+  │  ├ Заработано: ${miner.totalEarned}/${miner.maxReward} ${rewardSymbol}
+  │  └ Осталось: ${miner.remainingReward} ${rewardSymbol}`;
+}).join('\n')}` : 
   '❌ У вас пока нет майнеров\n💡 Купите свой первый майнер!'}`;
-        
-        await ctx.reply(minersMessage, inlineKeyboard(adminStatus));
-        break;
+         
+         await ctx.reply(minersMessage, inlineKeyboard(adminStatus));
+         break;
         
       case 'купить майнер':
       case 'buy miner':
@@ -569,38 +572,46 @@ ${minersStats.miners.map(miner =>
       case 'buy':
         const minerTypes = getMinerTypes();
         
-        const buyMinerMessage = `⛏️ Покупка майнера:
+                 const buyMinerMessage = `⛏️ Покупка майнера:
 
 Выберите тип майнера для покупки:
 
-${minerTypes.map(type => 
-  `🔸 ${type.name}
-  ├ 💰 Цена: ${type.price} ⭐
-  ├ ⚡ Доход/час: ${type.rewardPerHour} ⭐
-  ├ 📈 Максимум: ${type.maxReward} ⭐
-  └ 📝 ${type.description}`
-).join('\n\n')}
+${minerTypes.map(type => {
+  const { getRarityInfo } = require('../utils/miners');
+  const rarityInfo = getRarityInfo(type.rarity);
+  const priceSymbol = type.priceType === 'stars' ? '⭐' : '🪙';
+  const rewardSymbol = type.rewardType === 'stars' ? '⭐' : '🪙';
+  return `🔸 ${rarityInfo.color} ${type.name} (${rarityInfo.name})
+  ├ 💰 Цена: ${type.price} ${priceSymbol}
+  ├ ⚡ Доход/мин: ${type.rewardPerMinute} ${rewardSymbol}
+  ├ 📈 Максимум: ${type.maxReward} ${rewardSymbol}
+  ├ 🎯 Доступно на сервере: ${type.availableOnServer} шт
+  └ 📝 ${type.description}`;
+}).join('\n\n')}
 
 💡 Для покупки используйте кнопки в меню или напишите:
-• "базовый майнер" - купить базовый майнер
-• "продвинутый майнер" - купить продвинутый майнер  
-• "про майнер" - купить профессиональный майнер`;
+• "новичок" - купить майнер Новичок (100 🪙)
+• "путь к звездам" - купить майнер Путь к звездам (100 ⭐)`;
         
         await ctx.reply(buyMinerMessage, inlineKeyboard(adminStatus));
         break;
         
-      case 'базовый майнер':
-      case 'basic miner':
+      case 'новичок':
+      case 'novice':
         try {
-          const result = buyMiner(userId, 'BASIC');
+          const result = buyMiner(userId, 'NOVICE');
+          const { getRarityInfo } = require('../utils/miners');
+          const rarityInfo = getRarityInfo(result.miner.rarity);
+          const priceSymbol = result.priceType === 'stars' ? '⭐' : '🪙';
+          
           await ctx.reply(
             `✅ Майнер успешно куплен!
 
-⛏️ ${result.miner.name}
-💰 Стоимость: ${result.price} ⭐
+⛏️ ${rarityInfo.color} ${result.miner.name} (${rarityInfo.name})
+💰 Стоимость: ${result.price} ${priceSymbol}
 📅 Дата покупки: ${new Date(result.miner.purchaseDate).toLocaleString('ru-RU')}
 
-💎 Новый баланс: ${result.newBalance.stars} ⭐`,
+💎 Новый баланс: ${result.newBalance.stars} ⭐ ${result.newBalance.coins} 🪙`,
             inlineKeyboard(adminStatus)
           );
         } catch (error) {
@@ -613,18 +624,22 @@ ${minerTypes.map(type =>
         }
         break;
         
-      case 'продвинутый майнер':
-      case 'advanced miner':
+      case 'путь к звездам':
+      case 'star path':
         try {
-          const result = buyMiner(userId, 'ADVANCED');
+          const result = buyMiner(userId, 'STAR_PATH');
+          const { getRarityInfo } = require('../utils/miners');
+          const rarityInfo = getRarityInfo(result.miner.rarity);
+          const priceSymbol = result.priceType === 'stars' ? '⭐' : '🪙';
+          
           await ctx.reply(
             `✅ Майнер успешно куплен!
 
-⛏️ ${result.miner.name}
-💰 Стоимость: ${result.price} ⭐
+⛏️ ${rarityInfo.color} ${result.miner.name} (${rarityInfo.name})
+💰 Стоимость: ${result.price} ${priceSymbol}
 📅 Дата покупки: ${new Date(result.miner.purchaseDate).toLocaleString('ru-RU')}
 
-💎 Новый баланс: ${result.newBalance.stars} ⭐`,
+💎 Новый баланс: ${result.newBalance.stars} ⭐ ${result.newBalance.coins} 🪙`,
             inlineKeyboard(adminStatus)
           );
         } catch (error) {
@@ -637,29 +652,7 @@ ${minerTypes.map(type =>
         }
         break;
         
-      case 'про майнер':
-      case 'pro miner':
-        try {
-          const result = buyMiner(userId, 'PRO');
-          await ctx.reply(
-            `✅ Майнер успешно куплен!
 
-⛏️ ${result.miner.name}
-💰 Стоимость: ${result.price} ⭐
-📅 Дата покупки: ${new Date(result.miner.purchaseDate).toLocaleString('ru-RU')}
-
-💎 Новый баланс: ${result.newBalance.stars} ⭐`,
-            inlineKeyboard(adminStatus)
-          );
-        } catch (error) {
-          await ctx.reply(
-            `❌ Ошибка покупки майнера!
-
-🔍 Причина: ${error.message}`,
-            inlineKeyboard(adminStatus)
-          );
-        }
-        break;
         
       case 'забрать награды':
       case 'collect rewards':
@@ -667,13 +660,22 @@ ${minerTypes.map(type =>
       case 'collect':
         try {
           const result = collectRewards(userId);
+          let collectedText = '';
+          if (result.collected.stars > 0) {
+            collectedText += `⭐ Stars: ${result.collected.stars}\n`;
+          }
+          if (result.collected.coins > 0) {
+            collectedText += `🪙 Magnum Coins: ${result.collected.coins}\n`;
+          }
+          
           await ctx.reply(
             `💰 Награды успешно собраны!
 
-🎁 Собрано: ${result.collected} ⭐
-💎 Новый баланс: ${result.newBalance.stars} ⭐
+🎁 Собрано:
+${collectedText}
+💎 Новый баланс: ${result.newBalance.stars} ⭐ ${result.newBalance.coins} 🪙
 
-⏰ Следующий сбор будет доступен через час`,
+⏰ Следующий сбор будет доступен через минуту`,
             inlineKeyboard(adminStatus)
           );
         } catch (error) {

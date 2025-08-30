@@ -78,9 +78,8 @@ const minersKeyboard = () => {
 // Клавиатура для покупки майнеров
 const buyMinerKeyboard = () => {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('⛏️ Базовый майнер (100 Stars)', 'buy_basic_miner')],
-    [Markup.button.callback('⛏️ Продвинутый майнер (500 Stars)', 'buy_advanced_miner')],
-    [Markup.button.callback('⛏️ Профессиональный майнер (1000 Stars)', 'buy_pro_miner')],
+    [Markup.button.callback('⛏️ Новичок (100 🪙)', 'buy_novice_miner')],
+    [Markup.button.callback('⛏️ Путь к звездам (100 ⭐)', 'buy_star_path_miner')],
     [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
   ]);

@@ -1,31 +1,37 @@
 // Временное хранилище майнеров пользователей (в реальном проекте заменить на БД)
 const userMiners = new Map();
 
+// Глобальное хранилище количества майнеров на сервере
+const serverMinerCounts = {
+  NOVICE: 100,  // Новичок
+  STAR_PATH: 100  // Путь к звездам
+};
+
 // Типы майнеров
 const MINER_TYPES = {
-  BASIC: {
-    id: 'basic',
-    name: 'Базовый майнер',
+  NOVICE: {
+    id: 'novice',
+    name: 'Новичок',
     price: 100,
-    rewardPerHour: 1,
-    maxReward: 24,
-    description: 'Простой майнер для начинающих'
+    priceType: 'coins', // тип валюты для покупки
+    rewardPerMinute: 0.25,
+    rewardType: 'coins', // тип валюты для добычи
+    maxReward: 1000, // максимальная добыча
+    rarity: 'common', // редкость: common, rare, epic, legendary
+    description: 'Первый шаг в мире майнинга Magnum Coins',
+    serverLimit: 100 // лимит на сервере
   },
-  ADVANCED: {
-    id: 'advanced',
-    name: 'Продвинутый майнер',
-    price: 500,
-    rewardPerHour: 5,
-    maxReward: 120,
-    description: 'Мощный майнер для опытных пользователей'
-  },
-  PRO: {
-    id: 'pro',
-    name: 'Профессиональный майнер',
-    price: 1000,
-    rewardPerHour: 12,
-    maxReward: 288,
-    description: 'Профессиональный майнер с максимальной эффективностью'
+  STAR_PATH: {
+    id: 'star_path',
+    name: 'Путь к звездам',
+    price: 100,
+    priceType: 'stars', // тип валюты для покупки
+    rewardPerMinute: 0.01,
+    rewardType: 'stars', // тип валюты для добычи
+    maxReward: 100, // максимальная добыча
+    rarity: 'rare', // редкость: common, rare, epic, legendary
+    description: 'Дорога к звездам начинается здесь',
+    serverLimit: 100 // лимит на сервере
   }
 };
 
@@ -52,20 +58,29 @@ const getAvailableRewards = (userId) => {
   const userData = initializeUserMiners(userId);
   const now = Date.now();
   const timeDiff = now - userData.lastCollection;
-  const hoursDiff = timeDiff / (1000 * 60 * 60); // часы
+  const minutesDiff = timeDiff / (1000 * 60); // минуты
   
-  let totalReward = 0;
+  let totalRewardStars = 0;
+  let totalRewardCoins = 0;
   
   userData.miners.forEach(miner => {
     const minerType = MINER_TYPES[miner.type];
     const reward = Math.min(
-      minerType.rewardPerHour * hoursDiff,
+      minerType.rewardPerMinute * minutesDiff,
       minerType.maxReward - miner.totalEarned
     );
-    totalReward += reward;
+    
+    if (minerType.rewardType === 'stars') {
+      totalRewardStars += reward;
+    } else if (minerType.rewardType === 'coins') {
+      totalRewardCoins += reward;
+    }
   });
   
-  return Math.floor(totalReward);
+  return {
+    stars: Math.floor(totalRewardStars * 100) / 100, // округляем до 2 знаков
+    coins: Math.floor(totalRewardCoins * 100) / 100
+  };
 };
 
 // Купить майнер
@@ -79,12 +94,27 @@ const buyMiner = (userId, minerType) => {
   const minerInfo = MINER_TYPES[minerType];
   const userBalance = getUserBalance(userId);
   
-  if (userBalance.stars < minerInfo.price) {
-    throw new Error(`Недостаточно Stars! Нужно: ${minerInfo.price}, у вас: ${userBalance.stars}`);
+  // Проверяем лимит на сервере
+  if (serverMinerCounts[minerType] <= 0) {
+    throw new Error(`Майнер "${minerInfo.name}" больше недоступен на сервере!`);
   }
   
-  // Списываем Stars
-  updateBalance(userId, { stars: -minerInfo.price });
+  // Проверяем баланс в зависимости от типа валюты
+  if (minerInfo.priceType === 'stars' && userBalance.stars < minerInfo.price) {
+    throw new Error(`Недостаточно Stars! Нужно: ${minerInfo.price}, у вас: ${userBalance.stars}`);
+  } else if (minerInfo.priceType === 'coins' && userBalance.coins < minerInfo.price) {
+    throw new Error(`Недостаточно Magnum Coins! Нужно: ${minerInfo.price}, у вас: ${userBalance.coins}`);
+  }
+  
+  // Списываем валюту
+  if (minerInfo.priceType === 'stars') {
+    updateBalance(userId, { stars: -minerInfo.price });
+  } else if (minerInfo.priceType === 'coins') {
+    updateBalance(userId, { coins: -minerInfo.price });
+  }
+  
+  // Уменьшаем количество доступных майнеров на сервере
+  serverMinerCounts[minerType]--;
   
   // Добавляем майнер пользователю
   const userData = initializeUserMiners(userId);
@@ -92,6 +122,7 @@ const buyMiner = (userId, minerType) => {
     id: `${minerType}_${Date.now()}`,
     type: minerType,
     name: minerInfo.name,
+    rarity: minerInfo.rarity,
     purchaseDate: Date.now(),
     totalEarned: 0,
     isActive: true
@@ -118,6 +149,7 @@ const buyMiner = (userId, minerType) => {
   return {
     miner: newMiner,
     price: minerInfo.price,
+    priceType: minerInfo.priceType,
     newBalance: getUserBalance(userId)
   };
 };
@@ -129,7 +161,7 @@ const collectRewards = (userId) => {
   
   const availableRewards = getAvailableRewards(userId);
   
-  if (availableRewards <= 0) {
+  if (availableRewards.stars <= 0 && availableRewards.coins <= 0) {
     throw new Error('Нет доступных наград для сбора');
   }
   
@@ -137,24 +169,30 @@ const collectRewards = (userId) => {
   userData.lastCollection = Date.now();
   
   // Обновляем баланс пользователя
-  updateBalance(userId, { stars: availableRewards });
+  if (availableRewards.stars > 0) {
+    updateBalance(userId, { stars: availableRewards.stars });
+  }
+  if (availableRewards.coins > 0) {
+    updateBalance(userId, { coins: availableRewards.coins });
+  }
   
   // Обновляем статистику майнеров
   const now = Date.now();
   const timeDiff = now - userData.lastCollection;
-  const hoursDiff = timeDiff / (1000 * 60 * 60);
+  const minutesDiff = timeDiff / (1000 * 60);
   
   userData.miners.forEach(miner => {
     const minerType = MINER_TYPES[miner.type];
     const reward = Math.min(
-      minerType.rewardPerHour * hoursDiff,
+      minerType.rewardPerMinute * minutesDiff,
       minerType.maxReward - miner.totalEarned
     );
     miner.totalEarned += reward;
   });
   
   // Обновляем общую статистику
-  userData.totalEarned.stars += availableRewards;
+  userData.totalEarned.stars += availableRewards.stars;
+  userData.totalEarned.coins += availableRewards.coins;
   
   // Проверяем реферальную систему
   try {
@@ -193,7 +231,8 @@ const getMinersStats = (userId) => {
       const minerType = MINER_TYPES[miner.type];
       return {
         ...miner,
-        rewardPerHour: minerType.rewardPerHour,
+        rewardPerMinute: minerType.rewardPerMinute,
+        rewardType: minerType.rewardType,
         maxReward: minerType.maxReward,
         remainingReward: minerType.maxReward - miner.totalEarned
       };
@@ -205,12 +244,38 @@ const getMinersStats = (userId) => {
 
 // Получить информацию о типах майнеров
 const getMinerTypes = () => {
-  return Object.values(MINER_TYPES);
+  return Object.values(MINER_TYPES).map(type => ({
+    ...type,
+    availableOnServer: serverMinerCounts[type.id.toUpperCase()]
+  }));
 };
 
 // Получить конкретный тип майнера
 const getMinerType = (type) => {
-  return MINER_TYPES[type];
+  const minerType = MINER_TYPES[type];
+  if (minerType) {
+    return {
+      ...minerType,
+      availableOnServer: serverMinerCounts[type.toUpperCase()]
+    };
+  }
+  return null;
+};
+
+// Получить количество доступных майнеров на сервере
+const getServerMinerCounts = () => {
+  return { ...serverMinerCounts };
+};
+
+// Получить информацию о редкости майнера
+const getRarityInfo = (rarity) => {
+  const rarityInfo = {
+    common: { name: 'Обычный', color: '⚪', bonus: 1.0 },
+    rare: { name: 'Редкий', color: '🔵', bonus: 1.2 },
+    epic: { name: 'Эпический', color: '🟣', bonus: 1.5 },
+    legendary: { name: 'Легендарный', color: '🟡', bonus: 2.0 }
+  };
+  return rarityInfo[rarity] || rarityInfo.common;
 };
 
 module.exports = {
@@ -221,5 +286,7 @@ module.exports = {
   getMinersStats,
   getMinerTypes,
   getMinerType,
+  getServerMinerCounts,
+  getRarityInfo,
   MINER_TYPES
 };
