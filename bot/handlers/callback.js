@@ -104,7 +104,7 @@ async function handleProfile(ctx) {
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
-    await ctx.reply(profileMessage, {
+    await ctx.editMessageText(profileMessage, {
         parse_mode: 'Markdown',
         reply_markup: profileKeyboard.reply_markup
     });
@@ -135,7 +135,7 @@ async function handleMiners(ctx) {
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
-    await ctx.reply(minersMessage, {
+    await ctx.editMessageText(minersMessage, {
         parse_mode: 'Markdown',
         reply_markup: minersKeyboard.reply_markup
     });
@@ -157,7 +157,7 @@ async function handleWithdraw(ctx) {
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
-    await ctx.reply(withdrawMessage, {
+    await ctx.editMessageText(withdrawMessage, {
         parse_mode: 'Markdown',
         reply_markup: withdrawKeyboard.reply_markup
     });
@@ -216,7 +216,7 @@ async function handleReferrals(ctx) {
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
-    await ctx.reply(referralsMessage, {
+    await ctx.editMessageText(referralsMessage, {
         parse_mode: 'Markdown',
         reply_markup: referralsKeyboard.reply_markup
     });
@@ -258,7 +258,7 @@ async function handleMainMenu(ctx) {
         [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
     ]);
     
-    await ctx.reply(mainMenuMessage, {
+    await ctx.editMessageText(mainMenuMessage, {
         parse_mode: 'Markdown',
         reply_markup: mainMenuKeyboard.reply_markup
     });
@@ -293,7 +293,7 @@ async function handleAdminPanel(ctx) {
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
-    await ctx.reply(adminMessage, {
+    await ctx.editMessageText(adminMessage, {
         parse_mode: 'Markdown',
         reply_markup: adminKeyboard.reply_markup
     });
@@ -328,7 +328,7 @@ async function handleCreateKey(ctx) {
         [Markup.button.callback('🔙 Отмена', 'admin_panel')]
     ]);
     
-    await ctx.reply(createKeyMessage, {
+    await ctx.editMessageText(createKeyMessage, {
         parse_mode: 'Markdown',
         reply_markup: createKeyKeyboard.reply_markup
     });
@@ -364,7 +364,7 @@ async function handleCreateTitleKey(ctx) {
         [Markup.button.callback('🔙 Отмена', 'admin_panel')]
     ]);
     
-    await ctx.reply(createTitleKeyMessage, {
+    await ctx.editMessageText(createTitleKeyMessage, {
         parse_mode: 'Markdown',
         reply_markup: createTitleKeyKeyboard.reply_markup
     });
@@ -402,7 +402,7 @@ async function handleClearCache(ctx) {
         [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
     ]);
     
-    await ctx.reply(clearMessage, {
+    await ctx.editMessageText(clearMessage, {
         parse_mode: 'Markdown',
         reply_markup: clearKeyboard.reply_markup
     });
@@ -443,7 +443,7 @@ async function handleCacheStats(ctx) {
         [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
     ]);
     
-    await ctx.reply(statsMessage, {
+    await ctx.editMessageText(statsMessage, {
         parse_mode: 'Markdown',
         reply_markup: statsKeyboard.reply_markup
     });
@@ -472,7 +472,7 @@ async function handleTitles(ctx) {
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
-    await ctx.reply(titlesMessage, {
+    await ctx.editMessageText(titlesMessage, {
         parse_mode: 'Markdown',
         reply_markup: titlesKeyboard.reply_markup
     });
@@ -501,7 +501,7 @@ async function handleMyTitles(ctx) {
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
-    await ctx.reply(myTitlesMessage, {
+    await ctx.editMessageText(myTitlesMessage, {
         parse_mode: 'Markdown',
         reply_markup: myTitlesKeyboard.reply_markup
     });

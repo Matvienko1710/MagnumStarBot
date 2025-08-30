@@ -43,6 +43,7 @@ async function startHandler(ctx) {
             [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
         ]);
         
+        // Отправляем первое сообщение
         await ctx.reply(welcomeMessage, {
             parse_mode: 'Markdown',
             reply_markup: mainMenu.reply_markup
