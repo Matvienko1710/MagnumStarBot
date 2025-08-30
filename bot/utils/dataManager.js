@@ -32,6 +32,18 @@ class DataManager {
 
     async createIndexes() {
         try {
+            // Создаем коллекции, если их нет
+            const collections = ['users', 'transactions', 'settings'];
+            for (const collectionName of collections) {
+                try {
+                    await this.db.createCollection(collectionName);
+                    logger.info(`Коллекция ${collectionName} создана`);
+                } catch (error) {
+                    // Коллекция уже существует
+                    logger.info(`Коллекция ${collectionName} уже существует`);
+                }
+            }
+            
             // Индексы для пользователей
             await this.db.collection('users').createIndex({ userId: 1 }, { unique: true });
             await this.db.collection('users').createIndex({ username: 1 });
@@ -40,17 +52,14 @@ class DataManager {
             await this.db.collection('transactions').createIndex({ userId: 1 });
             await this.db.collection('transactions').createIndex({ timestamp: -1 });
             
-            // Индексы для рефералов
-            await this.db.collection('referrals').createIndex({ userId: 1 }, { unique: true });
-            await this.db.collection('referrals').createIndex({ referralCode: 1 }, { unique: true });
-            await this.db.collection('referrals').createIndex({ referrerId: 1 });
-            
-            // Индексы для титулов
-            await this.db.collection('userTitles').createIndex({ userId: 1 }, { unique: true });
-            
             // Индексы для ключей
-            await this.db.collection('keys').createIndex({ key: 1 }, { unique: true });
-            await this.db.collection('keys').createIndex({ isActive: 1 });
+            try {
+                await this.db.createCollection('keys');
+                await this.db.collection('keys').createIndex({ key: 1 }, { unique: true });
+                await this.db.collection('keys').createIndex({ isActive: 1 });
+            } catch (error) {
+                logger.info('Коллекция keys уже существует');
+            }
             
             logger.info('Индексы созданы');
             
@@ -222,9 +231,13 @@ class DataManager {
                 timestamp: new Date()
             };
             
-            await this.db.collection('transactions').insertOne(transaction);
+            const result = await this.db.collection('transactions').insertOne(transaction);
             
-            logger.info('Транзакция добавлена', { userId, currency, amount, reason });
+            if (result.insertedId) {
+                logger.info('Транзакция добавлена', { userId, currency, amount, reason, transactionId: result.insertedId });
+            } else {
+                logger.error('Не удалось добавить транзакцию', { userId, currency, amount, reason });
+            }
             
         } catch (error) {
             logger.error('Ошибка добавления транзакции', error, { userId, currency, amount, reason });
@@ -245,17 +258,17 @@ class DataManager {
     
     async setupReferral(userId, referrerCode = null) {
         try {
+            // Сначала получаем или создаем пользователя
             const user = await this.getUser(userId);
             
-            if (user.referral.referrerId) {
-                return user.referral; // Уже настроен
+            // Если у пользователя уже есть реферальный код, значит система настроена
+            if (user.referral.code) {
+                logger.info('Реферальная система уже настроена', { userId, existingCode: user.referral.code });
+                return user.referral;
             }
             
-            let referralCode = user.referral.code;
-            if (!referralCode) {
-                referralCode = this.generateReferralCode();
-            }
-            
+            // Генерируем новый реферальный код
+            let referralCode = this.generateReferralCode();
             let referrerId = null;
             
             // Если передан реферальный код, находим реферера
@@ -263,6 +276,9 @@ class DataManager {
                 const referrer = await this.getUserByReferralCode(referrerCode);
                 if (referrer && referrer.userId !== userId) {
                     referrerId = referrer.userId;
+                    logger.info('Найден реферер', { userId, referrerId, referrerCode });
+                } else {
+                    logger.warn('Реферер не найден или некорректный', { userId, referrerCode });
                 }
             }
             
@@ -274,11 +290,16 @@ class DataManager {
                 level: 1
             };
             
+            // Обновляем реферальные данные пользователя
             await this.updateUser(userId, { referral: referralData });
             
-            // Если есть реферер, добавляем пользователя в его список
+            // Если есть реферер, добавляем пользователя в его список и начисляем награду
             if (referrerId) {
                 await this.addReferralToUser(referrerId, userId);
+                
+                // Начисляем награду рефереру (5 звезд)
+                await this.updateBalance(referrerId, 'stars', 5, 'referral_reward');
+                logger.info('Начислена награда за реферала', { referrerId, newUserId: userId, reward: 5 });
             }
             
             logger.info('Реферальная система настроена', { userId, referrerId, referralCode });
