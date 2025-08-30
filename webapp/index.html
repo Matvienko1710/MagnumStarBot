@@ -318,10 +318,13 @@
                 </button>
             </div>
             
-            <!-- Кнопка для тестирования API -->
+            <!-- Кнопки для тестирования -->
             <div style="margin-top: 15px; text-align: center;">
-                <button class="nav-button" onclick="testAPI()" style="width: 100%; background: linear-gradient(45deg, #ff6b6b, #ee5a24);">
+                <button class="nav-button" onclick="testAPI()" style="width: 100%; background: linear-gradient(45deg, #ff6b6b, #ee5a24); margin-bottom: 10px;">
                     🧪 Тест API
+                </button>
+                <button class="nav-button" onclick="forceInitTelegram()" style="width: 100%; background: linear-gradient(45deg, #4CAF50, #45a049);">
+                    🔄 Принудительная инициализация
                 </button>
             </div>
         </div>
@@ -337,57 +340,109 @@
         let currentUserId = null;
 
         // Инициализация при загрузке страницы
-        window.onload = async function() {
-            await initializeTelegram();
+        window.onload = function() {
+            console.log('🚀 Magnum Stars WebApp загружается...');
+            console.log('📍 URL:', window.location.href);
+            console.log('🌐 User Agent:', navigator.userAgent);
+            console.log('📱 Платформа:', navigator.platform);
+            
+            // Проверяем доступность Telegram WebApp
+            if (window.Telegram) {
+                console.log('✅ window.Telegram доступен');
+            } else {
+                console.log('❌ window.Telegram НЕ доступен');
+            }
+            
+            if (window.Telegram?.WebApp) {
+                console.log('✅ window.Telegram.WebApp доступен');
+            } else {
+                console.log('❌ window.Telegram.WebApp НЕ доступен');
+            }
+            
+            initializeTelegram();
             loadSavedData();
             updateUI();
-            console.log('Magnum Stars WebApp загружен!');
+            console.log('🎉 Magnum Stars WebApp загружен!');
         };
 
                 // Инициализация Telegram WebApp
-        async function initializeTelegram() {
+        function initializeTelegram() {
             const statusElement = document.getElementById('telegram-status');
+            
+            console.log('🔍 Проверяем Telegram WebApp...');
+            console.log('window.Telegram:', window.Telegram);
+            console.log('window.Telegram?.WebApp:', window.Telegram?.WebApp);
             
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
                 
+                console.log('📱 Telegram WebApp найден, версия:', tg.version);
+                console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
+                
                 // Инициализируем WebApp
-                tg.ready();
-                tg.expand();
+                try {
+                    tg.ready();
+                    tg.expand();
+                    console.log('✅ WebApp готов и развернут');
+                } catch (error) {
+                    console.error('❌ Ошибка инициализации WebApp:', error);
+                }
                 
                 // Получаем данные пользователя
                 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                     const user = tg.initDataUnsafe.user;
+                    console.log('👤 Данные пользователя:', user);
+                    
                     document.getElementById('user-name').textContent = user.first_name || 'Пользователь';
                     document.getElementById('user-id').textContent = `ID: ${user.id}`;
                     document.getElementById('user-avatar').textContent = user.first_name ? user.first_name.charAt(0).toUpperCase() : 'U';
                     
                     // Загружаем баланс пользователя
                     currentUserId = user.id;
-                    await loadUserBalance(user.id);
-                    await loadUserStats(user.id);
+                    
+                    // Загружаем данные асинхронно
+                    loadUserBalance(user.id).then(() => {
+                        console.log('✅ Баланс загружен');
+                    }).catch(error => {
+                        console.error('❌ Ошибка загрузки баланса:', error);
+                    });
+                    
+                    loadUserStats(user.id).then(() => {
+                        console.log('✅ Статистика загружена');
+                    }).catch(error => {
+                        console.error('❌ Ошибка загрузки статистики:', error);
+                    });
                     
                     statusElement.textContent = '✅ Telegram WebApp';
                     statusElement.style.background = 'rgba(0, 255, 0, 0.8)';
                     
-                    console.log('Telegram WebApp инициализирован:', tg.version);
+                    console.log('🎉 Telegram WebApp инициализирован успешно');
                 } else {
+                    console.warn('⚠️ Данные пользователя не найдены в initDataUnsafe');
                     statusElement.textContent = '❌ Данные пользователя не найдены';
                     statusElement.style.background = 'rgba(255, 0, 0, 0.8)';
-                    console.error('Данные пользователя не найдены в Telegram WebApp');
+                    
+                    // Fallback - используем тестовые данные
+                    setupFallbackUser();
                 }
             } else {
+                console.log('🌐 Telegram WebApp не найден, запускаем в браузере');
                 statusElement.textContent = '🌐 Браузер';
                 statusElement.style.background = 'rgba(255, 165, 0, 0.8)';
                 
                 // Для разработки - тестовые данные
-                document.getElementById('user-name').textContent = 'Тестовый Пользователь';
-                document.getElementById('user-id').textContent = 'ID: 123456789';
-                document.getElementById('user-avatar').textContent = 'T';
-                currentUserId = 123456789;
-                
-                console.log('Запущено в браузере (режим разработки)');
+                setupFallbackUser();
             }
+        }
+        
+        // Функция для настройки тестового пользователя
+        function setupFallbackUser() {
+            document.getElementById('user-name').textContent = 'Тестовый Пользователь';
+            document.getElementById('user-id').textContent = 'ID: 123456789';
+            document.getElementById('user-avatar').textContent = 'T';
+            currentUserId = 123456789;
+            
+            console.log('🔄 Настроен тестовый пользователь для разработки');
         }
 
         // Обработка клика по кнопке
@@ -513,6 +568,21 @@
             }
         }
 
+        // Функция принудительной инициализации Telegram
+        function forceInitTelegram() {
+            console.log('🔄 Принудительная инициализация Telegram WebApp...');
+            
+            // Сбрасываем статус
+            const statusElement = document.getElementById('telegram-status');
+            statusElement.textContent = '🔄 Переинициализация...';
+            statusElement.style.background = 'rgba(255, 165, 0, 0.8)';
+            
+            // Ждем немного и пробуем снова
+            setTimeout(() => {
+                initializeTelegram();
+            }, 1000);
+        }
+
         // Показать эффект клика
         function showClickEffect() {
             const button = document.getElementById('click-button');
@@ -594,29 +664,38 @@
         // Загрузка баланса пользователя из API
         async function loadUserBalance(userId) {
             try {
-                console.log('Загружаем баланс для пользователя:', userId);
+                console.log('💰 Загружаем баланс для пользователя:', userId);
+                
+                // Проверяем, что API доступен
+                if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('onrender')) {
+                    console.log('🌐 Тестовый режим - используем LocalStorage');
+                    loadSavedData();
+                    return;
+                }
+                
                 const response = await fetch(`/api/user/balance/${userId}`);
-                console.log('Ответ API баланса:', response.status, response.statusText);
+                console.log('📡 Ответ API баланса:', response.status, response.statusText);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                console.log('Данные баланса:', data);
+                console.log('📊 Данные баланса:', data);
                 
                 if (data.success) {
                     starsBalance = data.balance.stars;
                     coinsBalance = data.balance.coins;
                     updateUI();
-                    console.log('Баланс загружен из API:', data.balance);
+                    console.log('✅ Баланс загружен из API:', data.balance);
                 } else {
-                    console.error('Ошибка загрузки баланса:', data.error);
+                    console.error('❌ Ошибка загрузки баланса:', data.error);
                     // Fallback к LocalStorage
                     loadSavedData();
                 }
             } catch (error) {
-                console.error('Ошибка API запроса баланса:', error);
+                console.error('❌ Ошибка API запроса баланса:', error);
+                console.log('🔄 Используем LocalStorage как fallback');
                 // Fallback к LocalStorage для разработки
                 loadSavedData();
             }
