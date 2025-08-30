@@ -67,17 +67,7 @@ async function callbackHandler(ctx) {
                 await handleReferrals(ctx);
                 break;
                 
-            case 'notifications':
-                await handleNotifications(ctx);
-                break;
-                
-            case 'mark_all_notifications_read':
-                await handleMarkAllNotificationsRead(ctx);
-                break;
-                
-            case 'clear_old_notifications':
-                await handleClearOldNotifications(ctx);
-                break;
+
                 
             case 'main_menu':
                 await handleMainMenu(ctx);
@@ -712,9 +702,7 @@ async function handleMainMenu(ctx) {
         // Получаем статистику бота
         const botStats = await dataManager.getBotStats();
         
-        // Получаем количество непрочитанных уведомлений
-        const unreadNotifications = await dataManager.getUnreadNotifications(userId);
-        const notificationCount = unreadNotifications.length;
+
         
         const mainMenuMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
             `💎 Твой путь к наградам уже начался!\n\n` +
@@ -728,7 +716,6 @@ async function handleMainMenu(ctx) {
             `📊 **Информация о боте**\n` +
             `├ 👤 Пользователей: ${botStats.totalUsers}\n` +
             `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
-            `🔔 **Уведомления:** ${notificationCount > 0 ? `${notificationCount} непрочитанных` : 'Нет новых'}\n\n` +
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
         const mainMenuKeyboard = Markup.inlineKeyboard([
@@ -736,7 +723,7 @@ async function handleMainMenu(ctx) {
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')],
             [Markup.button.callback('👥 Рефералы', 'referrals')],
-            [Markup.button.callback(`🔔 Уведомления ${notificationCount > 0 ? `(${notificationCount})` : ''}`, 'notifications')],
+
             [Markup.button.callback('⚙️ Админ панель', 'admin_panel')]
         ]);
         
@@ -1033,188 +1020,9 @@ async function handleMyTitles(ctx) {
     });
 }
 
-// Отметить все уведомления как прочитанные
-async function handleMarkAllNotificationsRead(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Отметить все уведомления как прочитанные', { userId });
-    
-    try {
-        // Отмечаем все уведомления как прочитанные
-        await dataManager.markAllNotificationsAsRead(userId);
-        
-        const successMessage = `✅ **Уведомления обновлены**\n\n` +
-            `🔔 Все уведомления отмечены как прочитанные\n\n` +
-            `💡 Теперь в главном меню не будет показано количество непрочитанных уведомлений`;
-        
-        const successKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔔 Уведомления', 'notifications')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(successMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: successKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка отметки всех уведомлений как прочитанных', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка обновления уведомлений**\n\n` +
-            `🚫 Не удалось отметить уведомления как прочитанные\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'mark_all_notifications_read')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
 
-// Очистить старые уведомления
-async function handleClearOldNotifications(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Очистить старые уведомления', { userId });
-    
-    try {
-        // Очищаем старые уведомления (старше 30 дней)
-        await dataManager.cleanupOldNotifications();
-        
-        const successMessage = `🗑️ **Старые уведомления очищены**\n\n` +
-            `🧹 Удалены уведомления старше 30 дней\n\n` +
-            `💡 Это помогает экономить место в базе данных и улучшает производительность`;
-        
-        const successKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔔 Уведомления', 'notifications')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(successMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: successKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка очистки старых уведомлений', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка очистки уведомлений**\n\n` +
-            `🚫 Не удалось очистить старые уведомления\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'clear_old_notifications')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
 
-// Обработка уведомлений
-async function handleNotifications(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка уведомлений', { userId });
-    
-    try {
-        // Получаем все уведомления пользователя
-        const notifications = await dataManager.getUserNotifications(userId, 20);
-        
-        if (notifications.length === 0) {
-            const noNotificationsMessage = `🔔 **Уведомления**\n\n` +
-                `📭 У вас пока нет уведомлений\n\n` +
-                `💡 Уведомления появляются при:\n` +
-                `├ 👥 Новых рефералах\n` +
-                `├ 💰 Начислениях наград\n` +
-                `└ 🎯 Других важных событиях`;
-            
-            const noNotificationsKeyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-            ]);
-            
-            await ctx.editMessageText(noNotificationsMessage, {
-                parse_mode: 'Markdown',
-                reply_markup: noNotificationsKeyboard.reply_markup
-            });
-            return;
-        }
-        
-        // Группируем уведомления по типу
-        const groupedNotifications = {};
-        notifications.forEach(notification => {
-            if (!groupedNotifications[notification.type]) {
-                groupedNotifications[notification.type] = [];
-            }
-            groupedNotifications[notification.type].push(notification);
-        });
-        
-        let notificationsMessage = `🔔 **Ваши уведомления**\n\n`;
-        
-        // Обрабатываем уведомления о новых рефералах
-        if (groupedNotifications['new_referral']) {
-            const referralNotifications = groupedNotifications['new_referral'];
-            notificationsMessage += `👥 **Новые рефералы (${referralNotifications.length}):**\n`;
-            
-            referralNotifications.forEach((notification, index) => {
-                const data = notification.data;
-                const date = new Date(notification.createdAt).toLocaleDateString('ru-RU');
-                const time = new Date(notification.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                
-                notificationsMessage += `├ ${index + 1}. ${data.newUserName}\n`;
-                notificationsMessage += `│   ├ 🆔 ID: ${data.newUserId}\n`;
-                notificationsMessage += `│   ├ 💰 Награда: +${data.reward} ⭐\n`;
-                notificationsMessage += `│   └ 📅 ${date} ${time}\n`;
-            });
-            notificationsMessage += '\n';
-        }
-        
-        // Добавляем общую статистику
-        const unreadCount = notifications.filter(n => !n.isRead).length;
-        notificationsMessage += `📊 **Статистика:**\n`;
-        notificationsMessage += `├ 📨 Всего: ${notifications.length}\n`;
-        notificationsMessage += `├ 🔔 Непрочитанных: ${unreadCount}\n`;
-        notificationsMessage += `└ 📅 Последнее: ${new Date(notifications[0].createdAt).toLocaleDateString('ru-RU')}\n\n`;
-        
-        notificationsMessage += `🎯 **Действия:**`;
-        
-        const notificationsKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('✅ Отметить все как прочитанные', 'mark_all_notifications_read')],
-            [Markup.button.callback('🗑️ Очистить старые', 'clear_old_notifications')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(notificationsMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: notificationsKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка обработки уведомлений', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка загрузки уведомлений**\n\n` +
-            `🚫 Не удалось загрузить уведомления\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'notifications')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
+
 
 module.exports = {
     callbackHandler,
