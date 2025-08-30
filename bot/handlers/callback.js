@@ -33,6 +33,10 @@ async function callbackHandler(ctx) {
             case 'miners_shop':
                 await handleMinersShop(ctx);
                 break;
+            case (action) => action.startsWith('next_miner_shop_'):
+                const minerIndex = parseInt(action.replace('next_miner_shop_', ''));
+                await handleMinersShop(ctx, minerIndex);
+                break;
                 
             case 'my_miners':
                 await handleMyMiners(ctx);
@@ -290,48 +294,97 @@ async function handleMiners(ctx) {
 
 
 // Обработка магазина майнеров
-async function handleMinersShop(ctx) {
+async function handleMinersShop(ctx, currentMinerIndex = 0) {
     const userId = ctx.from.id;
     
-    logger.info('Обработка магазина майнеров', { userId });
+    logger.info('Обработка магазина майнеров', { userId, currentMinerIndex });
     
     try {
         // Получаем баланс пользователя
         const userBalance = await getUserBalance(userId);
         
-        // Получаем список доступных майнеров
+        // Список доступных майнеров
         const availableMiners = [
-            dataManager.getMinerInfo('novice'),
-            dataManager.getMinerInfo('star_path')
+            {
+                id: 'novice',
+                name: 'Новичок',
+                price: { coins: 100, stars: 0 },
+                speed: { coins: 0.25, stars: 0 },
+                rarity: 'Обычный',
+                description: 'Первый майнер для начинающих'
+            },
+            {
+                id: 'star_path',
+                name: 'Путь к звездам',
+                price: { coins: 0, stars: 100 },
+                speed: { coins: 0, stars: 0.01 },
+                rarity: 'Редкий',
+                description: 'Майнер для добычи Stars'
+            }
         ];
+        
+        // Проверяем, что индекс в допустимых пределах
+        if (currentMinerIndex >= availableMiners.length) {
+            currentMinerIndex = 0;
+        }
+        
+        const currentMiner = availableMiners[currentMinerIndex];
+        const isLastMiner = currentMinerIndex === availableMiners.length - 1;
+        
+        // Формируем сообщение о текущем майнере
+        const priceText = currentMiner.price.coins > 0 
+            ? `${currentMiner.price.coins} 🪙 Magnum Coins`
+            : `${currentMiner.price.stars} ⭐ Stars`;
+            
+        const speedText = currentMiner.speed.coins > 0
+            ? `${currentMiner.speed.coins} 🪙/мин`
+            : `${currentMiner.speed.stars} ⭐/мин`;
         
         const shopMessage = `🛒 **Магазин майнеров**\n\n` +
             `💰 **Ваш баланс:**\n` +
             `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
             `└ ⭐ Stars: ${userBalance.stars}\n\n` +
-            `⛏️ **Доступные майнеры:**\n\n` +
-            `🆕 **Новичок**\n` +
-            `├ 💰 Цена: 100 🪙 Magnum Coins\n` +
-            `├ ⚡ Скорость: 0.25 🪙/мин\n` +
-            `├ 🎯 Редкость: Обычный\n` +
+            `⛏️ **Майнер ${currentMinerIndex + 1} из ${availableMiners.length}**\n\n` +
+            `🎯 **${currentMiner.name}**\n` +
+            `├ 💰 Цена: ${priceText}\n` +
+            `├ ⚡ Скорость: ${speedText}\n` +
+            `├ 🎯 Редкость: ${currentMiner.rarity}\n` +
+            `├ 📝 Описание: ${currentMiner.description}\n` +
             `└ 📦 Доступно: 100 шт\n\n` +
-            `⭐ **Путь к звездам**\n` +
-            `├ 💰 Цена: 100 ⭐ Stars\n` +
-            `├ ⚡ Скорость: 0.01 ⭐/мин\n` +
-            `├ 🎯 Редкость: Редкий\n` +
-            `└ 📦 Доступно: 100 шт\n\n` +
-            `🎯 **Выберите майнер для покупки:**`;
+            `🎯 **Выберите действие:**`;
         
-        const shopKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🆕 Купить Новичок (100 🪙)', 'buy_miner_novice')],
-            [Markup.button.callback('⭐ Купить Путь к звездам (100 ⭐)', 'buy_miner_star_path')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        // Создаем клавиатуру с кнопками
+        const shopKeyboard = [];
+        
+        // Кнопка покупки
+        shopKeyboard.push([Markup.button.callback(
+            `🛒 Купить ${currentMiner.name}`, 
+            `buy_miner_${currentMiner.id}`
+        )]);
+        
+        // Кнопка следующего майнера (если не последний)
+        if (!isLastMiner) {
+            shopKeyboard.push([Markup.button.callback(
+                '⏭️ Следующий майнер', 
+                `next_miner_shop_${currentMinerIndex + 1}`
+            )]);
+        } else {
+            // Если последний майнер, показываем кнопку "Первый майнер"
+            shopKeyboard.push([Markup.button.callback(
+                '⏮️ Первый майнер', 
+                'next_miner_shop_0'
+            )]);
+        }
+        
+        // Навигационные кнопки
+        shopKeyboard.push([
+            Markup.button.callback('🔙 Назад к майнерам', 'miners'),
+            Markup.button.callback('🏠 Главное меню', 'main_menu')
         ]);
         
         await ctx.editMessageText(shopMessage, {
             parse_mode: 'Markdown',
-            reply_markup: shopKeyboard.reply_markup
+            reply_markup: Markup.inlineKeyboard(shopKeyboard).reply_markup
         });
         
     } catch (error) {
