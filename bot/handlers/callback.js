@@ -1063,8 +1063,8 @@ async function handleMainMenu(ctx) {
         
         // Создаем кнопку WebApp в зависимости от статуса пользователя
         const webAppButton = isAdmin(userId)
-            ? Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
-            : Markup.button.callback('🌐 WebApp', 'webapp_coming_soon');
+            ? Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
+            : Markup.button.callback('Magnum Star - Beta', 'webapp_coming_soon');
 
         // Создаем основное меню
         const mainMenuButtons = [
@@ -1889,8 +1889,8 @@ async function handleCheckSubscription(ctx) {
 
             // Создаем кнопку WebApp в зависимости от статуса пользователя
             const webAppButton = userIsAdmin
-                ? Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
-                : Markup.button.callback('🌐 WebApp', 'webapp_coming_soon');
+                ? Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
+                : Markup.button.callback('Magnum Star - Beta', 'webapp_coming_soon');
 
             // Создаем основное меню
             const mainMenuButtons = [
