@@ -10,13 +10,43 @@ const { autoDeleteReplyMessage } = require('../utils/autoDelete');
 // Состояния пользователей для создания ключей
 const userStates = new Map();
 
+// Хранилище последних сообщений бота для каждого пользователя (синхронизировано с start.js)
+const lastBotMessages = new Map();
+
+// Функция для обновления ID последнего сообщения бота для пользователя
+function updateLastBotMessage(userId, messageId) {
+    lastBotMessages.set(userId, messageId);
+    logger.debug('Обновлен ID последнего сообщения бота', { userId, messageId });
+}
+
+// Функция для получения ID последнего сообщения бота для пользователя
+function getLastBotMessage(userId) {
+    return lastBotMessages.get(userId);
+}
+
 // Обработчик callback запросов
 async function callbackHandler(ctx) {
     try {
         const userId = ctx.from.id;
         const callbackData = ctx.callbackQuery.data;
-        
-        logger.info('Получен callback запрос', { userId, callbackData });
+        const messageId = ctx.callbackQuery.message?.message_id;
+
+        logger.info('Получен callback запрос', { userId, callbackData, messageId });
+
+        // Проверяем, является ли это сообщение самым последним активным сообщением пользователя
+        const lastMessageId = lastBotMessages.get(userId);
+        if (lastMessageId && messageId !== lastMessageId) {
+            logger.warn('Попытка взаимодействия со старым сообщением', {
+                userId,
+                callbackData,
+                oldMessageId: messageId,
+                currentMessageId: lastMessageId
+            });
+
+            // Отвечаем пользователю, что сообщение устарело
+            await ctx.answerCbQuery('❌ Это сообщение устарело. Используйте команду /start для обновления меню.', true);
+            return;
+        }
         
         // Обрабатываем различные callback'и
         switch (callbackData) {
@@ -2205,6 +2235,8 @@ async function handleMinerKeyCreation(ctx, text) {
 
 module.exports = {
     callbackHandler,
+    updateLastBotMessage,
+    getLastBotMessage,
     handleKeyCreation,
     handleTitleKeyCreation,
     handleMinerKeyCreation,

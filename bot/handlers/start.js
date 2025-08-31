@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const dataManager = require('../utils/dataManager');
 const { sendSmartMessage } = require('../utils/autoDelete');
 const { isAdmin } = require('../utils/admin');
+const { updateLastBotMessage } = require('./callback');
 
 // Хранилище последних сообщений бота для каждого пользователя
 const lastBotMessages = new Map();
@@ -169,7 +170,8 @@ async function startHandler(ctx) {
         
         // Сохраняем ID нового сообщения
         lastBotMessages.set(userId, newMessage.message_id);
-        
+        updateLastBotMessage(userId, newMessage.message_id);
+
         logger.info('Новое сообщение бота отправлено и сохранено', { userId, messageId: newMessage.message_id });
         
         logger.info('Команда /start успешно обработана', { userId });
@@ -222,7 +224,8 @@ async function startHandler(ctx) {
         
         // Сохраняем ID нового сообщения
         lastBotMessages.set(userId, newMessage.message_id);
-        
+        updateLastBotMessage(userId, newMessage.message_id);
+
         logger.info('Новое сообщение об ошибке отправлено и сохранено', { userId, messageId: newMessage.message_id });
     }
 }
