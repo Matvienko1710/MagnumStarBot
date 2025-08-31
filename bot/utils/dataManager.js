@@ -1381,10 +1381,9 @@ class DataManager {
             
             // Создаем заявку
             const withdrawalRequest = {
-                id: this.generateWithdrawalId(),
+                id: await this.generateWithdrawalId(),
                 userId: Number(userId),
-                username: user.username || 'Не указан',
-                firstName: user.firstName || 'Не указано',
+                username: user.username || user.telegramUsername || '@username',
                 amount: amount,
                 status: 'pending', // pending, approved, rejected
                 createdAt: new Date(),
@@ -1481,8 +1480,15 @@ class DataManager {
     }
     
     // Генерация уникального ID для заявки на вывод
-    generateWithdrawalId() {
-        return 'wd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    async generateWithdrawalId() {
+        try {
+            // Получаем количество существующих заявок для нумерации
+            const count = await this.db.collection('withdrawals').countDocuments();
+            return (count + 1).toString();
+        } catch (error) {
+            // Fallback на случай ошибки
+            return 'wd_' + Date.now();
+        }
     }
     
     // Проверка подписки пользователя на канал
@@ -2085,9 +2091,9 @@ class DataManager {
                 { messageId: messageId },
                 { $set: { isDeleted: true, deletedAt: new Date() } }
             );
-
+            
             logger.info('Сообщение отмечено как удаленное', { messageId });
-
+            
         } catch (error) {
             logger.error('Ошибка отметки сообщения как удаленного', error, { messageId });
         }

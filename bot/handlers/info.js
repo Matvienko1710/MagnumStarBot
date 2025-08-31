@@ -413,7 +413,7 @@ async function handleWithdrawalAmount(ctx, text) {
             });
             
             // Отправляем заявку в канал для админов
-            await sendWithdrawalToChannel(ctx, result.request);
+            await sendWithdrawalToChannel(ctx, result.request, ctx.from);
             
         } else {
             await ctx.reply(
@@ -444,17 +444,19 @@ async function handleWithdrawalAmount(ctx, text) {
 }
 
 // Отправка заявки на вывод в канал для админов
-async function sendWithdrawalToChannel(ctx, withdrawalRequest) {
+async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
     try {
         const channelUsername = '@magnumwithdraw';
-        
+
+        // Получаем username из информации о пользователе
+        const username = userInfo?.username ? `@${userInfo.username}` : 'Не указан';
+
         const adminMessage = `📋 **Новая заявка на вывод**\n\n` +
             `👤 **Пользователь:**\n` +
             `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
-            `├ 👤 Имя: ${withdrawalRequest.firstName}\n` +
-            `└ 🏷️ Username: ${withdrawalRequest.username}\n\n` +
+            `└ 🏷️ Username: ${username}\n\n` +
             `💰 **Детали заявки:**\n` +
-            `├ 🆔 ID заявки: \`${withdrawalRequest.id}\`\n` +
+            `├ 🆔 ID заявки: №${withdrawalRequest.id}\n` +
             `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
             `├ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n` +
             `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
