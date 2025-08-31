@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Magnum Stars</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -10,6 +10,12 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -17,6 +23,8 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #333;
+            touch-action: manipulation;
+            -webkit-touch-action: manipulation;
         }
 
         .container {
@@ -347,6 +355,60 @@
         let maxClicksPerSecond = 5;
         let currentUserId = null;
 
+        // Предотвращение двойного клика и выделения текста
+        document.addEventListener('DOMContentLoaded', function() {
+            // Предотвращение контекстного меню
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Предотвращение двойного клика для увеличения
+            document.addEventListener('dblclick', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Предотвращение выделения текста
+            document.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Предотвращение копирования
+            document.addEventListener('copy', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Предотвращение вставки
+            document.addEventListener('paste', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Предотвращение поиска текста
+            document.addEventListener('keydown', function(e) {
+                // Предотвращение Ctrl+A (выделить все)
+                if (e.ctrlKey && e.key === 'a') {
+                    e.preventDefault();
+                    return false;
+                }
+                // Предотвращение Ctrl+C (копировать)
+                if (e.ctrlKey && e.key === 'c') {
+                    e.preventDefault();
+                    return false;
+                }
+                // Предотвращение F12 (инструменты разработчика)
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            console.log('🛡️ Защита от выделения текста и двойного клика активирована');
+        });
+
         // Инициализация при загрузке страницы
         window.onload = function() {
             console.log('🚀 Magnum Stars WebApp загружается...');
@@ -428,7 +490,7 @@
                 }
             } else {
                 console.log('🌐 Telegram WebApp не найден, запускаем в браузере');
-
+                
                 // Для разработки - тестовые данные
                 setupFallbackUser();
             }
