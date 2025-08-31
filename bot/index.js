@@ -179,48 +179,90 @@ function initializeBot() {
         // Регистрируем обработчик текстовых сообщений с поддержкой канала выплат
         bot.on('text', safeAsync(withdrawalChannelHandler));
 
-        // Обработчик callback запросов для приватных чатов и каналов выплат
+        // Обработчик callback запросов для всех типов чатов
         logger.info('Обработчик callback зарегистрирован');
         const { callbackHandler } = require('./handlers/callback');
 
-        // Отдельный обработчик для каналов выплат
-        const withdrawalChannelCallbackHandler = async (ctx) => {
+        // Универсальный обработчик callback для всех типов чатов
+        const universalCallbackHandler = async (ctx) => {
             try {
-                // Проверяем, что это канал выплат
-                if (ctx.chat?.username === 'magnumwithdraw') {
-                    const userId = ctx.from.id;
+                const userId = ctx.from.id;
+                const callbackData = ctx.callbackQuery.data;
+                const chatType = ctx.chat?.type;
+                const chatUsername = ctx.chat?.username;
 
-                    logger.info('Callback в канале выплат', {
+                logger.info('=== CALLBACK ЗАПРОС ПОЛУЧЕН ===', {
+                    userId,
+                    callbackData,
+                    chatType,
+                    chatUsername,
+                    chatId: ctx.chat?.id,
+                    messageId: ctx.callbackQuery?.message?.message_id,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Специальная обработка для канала выплат
+                if (chatUsername === 'magnumwithdraw') {
+                    logger.info('🎯 Обработка callback в канале выплат', {
                         userId,
-                        callbackData: ctx.callbackQuery.data,
-                        chatId: ctx.chat.id,
-                        chatType: ctx.chat.type,
-                        messageId: ctx.callbackQuery.message?.message_id
+                        callbackData,
+                        chatId: ctx.chat.id
                     });
 
                     // Проверяем, является ли пользователь админом
                     const { isAdmin } = require('./utils/admin');
                     if (!isAdmin(userId)) {
-                        logger.warn('Неавторизованная попытка callback в канале выплат', { userId });
+                        logger.warn('❌ Неавторизованная попытка callback в канале выплат', {
+                            userId,
+                            callbackData,
+                            chatId: ctx.chat.id
+                        });
                         await ctx.answerCbQuery('❌ У вас нет доступа к управлению заявками', true);
                         return;
                     }
+
+                    logger.info('✅ Админ подтвердил в канале выплат, обрабатываем callback', {
+                        userId,
+                        callbackData
+                    });
 
                     // Обрабатываем callback через основной обработчик
                     await callbackHandler(ctx);
                     return;
                 }
 
-                // Для всех остальных чатов используем основной обработчик с privateChatOnly
-                await privateChatOnly(callbackHandler)(ctx);
+                // Для приватных чатов проверяем ограничение
+                if (chatType !== 'private') {
+                    logger.warn('❌ Callback из неподдерживаемого типа чата', {
+                        userId,
+                        callbackData,
+                        chatType,
+                        chatUsername
+                    });
+                    await ctx.answerCbQuery('❌ Этот тип чата не поддерживается', true);
+                    return;
+                }
+
+                // Для приватных чатов обрабатываем обычным образом
+                logger.info('📱 Обработка callback в приватном чате', {
+                    userId,
+                    callbackData
+                });
+
+                await callbackHandler(ctx);
 
             } catch (error) {
-                logger.error('Ошибка в обработчике callback канала выплат', error);
+                logger.error('💥 Критическая ошибка в универсальном обработчике callback', error, {
+                    userId: ctx?.from?.id,
+                    callbackData: ctx?.callbackQuery?.data,
+                    chatType: ctx?.chat?.type,
+                    chatUsername: ctx?.chat?.username
+                });
                 throw error;
             }
         };
 
-        bot.on('callback_query', safeAsync(withdrawalChannelCallbackHandler));
+        bot.on('callback_query', safeAsync(universalCallbackHandler));
 
         // Глобальная обработка ошибок
         bot.catch((error, ctx) => {

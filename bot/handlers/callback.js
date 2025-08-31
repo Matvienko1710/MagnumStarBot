@@ -44,6 +44,16 @@ async function callbackHandler(ctx) {
         const isWithdrawalChannel = ctx.chat?.username === 'magnumwithdraw';
         const lastMessageId = lastBotMessages.get(userId);
 
+        logger.info('Проверка валидности сообщения', {
+            userId,
+            callbackData,
+            messageId,
+            lastMessageId,
+            isWithdrawalChannel,
+            chatType: ctx.chat?.type,
+            chatUsername: ctx.chat?.username
+        });
+
         if (!isWithdrawalChannel && lastMessageId && messageId !== lastMessageId) {
             logger.warn('Попытка взаимодействия со старым сообщением', {
                 userId,
@@ -116,9 +126,11 @@ async function callbackHandler(ctx) {
                 await ctx.answerCbQuery('🚀 WebApp скоро будет доступен! Следите за обновлениями.', true);
                 break;
             case (action) => action.startsWith('approve_withdrawal_'):
+                logger.info('🔥 Вызываем handleApproveWithdrawal', { action, userId });
                 await handleApproveWithdrawal(ctx, action);
                 break;
             case (action) => action.startsWith('reject_withdrawal_'):
+                logger.info('🔥 Вызываем handleRejectWithdrawal', { action, userId });
                 await handleRejectWithdrawal(ctx, action);
                 break;
                 
@@ -1795,12 +1807,16 @@ async function handleApproveWithdrawal(ctx, action) {
     const messageId = ctx.callbackQuery?.message?.message_id;
     const chatId = ctx.chat?.id;
 
-    logger.info('Попытка одобрения заявки на вывод', {
+    logger.info('🚀 НАЧАЛО ОБРАБОТКИ ОДОБРЕНИЯ ЗАЯВКИ', {
         userId,
         requestId,
         messageId,
         chatId,
-        chatType: ctx.chat?.type
+        chatType: ctx.chat?.type,
+        chatUsername: ctx.chat?.username,
+        action: action,
+        callbackData: ctx.callbackQuery?.data,
+        timestamp: new Date().toISOString()
     });
 
     try {
@@ -1885,12 +1901,16 @@ async function handleRejectWithdrawal(ctx, action) {
     const messageId = ctx.callbackQuery?.message?.message_id;
     const chatId = ctx.chat?.id;
 
-    logger.info('Попытка отклонения заявки на вывод', {
+    logger.info('🚫 НАЧАЛО ОБРАБОТКИ ОТКЛОНЕНИЯ ЗАЯВКИ', {
         userId,
         requestId,
         messageId,
         chatId,
-        chatType: ctx.chat?.type
+        chatType: ctx.chat?.type,
+        chatUsername: ctx.chat?.username,
+        action: action,
+        callbackData: ctx.callbackQuery?.data,
+        timestamp: new Date().toISOString()
     });
 
     try {
