@@ -385,7 +385,6 @@ class DataManager {
                 timestamp: new Date().toISOString(),
                 source: 'DataManager.updateBalance'
             });
-
             return newBalance;
 
         } catch (error) {

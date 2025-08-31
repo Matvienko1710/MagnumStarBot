@@ -75,7 +75,6 @@ router.get('/user/balance/:userId', ensureDataManagerConnection, async (req, res
 
         console.log(`✅ API: Баланс успешно получен для ${userId}:`, balance);
         console.log(`📊 API: Время завершения запроса: ${new Date().toISOString()}`);
-
         res.json({
             success: true,
             balance: {
