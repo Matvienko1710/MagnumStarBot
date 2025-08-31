@@ -328,8 +328,10 @@ class DataManager {
     }
     
     async updateBalance(userId, currency, amount, reason = 'transaction') {
+        const session = this.db.client.startSession();
+
         try {
-            logger.info('🔄 Начинаем обновление баланса', {
+            logger.info('🔄 Начинаем транзакционное обновление баланса', {
                 userId,
                 currency,
                 amount,
@@ -339,56 +341,106 @@ class DataManager {
                 timestamp: new Date().toISOString()
             });
 
-            const user = await this.getUser(userId);
-            logger.info('👤 Пользователь получен для обновления баланса', {
-                userId,
-                currentBalance: user.balance,
-                lastActivity: user.lastActivity
+            return await session.withTransaction(async () => {
+                // Проверяем существование пользователя
+                const user = await this.db.collection('users').findOne(
+                    { userId: userId },
+                    { session }
+                );
+
+                if (!user) {
+                    throw new Error(`Пользователь ${userId} не найден`);
+                }
+
+                const oldBalance = user.balance[currency] || 0;
+                const oldTotalEarned = user.balance.totalEarned?.[currency] || 0;
+
+                logger.info('📊 Текущий баланс пользователя', {
+                    userId,
+                    currency,
+                    oldBalance,
+                    oldTotalEarned,
+                    operation: amount > 0 ? 'increase' : 'decrease'
+                });
+
+                // Создаем объект для атомарного обновления
+                const updateObj = {
+                    $inc: {},
+                    $set: { lastActivity: new Date() }
+                };
+
+                // Атомарно увеличиваем баланс
+                updateObj.$inc[`balance.${currency}`] = amount;
+
+                // Атомарно увеличиваем totalEarned только для положительных сумм
+                if (amount > 0) {
+                    updateObj.$inc[`balance.totalEarned.${currency}`] = amount;
+                }
+
+                // Устанавливаем значения по умолчанию для новых пользователей
+                updateObj.$setOnInsert = {
+                    'balance.stars': 0,
+                    'balance.coins': 0,
+                    'balance.totalEarned.stars': 0,
+                    'balance.totalEarned.coins': 0
+                };
+
+                logger.info('🔄 Выполняем атомарное обновление в транзакции', {
+                    userId,
+                    currency,
+                    updateObj,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Выполняем атомарное обновление в транзакции
+                const updateResult = await this.db.collection('users').updateOne(
+                    { userId: userId },
+                    updateObj,
+                    { upsert: false, session }
+                );
+
+                if (updateResult.matchedCount === 0) {
+                    throw new Error(`Пользователь ${userId} не найден для обновления`);
+                }
+
+                logger.info('💾 Атомарное обновление выполнено в транзакции', {
+                    userId,
+                    currency,
+                    matchedCount: updateResult.matchedCount,
+                    modifiedCount: updateResult.modifiedCount,
+                    acknowledged: updateResult.acknowledged
+                });
+
+                // Получаем обновленный баланс для записи транзакции
+                const updatedUser = await this.db.collection('users').findOne(
+                    { userId: userId },
+                    { session }
+                );
+
+                const newBalance = updatedUser.balance[currency] || 0;
+                const newTotalEarned = updatedUser.balance.totalEarned?.[currency] || 0;
+
+                // Записываем транзакцию в той же транзакции
+                await this.addTransaction(userId, currency, amount, reason, oldBalance, newBalance, session);
+
+                logger.info('✅ Баланс успешно обновлен в транзакции', {
+                    userId,
+                    currency,
+                    amount,
+                    reason,
+                    oldBalance,
+                    newBalance,
+                    oldTotalEarned,
+                    newTotalEarned,
+                    timestamp: new Date().toISOString(),
+                    source: 'DataManager.updateBalance'
+                });
+
+                return newBalance;
             });
-
-            const oldBalance = user.balance[currency] || 0;
-            const newBalance = oldBalance + amount;
-
-            logger.info('🔢 Рассчитываем новый баланс', {
-                userId,
-                currency,
-                oldBalance,
-                amount,
-                newBalance,
-                operation: amount > 0 ? 'increase' : 'decrease'
-            });
-
-            // Обновляем баланс
-            const updateResult = await this.updateUser(userId, {
-                [`balance.${currency}`]: newBalance,
-                [`balance.totalEarned.${currency}`]: (user.balance.totalEarned?.[currency] || 0) + (amount > 0 ? amount : 0)
-            });
-
-            logger.info('💾 Баланс обновлен в базе данных', {
-                userId,
-                currency,
-                updateResult: updateResult.modifiedCount,
-                acknowledged: updateResult.acknowledged
-            });
-
-            // Записываем транзакцию
-            await this.addTransaction(userId, currency, amount, reason, oldBalance, newBalance);
-
-            logger.info('✅ Баланс успешно обновлен', {
-                userId,
-                currency,
-                amount,
-                reason,
-                oldBalance,
-                newBalance,
-                totalEarned: user.balance.totalEarned?.[currency] || 0,
-                timestamp: new Date().toISOString(),
-                source: 'DataManager.updateBalance'
-            });
-            return newBalance;
 
         } catch (error) {
-            logger.error('❌ Ошибка обновления баланса', error, {
+            logger.error('❌ Ошибка транзакционного обновления баланса', error, {
                 userId,
                 currency,
                 amount,
@@ -396,6 +448,8 @@ class DataManager {
                 errorStack: error.stack
             });
             throw error;
+        } finally {
+            await session.endSession();
         }
     }
 
@@ -412,7 +466,7 @@ class DataManager {
 
     // === УПРАВЛЕНИЕ ТРАНЗАКЦИЯМИ ===
     
-    async addTransaction(userId, currency, amount, reason, oldBalance, newBalance) {
+    async addTransaction(userId, currency, amount, reason, oldBalance, newBalance, session = null) {
         try {
             const transaction = {
                 userId: Number(userId),
@@ -423,17 +477,32 @@ class DataManager {
                 newBalance,
                 timestamp: new Date()
             };
-            
-            const result = await this.db.collection('transactions').insertOne(transaction);
-            
+
+            const options = session ? { session } : {};
+            const result = await this.db.collection('transactions').insertOne(transaction, options);
+
             if (result.insertedId) {
-                logger.info('Транзакция добавлена', { userId, currency, amount, reason, transactionId: result.insertedId });
+                logger.info('Транзакция добавлена', {
+                    userId,
+                    currency,
+                    amount,
+                    reason,
+                    transactionId: result.insertedId,
+                    inTransaction: !!session
+                });
             } else {
-                logger.error('Не удалось добавить транзакцию', { userId, currency, amount, reason });
+                logger.error('Не удалось добавить транзакцию', { userId, currency, amount, reason, inTransaction: !!session });
             }
-            
+
         } catch (error) {
-            logger.error('Ошибка добавления транзакции', error, { userId, currency, amount, reason });
+            logger.error('Ошибка добавления транзакции', error, {
+                userId,
+                currency,
+                amount,
+                reason,
+                inTransaction: !!session
+            });
+            throw error; // Передаем ошибку выше для отката транзакции
         }
     }
 

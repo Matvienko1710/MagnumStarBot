@@ -101,14 +101,7 @@ function initializeBot() {
         
         logger.info('Система автоматического удаления сообщений интегрирована с ботом');
 
-        // Обработка ошибок процесса
-        process.on('uncaughtException', (error) => {
-            logger.error('Необработанная ошибка процесса', error);
-        });
 
-        process.on('unhandledRejection', (reason, promise) => {
-            logger.error('Необработанное отклонение промиса', { reason, promise });
-        });
 
         // Функция запуска бота
         const launchBot = async () => {

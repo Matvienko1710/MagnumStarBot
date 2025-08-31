@@ -13,17 +13,12 @@ async function ensureDataManagerConnection(req, res, next) {
             isConnected: dataManager.db ? dataManager.db.client && dataManager.db.isConnected : false
         });
 
-        if (!dataManager.isInitialized) {
-            console.log('❌ DataManager не инициализирован, пытаемся подключиться...');
-
-            // Пытаемся инициализировать DataManager
-            try {
-                await dataManager.initialize();
-                console.log('✅ DataManager успешно инициализирован в API');
-            } catch (initError) {
-                console.error('❌ Ошибка инициализации DataManager в API:', initError);
-                return res.status(500).json({ error: 'DataManager не готов', details: initError.message });
-            }
+        if (!dataManager.isInitialized || !dataManager.db) {
+            console.log('❌ DataManager не инициализирован или нет подключения к БД');
+            return res.status(503).json({
+                error: 'Сервис временно недоступен',
+                details: 'DataManager не готов к работе'
+            });
         }
 
         console.log('✅ DataManager подключен и готов к работе');
@@ -50,8 +45,24 @@ async function ensureDatabaseConnection(req, res, next) {
     }
 }
 
+// Middleware для валидации userId
+function validateUserId(req, res, next) {
+    const { userId } = req.params;
+
+    if (!userId || isNaN(userId) || Number(userId) <= 0) {
+        return res.status(400).json({
+            error: 'Неверный ID пользователя',
+            details: 'userId должен быть положительным числом'
+        });
+    }
+
+    // Преобразуем в число для безопасности
+    req.params.userId = Number(userId);
+    next();
+}
+
 // Получение баланса пользователя
-router.get('/user/balance/:userId', ensureDataManagerConnection, async (req, res) => {
+router.get('/user/balance/:userId', validateUserId, ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
         const dm = req.dataManager;
@@ -99,7 +110,7 @@ router.get('/user/balance/:userId', ensureDataManagerConnection, async (req, res
 });
 
 // Обновление баланса (клик по кнопке)
-router.post('/user/click/:userId', ensureDataManagerConnection, async (req, res) => {
+router.post('/user/click/:userId', validateUserId, ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
         const dm = req.dataManager;
@@ -147,7 +158,7 @@ router.post('/user/click/:userId', ensureDataManagerConnection, async (req, res)
 });
 
 // Получение статистики пользователя
-router.get('/user/stats/:userId', ensureDataManagerConnection, async (req, res) => {
+router.get('/user/stats/:userId', validateUserId, ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
         const dm = req.dataManager;
@@ -202,7 +213,7 @@ router.get('/user/stats/:userId', ensureDataManagerConnection, async (req, res) 
 });
 
 // Получение информации о пользователе
-router.get('/user/info/:userId', ensureDataManagerConnection, async (req, res) => {
+router.get('/user/info/:userId', validateUserId, ensureDataManagerConnection, async (req, res) => {
     try {
         const { userId } = req.params;
         const dm = req.dataManager;

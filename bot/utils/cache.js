@@ -8,14 +8,22 @@ class CacheManager {
             misses: 0,
             evictions: 0
         };
-        
+
         // Автоматическая очистка каждые 5 минут
-        setInterval(() => {
+        this.cleanupInterval = setInterval(() => {
             this.cleanup();
         }, 5 * 60 * 1000);
-        
+
         // Принудительная очистка при нехватке памяти
         this.setupMemoryMonitoring();
+    }
+
+    // Метод для очистки всех интервалов (предотвращает утечку памяти)
+    cleanup() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
     }
     
     // Создание нового кэша

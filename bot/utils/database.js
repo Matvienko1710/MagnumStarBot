@@ -96,7 +96,16 @@ class DatabaseManager {
 
             // Индекс для пользователей
             await this.db.collection('users').createIndex({ userId: 1 }, { unique: true });
-            
+            await this.db.collection('users').createIndex({ lastActivity: 1 });
+            await this.db.collection('users').createIndex({ 'balance.stars': 1 });
+            await this.db.collection('users').createIndex({ 'balance.coins': 1 });
+            await this.db.collection('users').createIndex({ 'miners.0': 1 }); // Для поиска пользователей с майнерами
+
+            // Индекс для транзакций
+            await this.db.collection('transactions').createIndex({ userId: 1, timestamp: -1 });
+            await this.db.collection('transactions').createIndex({ currency: 1, timestamp: -1 });
+            await this.db.collection('transactions').createIndex({ reason: 1, timestamp: -1 });
+
             // Индекс для ключей
             await this.db.collection('keys').createIndex({ key: 1 }, { unique: true });
             
