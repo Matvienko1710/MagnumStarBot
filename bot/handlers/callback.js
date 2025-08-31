@@ -248,7 +248,7 @@ async function handleProfile(ctx) {
             `⭐ Stars → ${userBalance.stars}\n` +
             `🪙 Magnum Coins → ${userBalance.coins}\n\n` +
             `👥 Друзья: ${referralStats.totalReferrals}\n` +
-            `💰 Реф. доход: ${referralStats.totalEarned.stars} ⭐`;
+            `💰 Реф. доход: ${referralStats.totalEarned.stars} ⭐, ${referralStats.totalEarned.coins} 🪙`;
         
         const profileKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('👑 Титулы', 'titles')],
@@ -2342,6 +2342,65 @@ async function handleMinerKeyCreation(ctx, text) {
         logger.error('Ошибка создания ключа майнера', error, { userId, text });
         await ctx.reply('❌ Произошла ошибка при создании ключа майнера');
         userStates.delete(userId);
+    }
+}
+
+// Обработка раздела рефералов
+async function handleReferrals(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка раздела рефералов', { userId });
+
+    try {
+        // Получаем реферальную статистику
+        const referralStats = await getReferralStats(userId);
+
+        // Получаем реферальный код пользователя
+        const referralCode = await dataManager.getUserReferralCode(userId);
+
+        // Создаем сообщение о рефералах
+        const referralsMessage = `👥 **Ваши рефералы**\n\n` +
+            `🔗 **Ваш реферальный код:** \`${referralCode}\`\n\n` +
+            `📊 **Статистика:**\n` +
+            `├ 👥 Всего рефералов: ${referralStats.totalReferrals}\n` +
+            `├ ✅ Активных: ${referralStats.activeReferrals}\n` +
+            `├ 💰 Реферальный доход: ${referralStats.totalEarned.stars} ⭐, ${referralStats.totalEarned.coins} 🪙\n` +
+            `└ 🎯 Уровень: ${referralStats.level}\n\n` +
+            `🎁 **Награды за приглашение:**\n` +
+            `├ 💰 Новый пользователь получает: 1000 🪙 Magnum Coins\n` +
+            `└ ⭐ Вы получаете: 5 ⭐ Stars\n\n` +
+            `📋 **Как пригласить друзей:**\n` +
+            `1️⃣ Скопируйте ваш реферальный код\n` +
+            `2️⃣ Отправьте друзьям ссылку: https://t.me/MagnumStarBot?start=${referralCode}\n` +
+            `3️⃣ Когда друг зарегистрируется, вы получите награду!`;
+
+        const referralsKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔗 Поделиться кодом', 'share_referral_code')],
+            [Markup.button.callback('📊 Топ рефералов', 'top_referrers')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+
+        await ctx.editMessageText(referralsMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: referralsKeyboard.reply_markup
+        });
+
+    } catch (error) {
+        logger.error('Ошибка обработки раздела рефералов', error, { userId });
+
+        const errorMessage = `❌ **Ошибка загрузки рефералов**\n\n` +
+            `🚫 Не удалось загрузить данные рефералов\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'referrals')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
     }
 }
 

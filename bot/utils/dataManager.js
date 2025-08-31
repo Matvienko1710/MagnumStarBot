@@ -2340,6 +2340,158 @@ class DataManager {
         }
     }
 
+    // Настройка реферальной системы для пользователя
+    async setupReferral(userId, referrerId = null) {
+        try {
+            logger.info('Настройка реферальной системы', { userId, referrerId });
+
+            // Получаем или создаем пользователя
+            let user = await this.getUser(userId);
+            let referrer = null;
+
+            // Если указан ID реферера, проверяем его существование
+            if (referrerId) {
+                referrer = await this.getUser(referrerId);
+                if (!referrer) {
+                    logger.warn('Реферер не найден, создаем пользователя без реферера', { userId, referrerId });
+                    referrerId = null;
+                }
+            }
+
+            // Генерируем реферальный код для пользователя (если его нет)
+            if (!user.referral || !user.referral.code) {
+                const referralCode = this.generateReferralCode(userId);
+
+                // Инициализируем реферальные данные
+                user.referral = {
+                    code: referralCode,
+                    referrerId: referrerId,
+                    referrals: [],
+                    totalEarned: { stars: 0, coins: 0 },
+                    level: 1,
+                    createdAt: new Date()
+                };
+
+                // Сохраняем обновленные данные пользователя
+                await this.db.collection('users').updateOne(
+                    { userId: Number(userId) },
+                    {
+                        $set: {
+                            referral: user.referral,
+                            lastActivity: new Date()
+                        }
+                    }
+                );
+
+                logger.info('Реферальная система настроена для пользователя', {
+                    userId,
+                    referralCode,
+                    referrerId
+                });
+            }
+
+            // Если есть реферер, добавляем пользователя в его список рефералов
+            if (referrerId && referrer) {
+                // Добавляем пользователя в список рефералов реферера
+                await this.db.collection('users').updateOne(
+                    { userId: Number(referrerId) },
+                    {
+                        $addToSet: { 'referral.referrals': Number(userId) },
+                        $set: { lastActivity: new Date() }
+                    }
+                );
+
+                logger.info('Пользователь добавлен в список рефералов', {
+                    userId,
+                    referrerId
+                });
+            }
+
+            return {
+                userId: Number(userId),
+                referrerId: referrerId ? Number(referrerId) : null,
+                referralCode: user.referral.code,
+                success: true
+            };
+
+        } catch (error) {
+            logger.error('Ошибка настройки реферальной системы', error, { userId, referrerId });
+            throw error;
+        }
+    }
+
+    // Генерация реферального кода
+    generateReferralCode(userId) {
+        const timestamp = Date.now().toString().slice(-4);
+        const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+        return `REF${userId}${timestamp}${random}`;
+    }
+
+    // Получение пользователя по реферальному коду
+    async getUserByReferralCode(referralCode) {
+        try {
+            const user = await this.db.collection('users').findOne({
+                'referral.code': referralCode
+            });
+
+            if (user) {
+                logger.info('Пользователь найден по реферальному коду', {
+                    referralCode,
+                    userId: user.userId
+                });
+                return user;
+            }
+
+            logger.warn('Пользователь не найден по реферальному коду', { referralCode });
+            return null;
+
+        } catch (error) {
+            logger.error('Ошибка поиска пользователя по реферальному коду', error, { referralCode });
+            throw error;
+        }
+    }
+
+    // Получение реферального кода пользователя
+    async getUserReferralCode(userId) {
+        try {
+            const user = await this.getUser(userId);
+
+            if (user && user.referral && user.referral.code) {
+                logger.info('Реферальный код найден', {
+                    userId,
+                    referralCode: user.referral.code
+                });
+                return user.referral.code;
+            }
+
+            // Если кода нет, создаем его
+            const referralCode = this.generateReferralCode(userId);
+
+            // Обновляем пользователя с новым кодом
+            await this.db.collection('users').updateOne(
+                { userId: Number(userId) },
+                {
+                    $set: {
+                        'referral.code': referralCode,
+                        lastActivity: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+
+            logger.info('Создан новый реферальный код', {
+                userId,
+                referralCode
+            });
+
+            return referralCode;
+
+        } catch (error) {
+            logger.error('Ошибка получения реферального кода', error, { userId });
+            throw error;
+        }
+    }
+
     // Обновление баланса пользователя
     async updateUserBalance(userId, currency, amount, reason = 'unknown') {
         try {

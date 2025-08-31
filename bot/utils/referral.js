@@ -89,18 +89,19 @@ const getReferralActivityReward = (referrerId, newUserId, activityType) => {
   try {
     // Награды за разные типы активности
     const rewards = {
+      'referral_invite': { stars: 5, coins: 1000 }, // Награда за приглашение нового пользователя
       'key_activation': { stars: 2, coins: 0 },
       'miner_purchase': { stars: 1, coins: 0 },
       'daily_login': { stars: 1, coins: 0 }
     };
-    
+
     const reward = rewards[activityType] || { stars: 0, coins: 0 };
-    
+
     if (reward.stars > 0 || reward.coins > 0) {
       logger.info('Реферальная награда', { referrerId, newUserId, activityType, reward });
       return reward;
     }
-    
+
     return null;
   } catch (error) {
     logger.error('Ошибка расчета реферальной награды', error, { referrerId, newUserId, activityType });

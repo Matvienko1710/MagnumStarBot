@@ -68,21 +68,52 @@ async function startHandler(ctx) {
                 const referralData = await dataManager.setupReferral(userId, startPayload);
                 logger.info('Реферальная система настроена для нового пользователя', { userId, referrerId: startPayload });
                 
-                // Добавляем уведомление о реферальной награде
+                // Начисляем награды и добавляем уведомление
                 if (referralData.referrerId) {
-                    const referralBonusMessage = `🎉 **Реферальная награда!**\n\n` +
-                        `✅ Вы зарегистрировались по реферальной ссылке\n` +
-                        `💰 Получили бонус: **1000 🪙 Magnum Coins**\n` +
-                        `👥 Ваш реферер получил: **5 ⭐ Stars**\n\n` +
-                        `🎯 Продолжайте зарабатывать вместе!`;
-                    
-                    // Отправляем сообщение о реферальной награде (обычное сообщение - удаляем через 15 сек)
-                    const referralMessage = await sendSmartMessage(ctx, referralBonusMessage, { parse_mode: 'Markdown' });
-                    
-                    // Сохраняем ID сообщения о реферальной награде
-                    lastBotMessages.set(userId, referralMessage.message_id);
-                    
-                    logger.info('Сообщение о реферальной награде отправлено и сохранено', { userId, messageId: referralMessage.message_id });
+                    try {
+                        // Начисляем награду рефереру (5 звезд)
+                        const { updateStars } = require('../utils/currency');
+                        await updateStars(referralData.referrerId, 5, 'referral_bonus');
+
+                        // Начисляем награду новому пользователю (1000 магнум коинов)
+                        const { updateCoins } = require('../utils/currency');
+                        await updateCoins(userId, 1000, 'referral_join');
+
+                        logger.info('Реферальные награды начислены', {
+                            newUserId: userId,
+                            referrerId: referralData.referrerId,
+                            newUserReward: { coins: 1000 },
+                            referrerReward: { stars: 5 }
+                        });
+
+                        const referralBonusMessage = `🎉 **Реферальная награда!**\n\n` +
+                            `✅ Вы зарегистрировались по реферальной ссылке\n` +
+                            `💰 Получили бонус: **1000 🪙 Magnum Coins**\n` +
+                            `👥 Ваш реферер получил: **5 ⭐ Stars**\n\n` +
+                            `🎯 Продолжайте зарабатывать вместе!`;
+
+                        // Отправляем сообщение о реферальной награде (обычное сообщение - удаляем через 15 сек)
+                        const referralMessage = await sendSmartMessage(ctx, referralBonusMessage, { parse_mode: 'Markdown' });
+
+                        // Сохраняем ID сообщения о реферальной награде
+                        lastBotMessages.set(userId, referralMessage.message_id);
+
+                        logger.info('Сообщение о реферальной награде отправлено и сохранено', { userId, messageId: referralMessage.message_id });
+
+                    } catch (rewardError) {
+                        logger.error('Ошибка начисления реферальной награды', rewardError, {
+                            newUserId: userId,
+                            referrerId: referralData.referrerId
+                        });
+
+                        // Показываем сообщение без упоминания наград, если они не начислены
+                        const referralErrorMessage = `🎉 **Добро пожаловать!**\n\n` +
+                            `✅ Вы зарегистрировались по реферальной ссылке\n\n` +
+                            `🎯 Продолжайте зарабатывать вместе!`;
+
+                        const referralMessage = await sendSmartMessage(ctx, referralErrorMessage, { parse_mode: 'Markdown' });
+                        lastBotMessages.set(userId, referralMessage.message_id);
+                    }
                 }
             } else {
                 // Если нет ID реферера, создаем пользователя без реферера
