@@ -143,7 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Показываем статистику пользователя
         const userStats = document.getElementById('user-stats');
-        const userGreeting = document.getElementById('user-greeting');
 
         if (profile.balance && profile.balance.totalEarned) {
             // Обновляем статистику заработка
@@ -161,13 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
             userStats.style.display = 'block';
         }
 
-        // Обновляем приветствие
-        if (profile.miners && profile.miners.length > 0) {
-            const activeMiners = profile.miners.filter(miner => miner.isActive).length;
-            userGreeting.textContent = `У вас ${activeMiners} активных майнеров! Продолжайте зарабатывать!`;
-        } else {
-            userGreeting.textContent = `Добро пожаловать! Начните зарабатывать звезды и магнум коины!`;
-        }
+
     }
 
     // Функция показа формы для ввода userId
