@@ -25,6 +25,11 @@ app.use('/api', apiRoutes);
 // Статические файлы вебаппа
 app.use(express.static('webapp'));
 
+// Явный маршрут для корневого пути вебаппа
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/webapp/index.html');
+});
+
 // Переменная для отслеживания состояния базы данных
 let isDatabaseConnected = false;
 

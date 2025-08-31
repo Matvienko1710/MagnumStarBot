@@ -12,6 +12,7 @@ npm start
 
 #### **HTML WebApp:**
 - **URL:** `http://localhost:3000/`
+- **Файл:** `index.html` (ранее был `index-new.html`)
 - **Что тестировать:** Простой HTML WebApp с кнопкой клика
 - **Ожидаемый результат:** Рабочая кнопка клика, счетчик, LocalStorage, навигация
 
