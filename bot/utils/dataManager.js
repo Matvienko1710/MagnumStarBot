@@ -2085,14 +2085,13 @@ class DataManager {
                 { messageId: messageId },
                 { $set: { isDeleted: true, deletedAt: new Date() } }
             );
-            
+
             logger.info('Сообщение отмечено как удаленное', { messageId });
-            
+
         } catch (error) {
             logger.error('Ошибка отметки сообщения как удаленного', error, { messageId });
         }
     }
-}
 
     // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ МАЙНЕРОВ ===
 
@@ -2117,16 +2116,12 @@ class DataManager {
                 id: `${minerType}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
                 type: minerType,
                 name: minerInfo.name,
+                power: minerInfo.power,
                 price: minerInfo.price,
-                priceType: minerInfo.priceType,
-                rewardPerMinute: minerInfo.rewardPerMinute,
-                rewardType: minerInfo.rewardType,
-                maxReward: minerInfo.maxReward,
-                purchaseDate: new Date(),
-                totalEarned: 0,
-                isActive: true,
-                rarity: minerInfo.rarity,
-                description: minerInfo.description
+                profit: minerInfo.profit,
+                createdAt: new Date(),
+                lastProfit: new Date(),
+                isActive: true
             };
 
             // Добавляем майнер в массив пользователя
@@ -2134,6 +2129,123 @@ class DataManager {
 
             // Сохраняем в базу данных
             await this.db.collection('user_miners').updateOne(
+                { userId: Number(userId) },
+                {
+                    $set: {
+                        userId: Number(userId),
+                        miners: userMiners,
+                        lastUpdated: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+
+            logger.info('Майнер создан для пользователя из ключа', {
+                userId,
+                minerType,
+                minerId: newMiner.id
+            });
+
+            return newMiner;
+
+        } catch (error) {
+            logger.error('Ошибка создания майнера для пользователя', error, { userId, minerType });
+            throw error;
+        }
+    }
+
+    // Обновление количества майнеров на сервере
+    async updateServerMinerCounts(counts) {
+        try {
+            await this.db.collection('server_data').updateOne(
+                { type: 'miner_counts' },
+                {
+                    $set: {
+                        counts: counts,
+                        lastUpdated: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+
+            logger.info('Количество майнеров на сервере обновлено', { counts });
+
+        } catch (error) {
+            logger.error('Ошибка обновления количества майнеров на сервере', error, { counts });
+            throw error;
+        }
+    }
+
+    // Получение количества майнеров на сервере
+    async getServerMinerCounts() {
+        try {
+            const result = await this.db.collection('server_data').findOne({ type: 'miner_counts' });
+            return result ? result.counts : {};
+        } catch (error) {
+            logger.error('Ошибка получения количества майнеров на сервере', error);
+            return {};
+        }
+    }
+
+    // Обновление баланса пользователя
+    async updateUserBalance(userId, currency, amount, reason = 'unknown') {
+        try {
+            const user = await this.getUser(userId);
+            if (!user) {
+                throw new Error(`Пользователь ${userId} не найден`);
+            }
+
+            // Инициализируем баланс если он не существует
+            if (!user.balance) {
+                user.balance = { stars: 0, coins: 0, totalEarned: { stars: 0, coins: 0 } };
+            }
+            if (!user.balance[currency]) {
+                user.balance[currency] = 0;
+            }
+            if (!user.balance.totalEarned) {
+                user.balance.totalEarned = { stars: 0, coins: 0 };
+            }
+            if (!user.balance.totalEarned[currency]) {
+                user.balance.totalEarned[currency] = 0;
+            }
+
+            // Обновляем баланс
+            user.balance[currency] += amount;
+            user.balance.totalEarned[currency] += Math.max(0, amount); // Только положительные значения для totalEarned
+
+            // Сохраняем в базу данных
+            const result = await this.db.collection('users').updateOne(
+                { userId: Number(userId) },
+                {
+                    $set: {
+                        balance: user.balance,
+                        lastActivity: new Date()
+                    }
+                }
+            );
+
+            logger.info('Баланс пользователя обновлен', {
+                userId,
+                currency,
+                amount,
+                newBalance: user.balance[currency],
+                reason,
+                result: result.modifiedCount
+            });
+
+            return result;
+
+        } catch (error) {
+            logger.error('Ошибка обновления баланса пользователя', error, { userId, currency, amount, reason });
+            throw error;
+        }
+    }
+}
+
+// Создаем и экспортируем экземпляр
+const dataManager = new DataManager();
+
+module.exports = dataManager;
                 { userId: Number(userId) },
                 {
                     $set: {
