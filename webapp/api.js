@@ -117,8 +117,8 @@ router.post('/user/click/:userId', ensureDataManagerConnection, async (req, res)
 
         console.log(`🔍 API: Баланс до клика:`, user.balance);
 
-        // Увеличиваем баланс Stars на 1 через DataManager
-        const newBalance = await dm.updateBalance(Number(userId), 'stars', 1, 'webapp_click');
+        // Увеличиваем баланс Coins на 1 через DataManager
+        const newBalance = await dm.updateBalance(Number(userId), 'coins', 1, 'webapp_click');
 
         console.log(`✅ API: updateBalance вернул:`, newBalance);
 
@@ -248,16 +248,20 @@ router.get('/user/info/:userId', ensureDataManagerConnection, async (req, res) =
 router.get('/health', (req, res) => {
     console.log('🔍 API Health check вызван');
     console.log('🔍 API: Проверяем подключение к DataManager...');
-    
+
     // Проверяем подключение к DataManager
     const isConnected = !!dataManager && dataManager.isInitialized;
     console.log(`🔍 API: DataManager подключен: ${isConnected}`);
-    
+
     res.json({
         success: true,
         message: 'Magnum Stars WebApp API работает!',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
+        gameSettings: {
+            clickReward: '1 Magnum Coin',
+            clickLimitPerSecond: 5
+        },
         dataManager: {
             connected: isConnected,
             initialized: dataManager ? dataManager.isInitialized : false

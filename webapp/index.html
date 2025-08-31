@@ -307,11 +307,11 @@
         <!-- Главная кнопка клика -->
         <div class="stats">
             <h3>🎯 Кликни и заработай!</h3>
-            <p>Каждый клик = +1 ⭐</p>
+            <p>Каждый клик = +1 🪙</p>
         </div>
 
         <button class="main-button" id="click-button" onclick="handleClick()">
-            <span class="star">⭐</span>
+            <span class="star">🪙</span>
             </button>
 
         <!-- Статистика -->
@@ -355,6 +355,8 @@
         let coinsBalance = 0;
         let todayClicks = 0;
         let lastClickTime = null;
+        let clickTimestamps = []; // Для отслеживания кликов в секунду
+        let maxClicksPerSecond = 5;
         let currentUserId = null;
 
         // Инициализация при загрузке страницы
@@ -470,6 +472,17 @@
                 return;
             }
 
+            // Проверяем лимит кликов в секунду
+            const now = Date.now();
+            clickTimestamps = clickTimestamps.filter(timestamp => now - timestamp < 1000); // Убираем клики старше 1 секунды
+
+            if (clickTimestamps.length >= maxClicksPerSecond) {
+                console.warn('Превышен лимит кликов в секунду:', maxClicksPerSecond);
+                return; // Не обрабатываем клик
+            }
+
+            clickTimestamps.push(now);
+
             const clickStartTime = Date.now();
             console.log(`👆 Обрабатываем клик для пользователя: ${currentUserId} в ${new Date().toISOString()}`);
 
@@ -510,7 +523,7 @@
                     showClickEffect();
 
                     // Логируем
-                    console.log(`Клик! Баланс: ${starsBalance} ⭐, Всего кликов: ${clickCount}`);
+                    console.log(`Клик! Баланс: ${coinsBalance} 🪙, Всего кликов: ${clickCount}`);
 
                     // Уведомление в Telegram (если доступно)
                     if (window.Telegram && window.Telegram.WebApp) {
@@ -532,7 +545,7 @@
         function fallbackClick() {
             console.log('Используем fallback - локальное обновление');
             clickCount++;
-            starsBalance++;
+            coinsBalance++;
             todayClicks++;
             lastClickTime = new Date();
             updateUI();
