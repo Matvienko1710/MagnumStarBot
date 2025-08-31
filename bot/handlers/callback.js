@@ -101,6 +101,10 @@ async function callbackHandler(ctx) {
             case 'my_withdrawals':
                 await handleMyWithdrawals(ctx);
                 break;
+            case 'webapp_coming_soon':
+                // Уведомление для обычных пользователей
+                await ctx.answerCbQuery('🚀 WebApp скоро будет доступен! Следите за обновлениями.', true);
+                break;
             case (action) => action.startsWith('approve_withdrawal_'):
                 await handleApproveWithdrawal(ctx, action);
                 break;
@@ -1057,10 +1061,15 @@ async function handleMainMenu(ctx) {
             `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
+        // Создаем кнопку WebApp в зависимости от статуса пользователя
+        const webAppButton = isAdmin(userId)
+            ? Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
+            : Markup.button.callback('🌐 WebApp', 'webapp_coming_soon');
+
         // Создаем основное меню
         const mainMenuButtons = [
             [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
-            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
+            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), webAppButton],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
         ];
         
@@ -1877,11 +1886,16 @@ async function handleCheckSubscription(ctx) {
             
             // Проверяем, является ли пользователь админом
             const userIsAdmin = isAdmin(userId);
-            
+
+            // Создаем кнопку WebApp в зависимости от статуса пользователя
+            const webAppButton = userIsAdmin
+                ? Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
+                : Markup.button.callback('🌐 WebApp', 'webapp_coming_soon');
+
             // Создаем основное меню
             const mainMenuButtons = [
                 [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
-                [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
+                [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), webAppButton],
                 [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
             ];
             
