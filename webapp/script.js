@@ -28,10 +28,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Проверяем Telegram WebApp API для автоматического получения userId
     if (window.Telegram && window.Telegram.WebApp) {
+        // Инициализируем WebApp
+        window.Telegram.WebApp.ready();
+
         const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
         console.log('🔍 Telegram WebApp данные:', {
             webAppAvailable: true,
             initDataUnsafe: !!window.Telegram.WebApp.initDataUnsafe,
+            webAppData: window.Telegram.WebApp.initData,
             user: telegramUser ? {
                 id: telegramUser.id,
                 username: telegramUser.username,
@@ -40,14 +44,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (telegramUser && telegramUser.id) {
-            userId = telegramUser.id.toString();
-            localStorage.setItem('magnumBot_userId', userId);
+            userId = telegramUser.id;
+            localStorage.setItem('magnumBot_userId', userId.toString());
             console.log('✅ User ID получен автоматически через Telegram WebApp:', userId);
         } else {
             console.log('⚠️ Telegram WebApp доступен, но userId не найден');
+            // Показываем кнопку для открытия в Telegram
+            showTelegramPrompt();
+            return;
         }
     } else {
-        console.log('❌ Telegram WebApp не доступен');
+        console.log('❌ Telegram WebApp не доступен, показываем инструкцию');
+        showTelegramPrompt();
+        return;
     }
 
     console.log('🎯 Финальный userId для использования:', userId);
@@ -205,28 +214,9 @@ document.addEventListener('DOMContentLoaded', function() {
             headerTitle.textContent = `Привет, ${profile.username}!`;
         } else if (profile.firstName) {
             headerTitle.textContent = `Привет, ${profile.firstName}!`;
+        } else {
+            headerTitle.textContent = 'MagnumStarBot';
         }
-
-        // Показываем статистику пользователя
-        const userStats = document.getElementById('user-stats');
-
-        if (profile.balance && profile.balance.totalEarned) {
-            // Обновляем статистику заработка
-            const totalEarnedStars = document.getElementById('total-earned-stars');
-            const totalEarnedCoins = document.getElementById('total-earned-coins');
-
-            if (totalEarnedStars) {
-                totalEarnedStars.textContent = `${profile.balance.totalEarned.stars.toLocaleString()} ⭐`;
-            }
-            if (totalEarnedCoins) {
-                totalEarnedCoins.textContent = `${profile.balance.totalEarned.coins.toLocaleString()} 🪙`;
-            }
-
-            // Показываем блок статистики
-            userStats.style.display = 'block';
-        }
-
-
     }
 
     // Функция показа демо режима
@@ -237,20 +227,13 @@ document.addEventListener('DOMContentLoaded', function() {
         updateBalanceDisplay('stars', 1250);
         updateBalanceDisplay('magnum', 5678);
 
-        // Показываем демо статистику
-        const userStats = document.getElementById('user-stats');
-        const totalEarnedStars = document.getElementById('total-earned-stars');
-        const totalEarnedCoins = document.getElementById('total-earned-coins');
-
-        if (totalEarnedStars) totalEarnedStars.textContent = '2,500 ⭐';
-        if (totalEarnedCoins) totalEarnedCoins.textContent = '11,350 🪙';
-        if (userStats) userStats.style.display = 'block';
-
-        // Меняем заголовок на демо режим
+        // В демо режиме просто показываем приветствие
         const headerTitle = document.querySelector('.header h1');
         if (headerTitle) {
             headerTitle.textContent = 'MagnumStarBot (Демо)';
         }
+
+
 
         // Показываем кнопку для ввода User ID
         const enterUserIdBtn = document.getElementById('enter-user-id-btn');
@@ -319,6 +302,71 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         document.body.appendChild(resetBtn);
+    }
+
+    // Функция показа инструкции по открытию в Telegram
+    function showTelegramPrompt() {
+        console.log('📱 Показываем инструкцию по открытию в Telegram');
+
+        const promptDiv = document.createElement('div');
+        promptDiv.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.9);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            ">
+                <div style="
+                    background: white;
+                    padding: 30px;
+                    border-radius: 20px;
+                    text-align: center;
+                    max-width: 400px;
+                    width: 90%;
+                ">
+                    <h2 style="margin-bottom: 20px; color: #0088cc;">🔗 Откройте в Telegram</h2>
+                    <p style="margin-bottom: 20px; color: #666; line-height: 1.5;">
+                        Для автоматической синхронизации баланса откройте вебапп через Telegram бот.
+                    </p>
+                    <div style="margin-bottom: 20px;">
+                        <p style="color: #333; font-weight: bold; margin-bottom: 10px;">Как открыть:</p>
+                        <ol style="text-align: left; color: #666; padding-left: 20px;">
+                            <li>Перейдите в Telegram</li>
+                            <li>Найдите бота @MagnumStarBot</li>
+                            <li>Нажмите кнопку "Запустить" или введите /start</li>
+                            <li>Откройте меню и нажмите кнопку вебаппа</li>
+                        </ol>
+                    </div>
+                    <button onclick="window.open('https://t.me/MagnumStarBot', '_blank')" style="
+                        background: #0088cc;
+                        color: white;
+                        border: none;
+                        padding: 12px 30px;
+                        border-radius: 25px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        margin-right: 10px;
+                    ">🔗 Открыть в Telegram</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.remove(); showDemoMode();" style="
+                        background: #666;
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 25px;
+                        font-size: 14px;
+                        cursor: pointer;
+                    ">📱 Демо режим</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(promptDiv);
     }
 
     // Функция показа формы для ввода userId (теперь вызывается только при необходимости)
