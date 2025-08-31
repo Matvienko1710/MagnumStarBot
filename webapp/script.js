@@ -27,32 +27,85 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Проверяем Telegram WebApp API для автоматического получения userId
+    console.log('🔍 Проверка Telegram WebApp:', {
+        windowTelegram: !!window.Telegram,
+        webApp: !!(window.Telegram && window.Telegram.WebApp),
+        userAgent: navigator.userAgent.substring(0, 100) + '...',
+        referrer: document.referrer,
+        location: window.location.href
+    });
+
     if (window.Telegram && window.Telegram.WebApp) {
-        // Инициализируем WebApp
-        window.Telegram.WebApp.ready();
+        try {
+            // Инициализируем WebApp
+            window.Telegram.WebApp.ready();
 
-        const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
-        console.log('🔍 Telegram WebApp данные:', {
-            webAppAvailable: true,
-            initDataUnsafe: !!window.Telegram.WebApp.initDataUnsafe,
-            webAppData: window.Telegram.WebApp.initData,
-            user: telegramUser ? {
-                id: telegramUser.id,
-                username: telegramUser.username,
-                first_name: telegramUser.first_name
-            } : null
-        });
+            // Ждем небольшую задержку для инициализации
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-        if (telegramUser && telegramUser.id) {
-            userId = telegramUser.id;
-            localStorage.setItem('magnumBot_userId', userId.toString());
-            console.log('✅ User ID получен автоматически через Telegram WebApp:', userId);
-        } else {
-            console.log('⚠️ Telegram WebApp доступен, но userId не найден');
-            // Показываем кнопку для открытия в Telegram
+            const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+            const initData = window.Telegram.WebApp.initData;
+            const platform = window.Telegram.WebApp.platform;
+
+            console.log('🔍 Подробные данные Telegram WebApp:', {
+                webAppAvailable: true,
+                platform: platform,
+                initDataLength: initData ? initData.length : 0,
+                initDataUnsafe: !!window.Telegram.WebApp.initDataUnsafe,
+                initDataUnsafeKeys: window.Telegram.WebApp.initDataUnsafe ? Object.keys(window.Telegram.WebApp.initDataUnsafe) : [],
+                user: telegramUser ? {
+                    id: telegramUser.id,
+                    username: telegramUser.username,
+                    first_name: telegramUser.first_name,
+                    last_name: telegramUser.last_name
+                } : null,
+                isExpanded: window.Telegram.WebApp.isExpanded,
+                viewportHeight: window.Telegram.WebApp.viewportHeight,
+                viewportStableHeight: window.Telegram.WebApp.viewportStableHeight
+            });
+
+            // Проверяем различные способы получения userId
+            if (telegramUser && telegramUser.id) {
+                userId = telegramUser.id;
+                localStorage.setItem('magnumBot_userId', userId.toString());
+                console.log('✅ User ID получен через Telegram WebApp:', {
+                    userId: userId,
+                    source: 'Telegram.WebApp.initDataUnsafe.user'
+                });
+            } else if (initData && initData.includes('user=')) {
+                // Пытаемся извлечь userId из initData
+                try {
+                    const urlParams = new URLSearchParams(initData);
+                    const userParam = urlParams.get('user');
+                    if (userParam) {
+                        const userData = JSON.parse(decodeURIComponent(userParam));
+                        if (userData && userData.id) {
+                            userId = userData.id;
+                            localStorage.setItem('magnumBot_userId', userId.toString());
+                            console.log('✅ User ID получен из initData:', {
+                                userId: userId,
+                                source: 'initData parsing'
+                            });
+                        }
+                    }
+                } catch (parseError) {
+                    console.log('⚠️ Не удалось распарсить user из initData:', parseError.message);
+                }
+            }
+
+            if (!userId) {
+                console.log('⚠️ Telegram WebApp доступен, но userId не найден');
+                // Показываем кнопку для открытия в Telegram
+                showTelegramPrompt();
+                return;
+            }
+
+        } catch (webAppError) {
+            console.error('❌ Ошибка при работе с Telegram WebApp:', webAppError);
             showTelegramPrompt();
             return;
         }
+
     } else {
         console.log('❌ Telegram WebApp не доступен, показываем инструкцию');
         showTelegramPrompt();
@@ -327,41 +380,85 @@ document.addEventListener('DOMContentLoaded', function() {
                     padding: 30px;
                     border-radius: 20px;
                     text-align: center;
-                    max-width: 400px;
+                    max-width: 450px;
                     width: 90%;
                 ">
-                    <h2 style="margin-bottom: 20px; color: #0088cc;">🔗 Откройте в Telegram</h2>
+                    <h2 style="margin-bottom: 20px; color: #0088cc;">🔗 Синхронизация с Telegram</h2>
                     <p style="margin-bottom: 20px; color: #666; line-height: 1.5;">
-                        Для автоматической синхронизации баланса откройте вебапп через Telegram бот.
+                        Вебапп не смог автоматически определить ваш аккаунт Telegram.
+                        Для синхронизации баланса откройте приложение через бота.
                     </p>
-                    <div style="margin-bottom: 20px;">
-                        <p style="color: #333; font-weight: bold; margin-bottom: 10px;">Как открыть:</p>
-                        <ol style="text-align: left; color: #666; padding-left: 20px;">
-                            <li>Перейдите в Telegram</li>
-                            <li>Найдите бота @MagnumStarBot</li>
-                            <li>Нажмите кнопку "Запустить" или введите /start</li>
-                            <li>Откройте меню и нажмите кнопку вебаппа</li>
+
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <p style="color: #333; font-weight: bold; margin-bottom: 10px;">🚀 Правильный способ открытия:</p>
+                        <ol style="text-align: left; color: #666; padding-left: 20px; margin: 0;">
+                            <li style="margin-bottom: 5px;">Откройте Telegram</li>
+                            <li style="margin-bottom: 5px;">Найдите бота <strong>@MagnumStarBot</strong></li>
+                            <li style="margin-bottom: 5px;">Отправьте команду <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">/start</code></li>
+                            <li>Нажмите кнопку вебаппа в меню бота</li>
                         </ol>
                     </div>
-                    <button onclick="window.open('https://t.me/MagnumStarBot', '_blank')" style="
-                        background: #0088cc;
-                        color: white;
-                        border: none;
-                        padding: 12px 30px;
-                        border-radius: 25px;
-                        font-size: 16px;
-                        cursor: pointer;
-                        margin-right: 10px;
-                    ">🔗 Открыть в Telegram</button>
-                    <button onclick="this.parentElement.parentElement.parentElement.remove(); showDemoMode();" style="
-                        background: #666;
-                        color: white;
-                        border: none;
-                        padding: 12px 20px;
-                        border-radius: 25px;
-                        font-size: 14px;
-                        cursor: pointer;
-                    ">📱 Демо режим</button>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                        <button onclick="window.open('https://t.me/MagnumStarBot', '_blank')" style="
+                            background: #0088cc;
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 25px;
+                            font-size: 16px;
+                            cursor: pointer;
+                            flex: 1;
+                            min-width: 150px;
+                        ">🔗 Открыть бота</button>
+
+                        <button onclick="this.parentElement.parentElement.parentElement.remove(); showUserIdPrompt();" style="
+                            background: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 25px;
+                            font-size: 16px;
+                            cursor: pointer;
+                            flex: 1;
+                            min-width: 150px;
+                        ">🔢 Ввести User ID</button>
+
+                        <button onclick="
+                            console.log('🔄 Повторная попытка инициализации WebApp...');
+                            if (window.Telegram && window.Telegram.WebApp) {
+                                window.Telegram.WebApp.ready();
+                                setTimeout(() => location.reload(), 500);
+                            } else {
+                                alert('Telegram WebApp не доступен в этом браузере');
+                            }
+                        " style="
+                            background: #ffc107;
+                            color: #000;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 25px;
+                            font-size: 14px;
+                            cursor: pointer;
+                            flex: 1;
+                            min-width: 150px;
+                        ">🔄 Повторить</button>
+
+                        <button onclick="this.parentElement.parentElement.parentElement.remove(); showDemoMode();" style="
+                            background: #6c757d;
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 25px;
+                            font-size: 14px;
+                            cursor: pointer;
+                            width: 100%;
+                        ">📱 Демо режим</button>
+                    </div>
+
+                    <p style="margin-top: 15px; color: #888; font-size: 12px;">
+                        💡 User ID можно найти через @userinfobot или в настройках Telegram
+                    </p>
                 </div>
             </div>
         `;
