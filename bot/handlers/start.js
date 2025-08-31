@@ -7,6 +7,8 @@ const { isAdmin } = require('../utils/admin');
 // Хранилище последних сообщений бота для каждого пользователя
 const lastBotMessages = new Map();
 
+
+
 // Обработчик команды /start
 async function startHandler(ctx) {
     try {
@@ -118,8 +120,6 @@ async function startHandler(ctx) {
         
         // Создаем основное меню
         const mainMenuButtons = [
-            [Markup.button.url('🗣️ Чат', `https://t.me/${process.env.CHAT_URL || 'magnumchat'}`), Markup.button.url('📋 Новости', `https://t.me/${process.env.NEWS_URL || 'magnumnews'}`)],
-            [Markup.button.url('💎 Выплаты', `https://t.me/${process.env.PAYMENTS_URL || 'magnumpayments'}`)],
             [Markup.button.callback('⚒️ Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
             [Markup.button.callback('🌟 Вывести звезды', 'withdraw')]
@@ -157,16 +157,17 @@ async function startHandler(ctx) {
         logger.info('Команда /start успешно обработана', { userId });
         
     } catch (error) {
-        logger.error('Ошибка в обработчике команды /start', error, { userId: ctx?.from?.id });
-        
+        const userId = ctx?.from?.id || 'unknown';
+        logger.error('Ошибка в обработчике команды /start', error, { userId });
+
         const errorMessage = `❌ **Ошибка запуска бота**\n\n` +
             `🚫 Не удалось запустить бота\n` +
             `🔧 Попробуйте позже или обратитесь к администратору`;
-        
+
         const errorKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔄 Попробовать снова', 'start')]
         ]);
-        
+
         // Удаляем старое сообщение бота, если оно есть
         const lastMessageId = lastBotMessages.get(userId);
         if (lastMessageId) {
