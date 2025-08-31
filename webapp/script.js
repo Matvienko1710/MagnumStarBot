@@ -6,24 +6,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     let userId = urlParams.get('userId') || localStorage.getItem('magnumBot_userId');
 
+    console.log('🔍 Получение userId:', {
+        fromURL: urlParams.get('userId'),
+        fromLocalStorage: localStorage.getItem('magnumBot_userId'),
+        currentUserId: userId
+    });
+
     // Проверяем Telegram WebApp API для автоматического получения userId
     if (window.Telegram && window.Telegram.WebApp) {
         const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+        console.log('🔍 Telegram WebApp данные:', {
+            webAppAvailable: true,
+            initDataUnsafe: !!window.Telegram.WebApp.initDataUnsafe,
+            user: telegramUser ? {
+                id: telegramUser.id,
+                username: telegramUser.username,
+                first_name: telegramUser.first_name
+            } : null
+        });
+
         if (telegramUser && telegramUser.id) {
             userId = telegramUser.id.toString();
             localStorage.setItem('magnumBot_userId', userId);
             console.log('✅ User ID получен автоматически через Telegram WebApp:', userId);
+        } else {
+            console.log('⚠️ Telegram WebApp доступен, но userId не найден');
         }
+    } else {
+        console.log('❌ Telegram WebApp не доступен');
     }
+
+    console.log('🎯 Финальный userId для использования:', userId);
 
     if (!userId) {
         // Если userId не найден, показываем демо режим
+        console.log('🎮 UserId не найден, запускаем демо режим');
         showDemoMode();
         return;
     }
 
     // Сохраняем userId в localStorage для будущих посещений
     localStorage.setItem('magnumBot_userId', userId);
+
+    // Добавляем кнопку сброса данных для авторизованного пользователя
+    addResetButton();
 
     // Загружаем данные пользователя
     loadUserData(userId);
@@ -200,8 +226,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const enterUserIdBtn = document.getElementById('enter-user-id-btn');
         if (enterUserIdBtn) {
             enterUserIdBtn.style.display = 'block';
+            enterUserIdBtn.textContent = 'Ввести User ID';
             enterUserIdBtn.addEventListener('click', showUserIdPrompt);
         }
+
+        // Добавляем кнопку для сброса данных
+        addResetButton();
 
         // Показываем уведомление о демо режиме
         setTimeout(() => {
@@ -210,6 +240,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Запускаем пульсирующий эффект для привлечения внимания
         setTimeout(addPulseEffect, 1000);
+    }
+
+    // Функция добавления кнопки сброса данных
+    function addResetButton() {
+        const existingResetBtn = document.getElementById('reset-user-id-btn');
+        if (existingResetBtn) {
+            existingResetBtn.remove();
+        }
+
+        const resetBtn = document.createElement('button');
+        resetBtn.id = 'reset-user-id-btn';
+        resetBtn.textContent = '🔄 Сбросить данные';
+        resetBtn.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        `;
+
+        resetBtn.addEventListener('mouseenter', function() {
+            this.style.background = 'rgba(255, 0, 0, 1)';
+            this.style.transform = 'scale(1.05)';
+        });
+
+        resetBtn.addEventListener('mouseleave', function() {
+            this.style.background = 'rgba(255, 0, 0, 0.8)';
+            this.style.transform = 'scale(1)';
+        });
+
+        resetBtn.addEventListener('click', function() {
+            const confirmMessage = userId
+                ? 'Вы уверены, что хотите сбросить данные и ввести новый User ID?'
+                : 'Вы уверены, что хотите сбросить все сохраненные данные?';
+
+            if (confirm(confirmMessage)) {
+                localStorage.removeItem('magnumBot_userId');
+                location.reload();
+            }
+        });
+
+        document.body.appendChild(resetBtn);
     }
 
     // Функция показа формы для ввода userId (теперь вызывается только при необходимости)
@@ -261,9 +340,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Обработчик кнопки
         document.getElementById('submitUserId').addEventListener('click', function() {
             const userId = document.getElementById('userIdInput').value.trim();
+            console.log('👤 Пользователь ввел User ID:', userId);
+
             if (userId) {
                 localStorage.setItem('magnumBot_userId', userId);
                 promptDiv.remove();
+
+                // Убираем кнопку сброса, если она была
+                const resetBtn = document.getElementById('reset-user-id-btn');
+                if (resetBtn) {
+                    resetBtn.remove();
+                }
+
                 loadUserData(userId);
             } else {
                 alert('Пожалуйста, введите User ID');
