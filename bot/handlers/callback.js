@@ -164,7 +164,23 @@ async function callbackHandler(ctx) {
             case 'titles':
                 await handleTitles(ctx);
                 break;
-                
+
+            case 'grant_title':
+                await handleGrantTitle(ctx);
+                break;
+
+            case 'revoke_title':
+                await handleRevokeTitle(ctx);
+                break;
+
+            case 'view_user_titles':
+                await handleViewUserTitles(ctx);
+                break;
+
+            case 'titles_stats':
+                await handleTitlesStats(ctx);
+                break;
+
             case 'my_titles':
                 await handleMyTitles(ctx);
                 break;
@@ -2345,6 +2361,242 @@ async function handleMinerKeyCreation(ctx, text) {
     }
 }
 
+// Обработка выдачи титула пользователю (только админы)
+async function handleGrantTitle(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка выдачи титула', { userId });
+
+    // Проверяем, является ли пользователь админом
+    if (!isAdmin(userId)) {
+        await ctx.answerCbQuery('❌ У вас нет прав для выдачи титулов');
+        return;
+    }
+
+    // Устанавливаем состояние ожидания ID пользователя
+    userStates.set(userId, {
+        state: 'granting_title',
+        currentStep: 'waiting_user_id',
+        timestamp: Date.now()
+    });
+
+    const grantTitleMessage = `👑 **Выдача титула**\n\n` +
+        `🎯 **Шаг 1: Укажите ID пользователя**\n\n` +
+        `💡 Пример: 123456789\n\n` +
+        `📝 **Отправьте ID пользователя в чат:**`;
+
+    const grantTitleKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Отмена', 'titles')]
+    ]);
+
+    await ctx.editMessageText(grantTitleMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: grantTitleKeyboard.reply_markup
+    });
+}
+
+// Обработка забора титула у пользователя (только админы)
+async function handleRevokeTitle(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка забора титула', { userId });
+
+    // Проверяем, является ли пользователь админом
+    if (!isAdmin(userId)) {
+        await ctx.answerCbQuery('❌ У вас нет прав для забора титулов');
+        return;
+    }
+
+    // Устанавливаем состояние ожидания ID пользователя
+    userStates.set(userId, {
+        state: 'revoking_title',
+        currentStep: 'waiting_user_id',
+        timestamp: Date.now()
+    });
+
+    const revokeTitleMessage = `❌ **Забор титула**\n\n` +
+        `🎯 **Шаг 1: Укажите ID пользователя**\n\n` +
+        `💡 Пример: 123456789\n\n` +
+        `📝 **Отправьте ID пользователя в чат:**`;
+
+    const revokeTitleKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Отмена', 'titles')]
+    ]);
+
+    await ctx.editMessageText(revokeTitleMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: revokeTitleKeyboard.reply_markup
+    });
+}
+
+// Обработка просмотра титулов пользователя (только админы)
+async function handleViewUserTitles(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка просмотра титулов пользователя', { userId });
+
+    // Проверяем, является ли пользователь админом
+    if (!isAdmin(userId)) {
+        await ctx.answerCbQuery('❌ У вас нет прав для просмотра титулов пользователей');
+        return;
+    }
+
+    // Устанавливаем состояние ожидания ID пользователя
+    userStates.set(userId, {
+        state: 'viewing_user_titles',
+        currentStep: 'waiting_user_id',
+        timestamp: Date.now()
+    });
+
+    const viewTitlesMessage = `📊 **Просмотр титулов пользователя**\n\n` +
+        `🎯 **Укажите ID пользователя**\n\n` +
+        `💡 Пример: 123456789\n\n` +
+        `📝 **Отправьте ID пользователя в чат:**`;
+
+    const viewTitlesKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Отмена', 'titles')]
+    ]);
+
+    await ctx.editMessageText(viewTitlesMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: viewTitlesKeyboard.reply_markup
+    });
+}
+
+// Обработка статистики титулов (только админы)
+async function handleTitlesStats(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка статистики титулов', { userId });
+
+    // Проверяем, является ли пользователь админом
+    if (!isAdmin(userId)) {
+        await ctx.answerCbQuery('❌ У вас нет прав для просмотра статистики титулов');
+        return;
+    }
+
+    try {
+        // Получаем статистику титулов (заглушка, пока функционал не реализован)
+        const statsMessage = `📈 **Статистика титулов**\n\n` +
+            `🔧 **Функционал в разработке**\n\n` +
+            `📊 **Будущая статистика:**\n` +
+            `├ 👑 Всего титулов выдано: -\n` +
+            `├ 👤 Пользователей с титулами: -\n` +
+            `├ 🏆 Популярные титулы: -\n` +
+            `└ 📅 Титулы за месяц: -\n\n` +
+            `🚀 **Скоро будет доступно!**`;
+
+        const statsKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Обновить', 'titles_stats')],
+            [Markup.button.callback('🔙 Назад к титулам', 'titles')]
+        ]);
+
+        await ctx.editMessageText(statsMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: statsKeyboard.reply_markup
+        });
+
+    } catch (error) {
+        logger.error('Ошибка получения статистики титулов', error, { userId });
+
+        const errorMessage = `❌ **Ошибка загрузки статистики**\n\n` +
+            `🚫 Не удалось загрузить статистику титулов\n` +
+            `🔧 Попробуйте позже`;
+
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'titles_stats')],
+            [Markup.button.callback('🔙 Назад к титулам', 'titles')]
+        ]);
+
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
+// Обработка раздела титулов
+async function handleTitles(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка раздела титулов', { userId });
+
+    try {
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            // Для обычных пользователей показываем уведомление "в разработке"
+            const comingSoonMessage = `👑 **Титулы - в разработке!**\n\n` +
+                `🔧 **Функционал титулов находится в разработке**\n\n` +
+                `🎯 **Что такое титулы?**\n` +
+                `├ 👑 Специальные звания для активных пользователей\n` +
+                `├ 🏆 Показывают уровень и достижения в игре\n` +
+                `├ 💎 Дают дополнительные бонусы и привилегии\n` +
+                `└ 🎨 Уникальные значки и статусы\n\n` +
+                `🚀 **Скоро будет доступно!**\n` +
+                `Следите за обновлениями в нашем канале @magnumtap`;
+
+            const comingSoonKeyboard = Markup.inlineKeyboard([
+                [Markup.button.url('📢 Подписаться на новости', 'https://t.me/magnumtap')],
+                [Markup.button.callback('👤 Профиль', 'profile')],
+                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+            ]);
+
+            await ctx.editMessageText(comingSoonMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: comingSoonKeyboard.reply_markup
+            });
+
+            logger.info('Показан экран "Титулы в разработке" для обычного пользователя', { userId });
+            return;
+        }
+
+        // Для админов показываем функционал управления титулами
+        const titlesMessage = `👑 **Управление титулами**\n\n` +
+            `🎯 **Админ функции титулов:**\n\n` +
+            `🔧 **Доступные действия:**\n` +
+            `├ 👑 Выдать титул пользователю\n` +
+            `├ ❌ Забрать титул у пользователя\n` +
+            `├ 📊 Просмотр титулов пользователя\n` +
+            `├ 🔑 Создать ключ титула\n` +
+            `└ 📈 Статистика титулов\n\n` +
+            `💡 **Выберите действие:**`;
+
+        const titlesKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('👑 Выдать титул', 'grant_title')],
+            [Markup.button.callback('❌ Забрать титул', 'revoke_title')],
+            [Markup.button.callback('📊 Просмотр титулов', 'view_user_titles')],
+            [Markup.button.callback('🔑 Создать ключ титула', 'create_title_key')],
+            [Markup.button.callback('📈 Статистика', 'titles_stats')],
+            [Markup.button.callback('🔙 Профиль', 'profile')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+
+        await ctx.editMessageText(titlesMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: titlesKeyboard.reply_markup
+        });
+
+        logger.info('Показан админ интерфейс титулов', { userId });
+
+    } catch (error) {
+        logger.error('Ошибка обработки раздела титулов', error, { userId });
+
+        const errorMessage = `❌ **Ошибка загрузки титулов**\n\n` +
+            `🚫 Не удалось загрузить данные титулов\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'titles')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
 // Обработка раздела рефералов
 async function handleReferrals(ctx) {
     const userId = ctx.from.id;
@@ -2411,6 +2663,12 @@ module.exports = {
     handleKeyCreation,
     handleTitleKeyCreation,
     handleMinerKeyCreation,
+    handleTitles,
+    handleGrantTitle,
+    handleRevokeTitle,
+    handleViewUserTitles,
+    handleTitlesStats,
+    handleReferrals,
     handleApproveWithdrawal,
     handleRejectWithdrawal,
     userStates
