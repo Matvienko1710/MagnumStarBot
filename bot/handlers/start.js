@@ -97,7 +97,7 @@ async function startHandler(ctx) {
         // Получаем статистику бота
         const botStats = await dataManager.getBotStats();
         
-        const welcomeMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n\n` +
+        const welcomeMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
             `💎 Твой путь к наградам уже начался!\n\n` +
             `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
             `👤 **Профиль**\n` +
@@ -109,6 +109,8 @@ async function startHandler(ctx) {
             `📊 **Информация о боте**\n` +
             `├ 👤 Пользователей: ${botStats.totalUsers}\n` +
             `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
+            `🔑 **Где найти ключи?**\n` +
+            `Каждые 10 минут в нашем чате выходит новый промокод, который можно активировать в боте и получать бонусы.\n\n` +
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
         // Проверяем, является ли пользователь админом
@@ -116,6 +118,8 @@ async function startHandler(ctx) {
         
         // Создаем основное меню
         const mainMenuButtons = [
+            [Markup.button.url('💬 Чат', process.env.CHAT_URL || 'https://t.me/magnumchat'), Markup.button.url('📰 Новости', process.env.NEWS_URL || 'https://t.me/magnumnews')],
+            [Markup.button.url('💰 Выплаты', process.env.PAYMENTS_URL || 'https://t.me/magnumpayments')],
             [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
