@@ -141,8 +141,25 @@ async function startHandler(ctx) {
                 logger.info('Старое сообщение бота удалено', { userId, messageId: lastMessageId });
             } catch (error) {
                 logger.warn('Не удалось удалить старое сообщение', { userId, messageId: lastMessageId, error: error.message });
+
+                // Пробуем удалить через небольшую задержку (на случай сетевых проблем)
+                setTimeout(async () => {
+                    try {
+                        await ctx.telegram.deleteMessage(ctx.chat.id, lastMessageId);
+                        logger.info('Старое сообщение бота удалено с задержкой', { userId, messageId: lastMessageId });
+                    } catch (retryError) {
+                        logger.warn('Не удалось удалить старое сообщение даже с задержкой', {
+                            userId,
+                            messageId: lastMessageId,
+                            error: retryError.message
+                        });
+                    }
+                }, 1000);
             }
         }
+
+        // Очищаем старый ID из хранилища до отправки нового сообщения
+        lastBotMessages.delete(userId);
         
         // Отправляем новое сообщение (главное меню - не удаляем)
         const newMessage = await sendSmartMessage(ctx, welcomeMessage, {
@@ -177,8 +194,25 @@ async function startHandler(ctx) {
                 logger.info('Старое сообщение бота удалено при ошибке', { userId, messageId: lastMessageId });
             } catch (error) {
                 logger.warn('Не удалось удалить старое сообщение при ошибке', { userId, messageId: lastMessageId, error: error.message });
+
+                // Пробуем удалить через небольшую задержку (на случай сетевых проблем)
+                setTimeout(async () => {
+                    try {
+                        await ctx.telegram.deleteMessage(ctx.chat.id, lastMessageId);
+                        logger.info('Старое сообщение бота удалено с задержкой при ошибке', { userId, messageId: lastMessageId });
+                    } catch (retryError) {
+                        logger.warn('Не удалось удалить старое сообщение даже с задержкой при ошибке', {
+                            userId,
+                            messageId: lastMessageId,
+                            error: retryError.message
+                        });
+                    }
+                }, 1000);
             }
         }
+
+        // Очищаем старый ID из хранилища
+        lastBotMessages.delete(userId);
         
         // Отправляем новое сообщение об ошибке (с кнопками - не удаляем)
         const newMessage = await sendSmartMessage(ctx, errorMessage, {
