@@ -121,7 +121,7 @@ async function startHandler(ctx) {
             [Markup.button.url('💬 Чат', process.env.CHAT_URL || 'https://t.me/magnumchat'), Markup.button.url('📰 Новости', process.env.NEWS_URL || 'https://t.me/magnumnews')],
             [Markup.button.url('💰 Выплаты', process.env.PAYMENTS_URL || 'https://t.me/magnumpayments')],
             [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
-            [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
+            [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
         ];
         
