@@ -48,14 +48,22 @@ function initializeBot() {
                         message: ctx?.message?.text || 'callback'
                     });
 
-                    // Отправляем сообщение пользователю об ошибке
-                    try {
-                        await ctx.reply('❌ Произошла ошибка. Попробуйте позже.');
-                        logger.info('Отправлено сообщение об ошибке пользователю', {
-                            userId: ctx?.from?.id
+                    // Отправляем сообщение пользователю об ошибке ТОЛЬКО в личных чатах
+                    if (ctx.chat?.type === 'private') {
+                        try {
+                            await ctx.reply('❌ Произошла ошибка. Попробуйте позже.');
+                            logger.info('Отправлено сообщение об ошибке пользователю', {
+                                userId: ctx?.from?.id
+                            });
+                        } catch (replyError) {
+                            logger.error('Не удалось отправить сообщение об ошибке', replyError);
+                        }
+                    } else {
+                        logger.info('Сообщение об ошибке НЕ отправлено - групповой чат', {
+                            userId: ctx?.from?.id,
+                            chatId: ctx?.chat?.id,
+                            chatType: ctx?.chat?.type
                         });
-                    } catch (replyError) {
-                        logger.error('Не удалось отправить сообщение об ошибке', replyError);
                     }
                 }
             };
@@ -92,10 +100,20 @@ function initializeBot() {
             logger.errorWithContext('Глобальная ошибка бота', error, {
                 userId: ctx?.from?.id,
                 chatId: ctx?.chat?.id,
+                chatType: ctx?.chat?.type,
                 messageType: ctx?.message?.text ? 'text' : 'callback',
                 timestamp: new Date().toISOString(),
                 errorStack: error.stack
             });
+
+            // В групповых чатах НЕ отправляем никаких сообщений об ошибках
+            if (ctx?.chat?.type !== 'private') {
+                logger.info('Сообщение об ошибке НЕ отправлено в групповой чат', {
+                    chatId: ctx?.chat?.id,
+                    chatType: ctx?.chat?.type
+                });
+                return;
+            }
         });
 
         // Интеграция системы автоматического удаления сообщений

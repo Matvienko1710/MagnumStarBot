@@ -289,28 +289,16 @@ async function handleKeyMaxUses(ctx, text) {
     });
 
     // Отправляем уведомление в чат
-    try {
-        const chatUsername = '@magnumtapchat';
-        const chatMessage = `🎉 **Новый ключ создан!**\n\n` +
-            `🔑 Ключ: \`${keyData.key}\`\n` +
-            `🎯 Тип награды: ${rewardTypeText}\n` +
-            `💰 Размер награды: ${rewardAmount} ${rewardTypeText}\n` +
-            `🔄 Максимум активаций: ${numMaxUses}\n` +
-            `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
-            `💡 Пользователи могут активировать этот ключ в боте!`;
+    const chatMessage = `🎉 **Новый ключ создан!**\n\n` +
+        `🔑 Ключ: \`${keyData.key}\`\n` +
+        `🎯 Тип награды: ${rewardTypeText}\n` +
+        `💰 Размер награды: ${rewardAmount} ${rewardTypeText}\n` +
+        `🔄 Максимум активаций: ${numMaxUses}\n` +
+        `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
+        `💡 Пользователи могут активировать этот ключ в боте!`;
 
-        await ctx.telegram.sendMessage(chatUsername, chatMessage, {
-            parse_mode: 'Markdown'
-        });
-
-        console.log('✅ Уведомление о создании ключа отправлено в чат', {
-            key: keyData.key.substring(0, 6) + '...',
-            chat: chatUsername
-        });
-
-    } catch (error) {
-        console.error('❌ Не удалось отправить уведомление в чат:', error);
-    }
+    const { sendChannelNotification } = require('../middleware/chatFilter');
+    await sendChannelNotification(ctx, chatMessage);
 }
 
 // Обработка создания ключа титула
@@ -383,32 +371,20 @@ async function handleTitleKeyCreation(ctx, text) {
                 );
 
                 // Отправляем уведомление в чат
-                try {
-                    const chatUsername = '@magnumtapchat';
-                    const chatMessage = `🎉 **Новый ключ титула создан!**\n\n` +
-                        `🔑 Ключ: \`${newKey}\`\n` +
-                        `👑 Титул: ${userState.data.titleId}\n` +
-                        `📝 Описание: ${userState.data.description}\n` +
-                        `🎁 Награда:\n` +
-                        `├ ⭐ Stars: ${userState.data.stars}\n` +
-                        `├ 🪙 Magnum Coins: ${userState.data.coins}\n` +
-                        `└ 👑 Титул: ${userState.data.titleId}\n` +
-                        `🔄 Максимум активаций: ${userState.data.maxUses}\n` +
-                        `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
-                        `💡 Пользователи могут активировать этот ключ в боте!`;
+                const chatMessage = `🎉 **Новый ключ титула создан!**\n\n` +
+                    `🔑 Ключ: \`${newKey}\`\n` +
+                    `👑 Титул: ${userState.data.titleId}\n` +
+                    `📝 Описание: ${userState.data.description}\n` +
+                    `🎁 Награда:\n` +
+                    `├ ⭐ Stars: ${userState.data.stars}\n` +
+                    `├ 🪙 Magnum Coins: ${userState.data.coins}\n` +
+                    `└ 👑 Титул: ${userState.data.titleId}\n` +
+                    `🔄 Максимум активаций: ${userState.data.maxUses}\n` +
+                    `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
+                    `💡 Пользователи могут активировать этот ключ в боте!`;
 
-                    await ctx.telegram.sendMessage(chatUsername, chatMessage, {
-                        parse_mode: 'Markdown'
-                    });
-
-                    console.log('✅ Уведомление о создании ключа титула отправлено в чат', {
-                        key: newKey,
-                        chat: chatUsername
-                    });
-
-                } catch (error) {
-                    console.error('❌ Не удалось отправить уведомление в чат:', error);
-                }
+                const { sendChannelNotification } = require('../middleware/chatFilter');
+                await sendChannelNotification(ctx, chatMessage);
             } catch (error) {
                 logger.error('Ошибка создания ключа титула', error, { userId, data: userState.data });
                 
