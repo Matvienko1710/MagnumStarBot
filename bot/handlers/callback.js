@@ -2163,13 +2163,13 @@ async function handleMinerKeyType(ctx, minerType) {
     logger.userState(userId, 'set', { state: 'creating_miner_key' });
 
     const displayMinerName = minerType === 'novice' ? 'Новичок' : 'Путь к звездам';
-    const priceSymbol = minerType === 'novice' ? '🪙' : '⭐';
-    const rewardSymbol = minerType === 'novice' ? '🪙' : '⭐';
+    const displayPriceSymbol = minerType === 'novice' ? '🪙' : '⭐';
+    const displayRewardSymbol = minerType === 'novice' ? '🪙' : '⭐';
 
     const message = `⛏️ **Создание ключа майнера**\n\n` +
         `🎯 Тип майнера: ${displayMinerName}\n` +
-        `💰 Цена майнера: 100 ${priceSymbol}\n` +
-        `⚡ Доход: ${minerType === 'novice' ? '1' : '0.01'} ${rewardSymbol}/мин\n\n` +
+        `💰 Цена майнера: 100 ${displayPriceSymbol}\n` +
+        `⚡ Доход: ${minerType === 'novice' ? '1' : '0.01'} ${displayRewardSymbol}/мин\n\n` +
         `🔄 Введите максимальное количество активаций:\n\n` +
         `💡 Пример: 1`;
 
@@ -2220,14 +2220,14 @@ async function handleMinerKeyCreation(ctx, text) {
 
                 if (createResult.success) {
                     const minerDisplayName = userState.data.minerType === 'novice' ? 'Новичок' : 'Путь к звездам';
-                    const priceSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
-                    const rewardSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+                    const successPriceSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+                    const successRewardSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
 
                     const successMessage = `✅ **Ключ майнера успешно создан!**\n\n` +
                         `🔑 Ключ: \`${key}\`\n` +
                         `⛏️ Майнер: ${minerDisplayName}\n` +
-                        `💰 Цена: 100 ${priceSymbol}\n` +
-                        `⚡ Доход: ${userState.data.minerType === 'novice' ? '1' : '0.01'} ${rewardSymbol}/мин\n` +
+                        `💰 Цена: 100 ${successPriceSymbol}\n` +
+                        `⚡ Доход: ${userState.data.minerType === 'novice' ? '1' : '0.01'} ${successRewardSymbol}/мин\n` +
                         `🔄 Максимум активаций: ${maxUses}\n\n` +
                         `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
 
@@ -2243,15 +2243,15 @@ async function handleMinerKeyCreation(ctx, text) {
 
                     // Отправляем уведомление в чат
                     const chatMinerName = userState.data.minerType === 'novice' ? 'Новичок' : 'Путь к звездам';
-                    const priceSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
-                    const rewardSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+                    const chatPriceSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+                    const chatRewardSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
                     const incomeRate = userState.data.minerType === 'novice' ? '1' : '0.01';
 
                     const chatMessage = `🎉 **Новый ключ майнера создан!**\n\n` +
                         `🔑 Ключ: \`${key}\`\n` +
                         `⛏️ Майнер: ${chatMinerName}\n` +
-                        `💰 Цена: 100 ${priceSymbol}\n` +
-                        `⚡ Доход: ${incomeRate} ${rewardSymbol}/мин\n` +
+                        `💰 Цена: 100 ${chatPriceSymbol}\n` +
+                        `⚡ Доход: ${incomeRate} ${chatRewardSymbol}/мин\n` +
                         `🔄 Максимум активаций: ${maxUses}\n` +
                         `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
                         `💡 Пользователи могут активировать этот ключ в боте!`;
