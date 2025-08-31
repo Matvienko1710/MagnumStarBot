@@ -21,12 +21,12 @@
   --color-text-tertiary: rgba(255, 255, 255, 0.5);
   --color-text-accent: #3b82f6;
 
-  /* Accent colors */
-  --color-accent-primary: #3b82f6;
-  --color-accent-secondary: #facc15;
-  --color-accent-success: #10b981;
-  --color-accent-warning: #f59e0b;
-  --color-accent-error: #ef4444;
+  /* Accent colors - warm tones */
+  --color-accent-primary: #d97706;    /* Warm amber */
+  --color-accent-secondary: #ea580c;  /* Warm orange */
+  --color-accent-success: #ca8a04;    /* Warm yellow */
+  --color-accent-warning: #dc2626;    /* Warm red */
+  --color-accent-error: #b91c1c;      /* Darker red */
 
   /* ===== TYPOGRAPHY ===== */
   --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -164,10 +164,10 @@ body {
 }
 
 .user-card {
-  background: var(--color-surface-glass);
+  background: rgba(139, 69, 19, 0.15); /* Warm brown with low opacity */
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(139, 69, 19, 0.2);
   border-radius: var(--radius-xl);
   padding: var(--spacing-5);
   margin-bottom: var(--spacing-4);
@@ -182,8 +182,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--color-bg-accent);
-  opacity: 0.05;
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.1), rgba(160, 82, 45, 0.05));
   pointer-events: none;
 }
 
@@ -198,7 +197,7 @@ body {
 .user-avatar {
   width: 56px;
   height: 56px;
-  background: var(--color-accent-primary);
+  background: linear-gradient(135deg, #d97706, #ea580c); /* Warm gradient */
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
@@ -206,25 +205,26 @@ body {
   color: white;
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
   transition: var(--transition-normal);
 }
 
 .user-avatar:hover {
   transform: scale(1.05);
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 6px 20px rgba(217, 119, 6, 0.4);
 }
 
 .user-details h2 {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  color: #fef3c7; /* Warm light yellow */
   margin-bottom: var(--spacing-1);
+  text-shadow: 0 1px 2px rgba(139, 69, 19, 0.3);
 }
 
 .user-details p {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  color: #fed7aa; /* Warm light orange */
   font-weight: var(--font-weight-medium);
 }
 
@@ -237,10 +237,10 @@ body {
 }
 
 .balance-card {
-  background: var(--color-surface-primary);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(139, 69, 19, 0.2); /* Warm brown background */
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(139, 69, 19, 0.3);
   border-radius: var(--radius-lg);
   padding: var(--spacing-4);
   text-align: center;
@@ -252,6 +252,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  color: #fef3c7; /* Warm light yellow text */
 }
 
 .balance-card::before {
@@ -276,12 +277,12 @@ body {
 }
 
 .balance-card.coins {
-  background: linear-gradient(135deg, var(--color-accent-secondary) 0%, #f59e0b 100%);
-  color: var(--color-bg-primary);
+  background: rgba(160, 82, 45, 0.25); /* Slightly different warm brown for coins */
+  border-color: rgba(160, 82, 45, 0.4);
 }
 
 .balance-card.coins::before {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.1), rgba(234, 88, 12, 0.05));
 }
 
 .balance-icon {
@@ -294,7 +295,7 @@ body {
 .balance-label {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  color: #fed7aa; /* Warm light orange */
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: var(--spacing-1);
@@ -303,8 +304,9 @@ body {
 .balance-amount {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: #fef3c7; /* Warm light yellow */
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(139, 69, 19, 0.3);
 }
 
 /* ===== COMPONENTS: MAIN CTA BUTTON ===== */
