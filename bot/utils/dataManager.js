@@ -382,14 +382,7 @@ class DataManager {
                     };
                 }
 
-                // Устанавливаем значения по умолчанию для новых пользователей
-                // Используем отдельные поля вместо всего объекта balance
-                updateObj.$setOnInsert = {
-                    'balance.stars': 0,
-                    'balance.coins': 0,
-                    'balance.totalEarned.stars': 0,
-                    'balance.totalEarned.coins': 0
-                };
+                // Пользователь уже существует (проверено выше), поэтому $setOnInsert не нужен
 
                 logger.info('🔄 Выполняем атомарное обновление в транзакции', {
                     userId,
@@ -402,7 +395,7 @@ class DataManager {
                 const updateResult = await this.db.collection('users').updateOne(
                     { userId: userId },
                     updateObj,
-                    { upsert: false, session }
+                    { session }
                 );
 
                 if (updateResult.matchedCount === 0) {
