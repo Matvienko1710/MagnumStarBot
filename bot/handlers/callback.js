@@ -2286,5 +2286,7 @@ module.exports = {
     handleKeyCreation,
     handleTitleKeyCreation,
     handleMinerKeyCreation,
+    handleApproveWithdrawal,
+    handleRejectWithdrawal,
     userStates
 };

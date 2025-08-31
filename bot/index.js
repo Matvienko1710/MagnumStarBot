@@ -84,11 +84,100 @@ function initializeBot() {
         logger.info('Обработчик info зарегистрирован');
         const infoHandler = require('./handlers/info');
         const { autoDeleteUserMessageMiddleware } = require('./utils/autoDelete');
-        
+
         // Добавляем middleware для автоматического удаления сообщений пользователя
         bot.use(autoDeleteUserMessageMiddleware());
-        
-        bot.on('text', safeAsync(privateChatOnly(infoHandler)));
+
+        // Специальный обработчик для канала выплат (без ограничения privateChatOnly)
+        const withdrawalChannelHandler = async (ctx) => {
+            try {
+                // Проверяем, что сообщение из канала выплат
+                if (ctx.chat.username === 'magnumwithdraw') {
+                    const userId = ctx.from.id;
+                    const text = ctx.message.text;
+
+                    logger.info('Сообщение в канале выплат', { userId, chatId: ctx.chat.id, text });
+
+                    // Проверяем, является ли пользователь админом
+                    const { isAdmin } = require('./utils/admin');
+                    if (!isAdmin(userId)) {
+                        logger.warn('Неавторизованная попытка в канале выплат', { userId });
+                        return;
+                    }
+
+                    // Обрабатываем числовые команды как ID заявок
+                    const requestId = parseInt(text);
+                    if (!isNaN(requestId)) {
+                        logger.info('Обработка команды в канале выплат', { userId, requestId });
+
+                        // Импортируем функции обработки заявок
+                        const { handleApproveWithdrawal, handleRejectWithdrawal } = require('./handlers/callback');
+
+                        // Создаем mock callbackQuery объект для одобрения
+                        const mockCtx = {
+                            ...ctx,
+                            callbackQuery: {
+                                data: `approve_withdrawal_${requestId}`,
+                                message: ctx.message
+                            },
+                            answerCbQuery: async (text, showAlert) => {
+                                if (text) {
+                                    await ctx.reply(text);
+                                }
+                            },
+                            editMessageText: async (text, options) => {
+                                await ctx.reply(text, options);
+                            }
+                        };
+
+                        // Обрабатываем как одобрение заявки
+                        await handleApproveWithdrawal(mockCtx);
+                        return;
+                    }
+
+                    // Обрабатываем текстовые команды
+                    if (text.toLowerCase().includes('отклонить') || text.toLowerCase().includes('reject')) {
+                        // Извлекаем ID заявки из текста (ожидаем формат "отклонить 123" или "reject 123")
+                        const match = text.match(/(\d+)/);
+                        if (match) {
+                            const requestId = parseInt(match[1]);
+                            logger.info('Обработка команды отклонения в канале выплат', { userId, requestId });
+
+                            // Создаем mock callbackQuery объект для отклонения
+                            const mockCtx = {
+                                ...ctx,
+                                callbackQuery: {
+                                    data: `reject_withdrawal_${requestId}`,
+                                    message: ctx.message
+                                },
+                                answerCbQuery: async (text, showAlert) => {
+                                    if (text) {
+                                        await ctx.reply(text);
+                                    }
+                                },
+                                editMessageText: async (text, options) => {
+                                    await ctx.reply(text, options);
+                                }
+                            };
+
+                            // Обрабатываем как отклонение заявки
+                            await handleRejectWithdrawal(mockCtx);
+                            return;
+                        }
+                    }
+                }
+
+                // Для всех остальных сообщений используем обычный обработчик
+                await infoHandler(ctx);
+
+            } catch (error) {
+                logger.error('Ошибка в обработчике канала выплат', error);
+                throw error;
+            }
+        };
+
+        // Регистрируем обработчик текстовых сообщений с поддержкой канала выплат
+        bot.on('text', safeAsync(withdrawalChannelHandler));
 
         // Обработчик callback запросов
         logger.info('Обработчик callback зарегистрирован');
