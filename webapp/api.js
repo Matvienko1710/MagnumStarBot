@@ -10,7 +10,7 @@ async function ensureDataManagerConnection(req, res, next) {
         console.log('🔍 Проверка DataManager:', {
             isInitialized: dataManager.isInitialized,
             hasDb: !!dataManager.db,
-            isConnected: dataManager.db ? dataManager.db.serverConfig.isConnected() : false
+            isConnected: dataManager.db ? dataManager.db.client && dataManager.db.isConnected : false
         });
 
         if (!dataManager.isInitialized) {

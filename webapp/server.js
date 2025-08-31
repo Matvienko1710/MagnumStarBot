@@ -4,6 +4,20 @@ const apiRoutes = require('./api');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// Инициализируем DataManager перед загрузкой API роутов
+const dataManager = require('../bot/utils/dataManager');
+
+async function initializeDataManager() {
+    try {
+        console.log('🔧 Инициализация DataManager для WebApp...');
+        await dataManager.initialize();
+        console.log('✅ DataManager успешно инициализирован для WebApp');
+    } catch (error) {
+        console.error('❌ Ошибка инициализации DataManager для WebApp:', error);
+        // Продолжаем запуск сервера, даже если DataManager не инициализирован
+    }
+}
+
 // Проверяем, что API роуты загружены
 console.log('🔍 API роуты загружены:', typeof apiRoutes);
 console.log('🔍 API роуты:', apiRoutes);
@@ -77,10 +91,23 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Magnum Stars WebApp запущен на порту ${PORT}`);
-    console.log(`🌐 WebApp доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
-    console.log(`🔌 API доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}/api`);
-    console.log(`📁 Статические файлы из: ${__dirname}`);
-    console.log(`🔧 Режим: ${process.env.NODE_ENV || 'development'}`);
-});
+// Запуск сервера
+async function startServer() {
+    try {
+        // Инициализируем DataManager перед запуском сервера
+        await initializeDataManager();
+
+        app.listen(PORT, () => {
+            console.log(`🚀 Magnum Stars WebApp запущен на порту ${PORT}`);
+            console.log(`🌐 WebApp доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
+            console.log(`🔌 API доступен по адресу: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}/api`);
+            console.log(`📁 Статические файлы из: ${__dirname}`);
+            console.log(`🔧 Режим: ${process.env.NODE_ENV || 'development'}`);
+        });
+    } catch (error) {
+        console.error('❌ Ошибка при запуске сервера:', error);
+        process.exit(1);
+    }
+}
+
+startServer();
