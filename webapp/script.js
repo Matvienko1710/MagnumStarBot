@@ -6,10 +6,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     let userId = urlParams.get('userId') || localStorage.getItem('magnumBot_userId');
 
+    // Конвертируем userId в число, если это возможно
+    if (userId && typeof userId === 'string') {
+        const numericUserId = parseInt(userId);
+        if (!isNaN(numericUserId)) {
+            userId = numericUserId;
+            console.log('🔄 Конвертировал userId из строки в число:', {
+                original: urlParams.get('userId') || localStorage.getItem('magnumBot_userId'),
+                converted: userId,
+                type: typeof userId
+            });
+        }
+    }
+
     console.log('🔍 Получение userId:', {
         fromURL: urlParams.get('userId'),
         fromLocalStorage: localStorage.getItem('magnumBot_userId'),
-        currentUserId: userId
+        currentUserId: userId,
+        userIdType: typeof userId
     });
 
     // Проверяем Telegram WebApp API для автоматического получения userId
@@ -47,6 +61,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Сохраняем userId в localStorage для будущих посещений
     localStorage.setItem('magnumBot_userId', userId);
+    console.log('💾 Сохранен userId в localStorage:', {
+        userId: userId,
+        userIdType: typeof userId
+    });
 
     // Добавляем кнопку сброса данных для авторизованного пользователя
     addResetButton();
@@ -85,6 +103,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функция загрузки баланса пользователя
     async function loadUserBalance(userId) {
         try {
+            console.log('📡 Запрос баланса:', {
+                userId: userId,
+                userIdType: typeof userId,
+                url: `/api/balance/${userId}`
+            });
+
             const response = await fetch(`/api/balance/${userId}`);
             const data = await response.json();
 
@@ -113,6 +137,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функция загрузки профиля пользователя
     async function loadUserProfile(userId) {
         try {
+            console.log('📡 Запрос профиля:', {
+                userId: userId,
+                userIdType: typeof userId,
+                url: `/api/profile/${userId}`
+            });
+
             const response = await fetch(`/api/profile/${userId}`);
             const data = await response.json();
 
@@ -339,8 +369,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Обработчик кнопки
         document.getElementById('submitUserId').addEventListener('click', function() {
-            const userId = document.getElementById('userIdInput').value.trim();
-            console.log('👤 Пользователь ввел User ID:', userId);
+            const userIdInput = document.getElementById('userIdInput').value.trim();
+            console.log('👤 Пользователь ввел User ID:', {
+                input: userIdInput,
+                inputType: typeof userIdInput
+            });
+
+            // Конвертируем в число при необходимости
+            let userId = userIdInput;
+            const numericUserId = parseInt(userIdInput);
+            if (!isNaN(numericUserId)) {
+                userId = numericUserId;
+                console.log('🔄 Конвертировал введенный userId из строки в число:', {
+                    original: userIdInput,
+                    converted: userId,
+                    type: typeof userId
+                });
+            }
 
             if (userId) {
                 localStorage.setItem('magnumBot_userId', userId);
@@ -363,6 +408,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.key === 'Enter') {
                 document.getElementById('submitUserId').click();
             }
+        });
+
+        // Добавляем логирование при фокусе на поле ввода
+        document.getElementById('userIdInput').addEventListener('focus', function() {
+            console.log('🎯 Поле ввода userId получило фокус');
         });
     }
 
