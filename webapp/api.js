@@ -133,10 +133,6 @@ router.post('/user/click/:userId', validateUserId, ensureDataManagerConnection, 
 
         console.log(`✅ API: updateBalance вернул:`, newBalance);
 
-        // Добавляем опыт за клик (5 опыта за клик)
-        const expResult = await dm.addExperience(Number(userId), 5, 'webapp_click');
-        console.log(`🎯 API: Опыт добавлен:`, expResult);
-
         // Получаем обновленный баланс
         const updatedUser = await dm.getUser(Number(userId));
         const balance = updatedUser.balance || { stars: 0, coins: 0 };
