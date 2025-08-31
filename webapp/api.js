@@ -304,6 +304,38 @@ router.use((err, req, res, next) => {
     });
 });
 
+// Диагностика системы майнинга
+router.get('/mining/diagnose', ensureDataManagerConnection, async (req, res) => {
+    try {
+        console.log('🔍 Запрос диагностики системы майнинга');
+
+        const diagnosis = await req.dataManager.diagnoseMiningSystem();
+
+        if (diagnosis.error) {
+            return res.status(500).json({
+                success: false,
+                error: 'Ошибка диагностики',
+                details: diagnosis.error
+            });
+        }
+
+        res.json({
+            success: true,
+            data: diagnosis,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('❌ Ошибка выполнения диагностики майнинга:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Внутренняя ошибка диагностики',
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 // Обработка 404 для API
 router.use('*', (req, res) => {
     console.log(`❌ API endpoint не найден: ${req.method} ${req.originalUrl}`);
@@ -316,7 +348,8 @@ router.use('*', (req, res) => {
             '/api/user/balance/:userId',
             '/api/user/click/:userId',
             '/api/user/stats/:userId',
-            '/api/user/info/:userId'
+            '/api/user/info/:userId',
+            '/api/mining/diagnose'
         ]
     });
 });

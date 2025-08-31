@@ -122,7 +122,64 @@ class DataManager {
             logger.error('❌ Ошибка автоматического начисления дохода для всех пользователей', error);
         }
     }
-    
+
+    // Диагностика системы майнинга
+    async diagnoseMiningSystem() {
+        try {
+            logger.info('🔍 Начинаем диагностику системы майнинга...');
+
+            // Получаем статистику
+            const usersWithMiners = await this.db.collection('users').find({
+                'miners.0': { $exists: true }
+            }).toArray();
+
+            let totalActiveMiners = 0;
+            let totalInactiveMiners = 0;
+            let totalExpiredMiners = 0;
+            const now = new Date();
+
+            for (const user of usersWithMiners) {
+                const miners = user.miners || [];
+                for (const miner of miners) {
+                    if (!miner.isActive) {
+                        totalInactiveMiners++;
+                        continue;
+                    }
+
+                    if (!miner.lastMiningStart) {
+                        totalInactiveMiners++;
+                        continue;
+                    }
+
+                    const miningStartTime = new Date(miner.lastMiningStart);
+                    const hoursSinceStart = (now - miningStartTime) / (1000 * 60 * 60);
+
+                    if (hoursSinceStart >= 4) {
+                        totalExpiredMiners++;
+                    } else {
+                        totalActiveMiners++;
+                    }
+                }
+            }
+
+            const stats = {
+                totalUsers: usersWithMiners.length,
+                totalActiveMiners,
+                totalInactiveMiners,
+                totalExpiredMiners,
+                schedulerStatus: this.miningIncomeInterval ? 'ACTIVE' : 'INACTIVE',
+                nextRunTime: this.miningIncomeInterval ? new Date(Date.now() + 60000).toISOString() : null
+            };
+
+            logger.info('📊 Диагностика системы майнинга завершена', stats);
+            return stats;
+
+        } catch (error) {
+            logger.error('❌ Ошибка диагностики системы майнинга', error);
+            return { error: error.message };
+        }
+    }
+
     // Остановка планировщика автоматического дохода
     stopMiningIncomeScheduler() {
         try {
