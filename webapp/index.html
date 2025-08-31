@@ -242,17 +242,7 @@
             transform: translateY(0);
         }
 
-        .telegram-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 10px;
-            font-size: 12px;
-            z-index: 1000;
-        }
+
 
         @media (max-width: 480px) {
             .container {
@@ -271,9 +261,7 @@
     </style>
 </head>
 <body>
-    <div class="telegram-status" id="telegram-status">
-        Проверяем Telegram...
-    </div>
+
     
     <div class="refresh-indicator" id="refresh-indicator">
         🔄 Обновление...
@@ -387,8 +375,6 @@
 
                 // Инициализация Telegram WebApp
         function initializeTelegram() {
-            const statusElement = document.getElementById('telegram-status');
-            
             console.log('🔍 Проверяем Telegram WebApp...');
             console.log('window.Telegram:', window.Telegram);
             console.log('window.Telegram?.WebApp:', window.Telegram?.WebApp);
@@ -433,23 +419,16 @@
                         console.error('❌ Ошибка загрузки статистики:', error);
                     });
                     
-                    statusElement.textContent = '✅ Telegram WebApp';
-                    statusElement.style.background = 'rgba(0, 255, 0, 0.8)';
-                    
                     console.log('🎉 Telegram WebApp инициализирован успешно');
                 } else {
                     console.warn('⚠️ Данные пользователя не найдены в initDataUnsafe');
-                    statusElement.textContent = '❌ Данные пользователя не найдены';
-                    statusElement.style.background = 'rgba(255, 0, 0, 0.8)';
                     
                     // Fallback - используем тестовые данные
                     setupFallbackUser();
                 }
             } else {
                 console.log('🌐 Telegram WebApp не найден, запускаем в браузере');
-                statusElement.textContent = '🌐 Браузер';
-                statusElement.style.background = 'rgba(255, 165, 0, 0.8)';
-                
+
                 // Для разработки - тестовые данные
                 setupFallbackUser();
             }
