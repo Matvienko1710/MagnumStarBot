@@ -1839,7 +1839,37 @@ class DataManager {
             throw error;
         }
     }
-    
+
+    // Создание ключа майнера
+    async createMinerKey(keyData) {
+        try {
+            const key = {
+                key: keyData.key,
+                type: 'miner',
+                minerType: keyData.minerType, // 'novice' или 'star_path'
+                maxUses: keyData.maxUses,
+                currentUses: 0,
+                createdAt: new Date(),
+                createdBy: keyData.createdBy,
+                isActive: true
+            };
+
+            await this.db.collection('keys').insertOne(key);
+
+            logger.info('Ключ майнера создан в базе данных', {
+                key: key.key.substring(0, 6) + '...',
+                minerType: key.minerType,
+                maxUses: key.maxUses
+            });
+
+            return { success: true, key: key };
+
+        } catch (error) {
+            logger.error('Ошибка создания ключа майнера в базе данных', error, { keyData });
+            throw error;
+        }
+    }
+
     // Активация ключа
     async activateKey(key, userId) {
         try {
@@ -1880,7 +1910,71 @@ class DataManager {
                 await this.updateBalance(userId, 'coins', keyDoc.reward.coins, 'key_activation');
                 rewardText.push(`🪙 Magnum Coins: +${keyDoc.reward.coins}`);
             }
-            
+
+            // Обработка ключа майнера
+            if (keyDoc.type === 'miner') {
+                // Получаем информацию о майнере
+                const { MINER_TYPES } = require('./miners');
+                const minerInfo = MINER_TYPES[keyDoc.minerType.toUpperCase()];
+
+                if (!minerInfo) {
+                    return { success: false, message: 'Тип майнера не найден' };
+                }
+
+                // Проверяем, хватает ли средств для покупки майнера
+                const userBalance = await this.getUserBalance(userId);
+                let canAfford = false;
+
+                if (minerInfo.priceType === 'stars' && userBalance.stars >= minerInfo.price) {
+                    canAfford = true;
+                } else if (minerInfo.priceType === 'coins' && userBalance.coins >= minerInfo.price) {
+                    canAfford = true;
+                }
+
+                if (!canAfford) {
+                    return {
+                        success: false,
+                        message: `Недостаточно средств для покупки майнера "${minerInfo.name}". Нужно: ${minerInfo.price} ${minerInfo.priceType === 'stars' ? '⭐' : '🪙'}`
+                    };
+                }
+
+                // Проверяем лимит майнеров на сервере
+                const serverMinerCounts = await this.getServerMinerCounts();
+                if (serverMinerCounts[keyDoc.minerType.toUpperCase()] <= 0) {
+                    return { success: false, message: `Майнер "${minerInfo.name}" больше недоступен на сервере` };
+                }
+
+                // Проверяем лимит майнеров пользователя
+                const userMinerCount = await this.getUserMinerCount(userId, keyDoc.minerType);
+                if (userMinerCount >= minerInfo.serverLimit / 10) { // Примерный лимит на пользователя
+                    return { success: false, message: `Достигнут лимит майнеров "${minerInfo.name}" для пользователя` };
+                }
+
+                try {
+                    // Создаем майнер для пользователя
+                    await this.createMinerForUser(userId, keyDoc.minerType);
+
+                    // Списываем стоимость майнера
+                    if (minerInfo.priceType === 'stars') {
+                        await this.updateBalance(userId, 'stars', -minerInfo.price, 'miner_key_activation');
+                    } else {
+                        await this.updateBalance(userId, 'coins', -minerInfo.price, 'miner_key_activation');
+                    }
+
+                    // Уменьшаем количество майнеров на сервере
+                    serverMinerCounts[keyDoc.minerType.toUpperCase()]--;
+                    await this.updateServerMinerCounts(serverMinerCounts);
+
+                    rewardText.push(`⛏️ Майнер: ${minerInfo.name}`);
+                    rewardText.push(`💰 Стоимость: ${minerInfo.price} ${minerInfo.priceType === 'stars' ? '⭐' : '🪙'}`);
+                    rewardText.push(`⚡ Доход: ${minerInfo.rewardType === 'stars' ? minerInfo.rewardPerMinute + ' ⭐/мин' : minerInfo.rewardPerMinute + ' 🪙/мин'}`);
+
+                } catch (error) {
+                    logger.error('Ошибка создания майнера из ключа', error, { userId, minerType: keyDoc.minerType });
+                    return { success: false, message: 'Ошибка при создании майнера' };
+                }
+            }
+
             // Увеличиваем счетчик использований ключа
             await this.db.collection('keys').updateOne(
                 { key: key },
@@ -1998,6 +2092,202 @@ class DataManager {
             logger.error('Ошибка отметки сообщения как удаленного', error, { messageId });
         }
     }
+}
+
+    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ МАЙНЕРОВ ===
+
+    // Создание майнера для пользователя из ключа
+    async createMinerForUser(userId, minerType) {
+        try {
+            const { MINER_TYPES } = require('./miners');
+            const minerInfo = MINER_TYPES[minerType.toUpperCase()];
+
+            if (!minerInfo) {
+                throw new Error(`Тип майнера ${minerType} не найден`);
+            }
+
+            // Получаем майнеры пользователя
+            let userMiners = await this.getUserMiners(userId);
+            if (!userMiners) {
+                userMiners = [];
+            }
+
+            // Создаем новый майнер
+            const newMiner = {
+                id: `${minerType}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+                type: minerType,
+                name: minerInfo.name,
+                price: minerInfo.price,
+                priceType: minerInfo.priceType,
+                rewardPerMinute: minerInfo.rewardPerMinute,
+                rewardType: minerInfo.rewardType,
+                maxReward: minerInfo.maxReward,
+                purchaseDate: new Date(),
+                totalEarned: 0,
+                isActive: true,
+                rarity: minerInfo.rarity,
+                description: minerInfo.description
+            };
+
+            // Добавляем майнер в массив пользователя
+            userMiners.push(newMiner);
+
+            // Сохраняем в базу данных
+            await this.db.collection('user_miners').updateOne(
+                { userId: Number(userId) },
+                {
+                    $set: {
+                        userId: Number(userId),
+                        miners: userMiners,
+                        lastUpdated: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+
+            logger.info('Майнер создан для пользователя из ключа', {
+                userId,
+                minerType,
+                minerId: newMiner.id
+            });
+
+            return newMiner;
+
+        } catch (error) {
+            logger.error('Ошибка создания майнера для пользователя', error, { userId, minerType });
+            throw error;
+        }
+    }
+
+    // Обновление количества майнеров на сервере
+    async updateServerMinerCounts(counts) {
+        try {
+            await this.db.collection('server_data').updateOne(
+                { type: 'miner_counts' },
+                {
+                    $set: {
+                        counts: counts,
+                        lastUpdated: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+
+            logger.info('Количество майнеров на сервере обновлено', { counts });
+
+        } catch (error) {
+            logger.error('Ошибка обновления количества майнеров на сервере', error, { counts });
+            throw error;
+        }
+    }
+
+    // Получение количества майнеров пользователя определенного типа
+    async getUserMinerCount(userId, minerType) {
+        try {
+            const userMiners = await this.getUserMiners(userId);
+            if (!userMiners) return 0;
+
+            return userMiners.filter(miner => miner.type === minerType).length;
+
+        } catch (error) {
+            logger.error('Ошибка получения количества майнеров пользователя', error, { userId, minerType });
+            return 0;
+        }
+    }
+
+    // Получение количества майнеров на сервере
+    async getServerMinerCounts() {
+        try {
+            const serverData = await this.db.collection('server_data').findOne({ type: 'miner_counts' });
+            if (!serverData) {
+                // Возвращаем значения по умолчанию
+                const { MINER_TYPES } = require('./miners');
+                const counts = {};
+                Object.keys(MINER_TYPES).forEach(type => {
+                    counts[type] = MINER_TYPES[type].serverLimit || 100;
+                });
+                return counts;
+            }
+
+            return serverData.counts;
+
+        } catch (error) {
+            logger.error('Ошибка получения количества майнеров на сервере', error);
+            return {};
+        }
+    }
+
+    // Получение майнеров пользователя
+    async getUserMiners(userId) {
+        try {
+            const userData = await this.db.collection('user_miners').findOne({ userId: Number(userId) });
+            return userData ? userData.miners || [] : [];
+
+        } catch (error) {
+            logger.error('Ошибка получения майнеров пользователя', error, { userId });
+            return [];
+        }
+    }
+
+    // Получение баланса пользователя
+    async getUserBalance(userId) {
+        try {
+            const userData = await this.db.collection('users').findOne({ userId: Number(userId) });
+            if (!userData) {
+                // Создаем нового пользователя с нулевым балансом
+                await this.db.collection('users').insertOne({
+                    userId: Number(userId),
+                    stars: 0,
+                    coins: 0,
+                    createdAt: new Date(),
+                    lastActivity: new Date()
+                });
+                return { stars: 0, coins: 0 };
+            }
+
+            return {
+                stars: userData.stars || 0,
+                coins: userData.coins || 0
+            };
+
+        } catch (error) {
+            logger.error('Ошибка получения баланса пользователя', error, { userId });
+            return { stars: 0, coins: 0 };
+        }
+    }
+
+    // Обновление баланса пользователя
+    async updateBalance(userId, currency, amount, reason = 'unknown') {
+        try {
+            const updateData = {};
+            updateData[currency] = amount;
+
+            // Используем $inc для относительного изменения баланса
+            const result = await this.db.collection('users').updateOne(
+                { userId: Number(userId) },
+                {
+                    $inc: updateData,
+                    $set: { lastActivity: new Date() }
+                },
+                { upsert: true }
+            );
+
+            logger.info('Баланс пользователя обновлен', {
+                userId,
+                currency,
+                amount,
+                reason,
+                result: result.modifiedCount
+            });
+
+            return result;
+
+        } catch (error) {
+            logger.error('Ошибка обновления баланса пользователя', error, { userId, currency, amount, reason });
+            throw error;
+        }
+    }
+
 }
 
 // Создаем и экспортируем экземпляр

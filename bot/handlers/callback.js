@@ -103,7 +103,19 @@ async function callbackHandler(ctx) {
             case 'create_title_key':
                 await handleCreateTitleKey(ctx);
                 break;
-                
+
+            case 'create_miner_key':
+                await handleCreateMinerKey(ctx);
+                break;
+
+            case 'miner_key_novice':
+                await handleMinerKeyType(ctx, 'novice');
+                break;
+
+            case 'miner_key_star_path':
+                await handleMinerKeyType(ctx, 'star_path');
+                break;
+
             case 'clear_cache':
                 await handleClearCache(ctx);
                 break;
@@ -2025,9 +2037,170 @@ async function handleCheckMissedRewards(ctx) {
     }
 }
 
+// Обработка создания ключа майнера
+async function handleCreateMinerKey(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка создания ключа майнера', { userId });
+
+    // Проверяем, является ли пользователь админом
+    if (!isAdmin(userId)) {
+        await ctx.reply('❌ У вас нет доступа к этой функции');
+        return;
+    }
+
+    const createMinerKeyMessage = `⛏️ **Создание ключа майнера**\n\n` +
+        `🎯 Выберите тип майнера для ключа:\n\n` +
+        `⛏️ **Новичок**\n` +
+        `├ 💰 Цена: 100 🪙 Magnum Coins\n` +
+        `├ ⚡ Доход: 1 🪙/мин\n` +
+        `└ 🎯 Редкость: Обычный\n\n` +
+        `⭐ **Путь к звездам**\n` +
+        `├ 💰 Цена: 100 ⭐ Stars\n` +
+        `├ ⚡ Доход: 0.01 ⭐/мин\n` +
+        `└ 🎯 Редкость: Редкий\n\n` +
+        `💡 **Выберите тип майнера:**`;
+
+    const createMinerKeyKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('⛏️ Новичок (100 🪙)', 'miner_key_novice')],
+        [Markup.button.callback('⭐ Путь к звездам (100 ⭐)', 'miner_key_star_path')],
+        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+    ]);
+
+    await ctx.editMessageText(createMinerKeyMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: createMinerKeyKeyboard.reply_markup
+    });
+}
+
+// Обработка выбора типа майнера для ключа
+async function handleMinerKeyType(ctx, minerType) {
+    const userId = ctx.from.id;
+
+    logger.info('Выбор типа майнера для ключа', { userId, minerType });
+
+    // Проверяем, является ли пользователь админом
+    if (!isAdmin(userId)) {
+        await ctx.reply('❌ У вас нет доступа к этой функции');
+        return;
+    }
+
+    // Устанавливаем состояние создания ключа майнера
+    userStates.set(userId, {
+        state: 'creating_miner_key',
+        currentStep: 'max_uses',
+        data: {
+            minerType: minerType,
+            maxUses: 1
+        },
+        timestamp: Date.now()
+    });
+
+    logger.userState(userId, 'set', { state: 'creating_miner_key' });
+
+    const minerName = minerType === 'novice' ? 'Новичок' : 'Путь к звездам';
+    const priceSymbol = minerType === 'novice' ? '🪙' : '⭐';
+    const rewardSymbol = minerType === 'novice' ? '🪙' : '⭐';
+
+    const message = `⛏️ **Создание ключа майнера**\n\n` +
+        `🎯 Тип майнера: ${minerName}\n` +
+        `💰 Цена майнера: 100 ${priceSymbol}\n` +
+        `⚡ Доход: ${minerType === 'novice' ? '1' : '0.01'} ${rewardSymbol}/мин\n\n` +
+        `🔄 Введите максимальное количество активаций:\n\n` +
+        `💡 Пример: 1`;
+
+    const keyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+    ]);
+
+    await ctx.editMessageText(message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard.reply_markup
+    });
+}
+
+// Обработка создания ключа майнера из текстового сообщения
+async function handleMinerKeyCreation(ctx, text) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка создания ключа майнера из текста', { userId, text });
+
+    const userState = userStates.get(userId);
+    if (!userState || userState.state !== 'creating_miner_key') return;
+
+    try {
+        if (userState.currentStep === 'max_uses') {
+            const maxUses = parseInt(text);
+            if (isNaN(maxUses) || maxUses <= 0) {
+                await ctx.reply('❌ Введите корректное число больше 0');
+                return;
+            }
+
+            userState.data.maxUses = maxUses;
+
+            // Создаем ключ майнера
+            const { generateKey } = require('../utils/keys');
+            const key = generateKey();
+
+            const keyData = {
+                key: key,
+                type: 'miner',
+                minerType: userState.data.minerType,
+                maxUses: maxUses,
+                createdBy: userId,
+                createdAt: new Date()
+            };
+
+            try {
+                const createResult = await dataManager.createMinerKey(keyData);
+
+                if (createResult.success) {
+                    const minerName = userState.data.minerType === 'novice' ? 'Новичок' : 'Путь к звездам';
+                    const priceSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+                    const rewardSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+
+                    const successMessage = `✅ **Ключ майнера успешно создан!**\n\n` +
+                        `🔑 Ключ: \`${key}\`\n` +
+                        `⛏️ Майнер: ${minerName}\n` +
+                        `💰 Цена: 100 ${priceSymbol}\n` +
+                        `⚡ Доход: ${userState.data.minerType === 'novice' ? '1' : '0.01'} ${rewardSymbol}/мин\n` +
+                        `🔄 Максимум активаций: ${maxUses}\n\n` +
+                        `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
+
+                    const keyboard = Markup.inlineKeyboard([
+                        [Markup.button.callback('⛏️ Создать еще ключ майнера', 'create_miner_key')],
+                        [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
+                    ]);
+
+                    await ctx.reply(successMessage, {
+                        parse_mode: 'Markdown',
+                        reply_markup: keyboard.reply_markup
+                    });
+                } else {
+                    await ctx.reply('❌ Ошибка создания ключа майнера в базе данных');
+                }
+
+            } catch (error) {
+                logger.error('Ошибка создания ключа майнера в базе данных', error, { userId, keyData });
+                await ctx.reply('❌ Ошибка создания ключа майнера в базе данных');
+            }
+
+            // Очищаем состояние
+            userStates.delete(userId);
+
+        }
+
+    } catch (error) {
+        logger.error('Ошибка создания ключа майнера', error, { userId, text });
+        await ctx.reply('❌ Произошла ошибка при создании ключа майнера');
+        userStates.delete(userId);
+    }
+}
+
 module.exports = {
     callbackHandler,
     handleKeyCreation,
     handleTitleKeyCreation,
+    handleMinerKeyCreation,
     userStates
 };

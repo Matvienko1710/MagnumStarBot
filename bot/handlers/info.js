@@ -40,6 +40,13 @@ async function infoHandler(ctx) {
             await handleWithdrawalAmount(ctx, text);
             return;
         }
+
+        if (userState && userState.state === 'creating_miner_key') {
+            // Обработка создания ключа майнера
+            const { handleMinerKeyCreation } = require('./callback');
+            await handleMinerKeyCreation(ctx, text);
+            return;
+        }
         
         // Если нет специального состояния, отправляем сообщение о помощи
         await ctx.reply(

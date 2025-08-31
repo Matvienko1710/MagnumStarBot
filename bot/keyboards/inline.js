@@ -51,6 +51,7 @@ const inlineKeyboardWithBack = (isAdmin = false) => {
 const adminPanelKeyboard = () => {
   return Markup.inlineKeyboard([
     [Markup.button.callback('🔑 Создать ключ', 'create_key')],
+    [Markup.button.callback('⛏️ Создать ключ майнера', 'create_miner_key')],
     [Markup.button.callback('👑 Создать ключ титула', 'create_title_key')],
     [Markup.button.callback('📊 Статистика ключей', 'keys_stats')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
@@ -68,6 +69,16 @@ const createKeyKeyboard = () => {
 // Клавиатура для создания ключа титула
 const createTitleKeyKeyboard = () => {
   return Markup.inlineKeyboard([
+    [Markup.button.callback('🔙 Отмена', 'admin_panel')],
+    [Markup.button.callback('🏠 В главное меню', 'main_menu')]
+  ]);
+};
+
+// Клавиатура для создания ключа майнера
+const createMinerKeyKeyboard = () => {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('⛏️ Новичок (100 🪙)', 'miner_key_novice')],
+    [Markup.button.callback('⭐ Путь к звездам (100 ⭐)', 'miner_key_star_path')],
     [Markup.button.callback('🔙 Отмена', 'admin_panel')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
   ]);
@@ -181,6 +192,7 @@ module.exports = {
   adminPanelKeyboard,
   createKeyKeyboard,
   createTitleKeyKeyboard,
+  createMinerKeyKeyboard,
   minersKeyboard,
   buyMinerKeyboard,
   titlesKeyboard,
