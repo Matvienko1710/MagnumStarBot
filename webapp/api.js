@@ -38,9 +38,14 @@ async function ensureDataManagerConnection(req, res, next) {
 // Middleware для проверки подключения к БД
 async function ensureDatabaseConnection(req, res, next) {
     try {
-        req.db = await connectToDatabase();
+        // Используем DataManager для подключения к БД
+        if (!dataManager.isInitialized) {
+            await dataManager.initialize();
+        }
+        req.db = dataManager.db;
         next();
     } catch (error) {
+        console.error('❌ Ошибка подключения к БД через DataManager:', error);
         res.status(500).json({ error: 'Ошибка подключения к базе данных' });
     }
 }
