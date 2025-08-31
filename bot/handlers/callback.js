@@ -311,6 +311,9 @@ async function handleMiners(ctx) {
             `💰 **Ваш баланс:**\n` +
             `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
             `└ ⭐ Stars: ${userBalance.stars}\n\n` +
+            `📈 **Всего заработано:**\n` +
+            `├ 🪙 Magnum Coins: ${(userBalance.totalEarned?.coins || 0)}\n` +
+            `└ ⭐ Stars: ${(userBalance.totalEarned?.stars || 0)}\n\n` +
             `⛏️ **Ваши майнеры:**\n` +
             `├ 📊 Всего майнеров: ${userMiners.length}\n` +
             `├ ⚡ Общий доход: ${totalIncome.coins} 🪙/мин\n` +
