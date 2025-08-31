@@ -179,10 +179,48 @@ function initializeBot() {
         // Регистрируем обработчик текстовых сообщений с поддержкой канала выплат
         bot.on('text', safeAsync(withdrawalChannelHandler));
 
-        // Обработчик callback запросов
+        // Обработчик callback запросов для приватных чатов и каналов выплат
         logger.info('Обработчик callback зарегистрирован');
         const { callbackHandler } = require('./handlers/callback');
-        bot.on('callback_query', safeAsync(privateChatOnly(callbackHandler)));
+
+        // Отдельный обработчик для каналов выплат
+        const withdrawalChannelCallbackHandler = async (ctx) => {
+            try {
+                // Проверяем, что это канал выплат
+                if (ctx.chat?.username === 'magnumwithdraw') {
+                    const userId = ctx.from.id;
+
+                    logger.info('Callback в канале выплат', {
+                        userId,
+                        callbackData: ctx.callbackQuery.data,
+                        chatId: ctx.chat.id,
+                        chatType: ctx.chat.type,
+                        messageId: ctx.callbackQuery.message?.message_id
+                    });
+
+                    // Проверяем, является ли пользователь админом
+                    const { isAdmin } = require('./utils/admin');
+                    if (!isAdmin(userId)) {
+                        logger.warn('Неавторизованная попытка callback в канале выплат', { userId });
+                        await ctx.answerCbQuery('❌ У вас нет доступа к управлению заявками', true);
+                        return;
+                    }
+
+                    // Обрабатываем callback через основной обработчик
+                    await callbackHandler(ctx);
+                    return;
+                }
+
+                // Для всех остальных чатов используем основной обработчик с privateChatOnly
+                await privateChatOnly(callbackHandler)(ctx);
+
+            } catch (error) {
+                logger.error('Ошибка в обработчике callback канала выплат', error);
+                throw error;
+            }
+        };
+
+        bot.on('callback_query', safeAsync(withdrawalChannelCallbackHandler));
 
         // Глобальная обработка ошибок
         bot.catch((error, ctx) => {

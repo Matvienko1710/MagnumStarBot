@@ -30,7 +30,14 @@ async function callbackHandler(ctx) {
         const callbackData = ctx.callbackQuery.data;
         const messageId = ctx.callbackQuery.message?.message_id;
 
-        logger.info('Получен callback запрос', { userId, callbackData, messageId });
+        logger.info('Получен callback запрос', {
+            userId,
+            callbackData,
+            messageId,
+            chatType: ctx.chat?.type,
+            chatUsername: ctx.chat?.username,
+            chatId: ctx.chat?.id
+        });
 
         // Проверяем, является ли это сообщение самым последним активным сообщением пользователя
         // Исключаем каналы выплат из этой проверки, так как там обрабатываются заявки
