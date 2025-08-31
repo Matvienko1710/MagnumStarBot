@@ -31,7 +31,14 @@
     <div class="container">
         <header class="header">
             <h1>MagnumStarBot</h1>
-            <p>Ваш бот для заработка и развлечений</p>
+            <p id="user-greeting">Ваш бот для заработка и развлечений</p>
+            <div id="user-stats" style="display: none;">
+                <div class="user-stat">
+                    <span class="stat-label">Всего заработано:</span>
+                    <span class="stat-value" id="total-earned-stars">0 ⭐</span>
+                    <span class="stat-value" id="total-earned-coins">0 🪙</span>
+                </div>
+            </div>
         </header>
 
         <main class="main-content">
