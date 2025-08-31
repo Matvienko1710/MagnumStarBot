@@ -33,13 +33,17 @@ async function callbackHandler(ctx) {
         logger.info('Получен callback запрос', { userId, callbackData, messageId });
 
         // Проверяем, является ли это сообщение самым последним активным сообщением пользователя
+        // Исключаем каналы выплат из этой проверки, так как там обрабатываются заявки
+        const isWithdrawalChannel = ctx.chat?.username === 'magnumwithdraw';
         const lastMessageId = lastBotMessages.get(userId);
-        if (lastMessageId && messageId !== lastMessageId) {
+
+        if (!isWithdrawalChannel && lastMessageId && messageId !== lastMessageId) {
             logger.warn('Попытка взаимодействия со старым сообщением', {
                 userId,
                 callbackData,
                 oldMessageId: messageId,
-                currentMessageId: lastMessageId
+                currentMessageId: lastMessageId,
+                chatType: ctx.chat?.type
             });
 
             // Отвечаем пользователю, что сообщение устарело
@@ -1765,13 +1769,24 @@ async function handleMyWithdrawals(ctx) {
 async function handleApproveWithdrawal(ctx, action) {
     const userId = ctx.from.id;
     const requestId = action.replace('approve_withdrawal_', '');
-    
-    logger.info('Попытка одобрения заявки на вывод', { userId, requestId });
-    
+    const messageId = ctx.callbackQuery?.message?.message_id;
+    const chatId = ctx.chat?.id;
+
+    logger.info('Попытка одобрения заявки на вывод', {
+        userId,
+        requestId,
+        messageId,
+        chatId,
+        chatType: ctx.chat?.type
+    });
+
     try {
+        // Отвечаем на callback-запрос сразу, чтобы избежать таймаута
+        await ctx.answerCbQuery('⏳ Обрабатываем заявку...', false);
+
         // Проверяем, является ли пользователь админом
         if (!isAdmin(userId)) {
-            await ctx.answerCbQuery('❌ У вас нет прав для одобрения заявок');
+            await ctx.answerCbQuery('❌ У вас нет прав для одобрения заявок', true);
             return;
         }
         
@@ -1793,9 +1808,25 @@ async function handleApproveWithdrawal(ctx, action) {
                 `✅ **Одобрено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n` +
                 `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
                 `💬 **Комментарий:** ${result.request.comment}`;
-            
+
             // Обновляем сообщение в канале
-            await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
+            try {
+                await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
+                logger.info('Сообщение в канале успешно обновлено (одобрение)', {
+                    userId,
+                    requestId,
+                    messageId,
+                    chatId
+                });
+            } catch (editError) {
+                logger.error('Ошибка обновления сообщения в канале (одобрение)', editError, {
+                    userId,
+                    requestId,
+                    messageId,
+                    chatId
+                });
+                // Не возвращаем ошибку, продолжаем выполнение
+            }
             
             // Уведомляем пользователя
             await ctx.telegram.sendMessage(result.request.userId, 
@@ -1809,11 +1840,15 @@ async function handleApproveWithdrawal(ctx, action) {
             );
             
             logger.info('Заявка на вывод одобрена', { userId, requestId, adminId: userId });
-            
+
+            // Отвечаем на callback-запрос об успешном одобрении
+            await ctx.answerCbQuery('✅ Заявка одобрена!', false);
+
         } else {
             await ctx.answerCbQuery(`❌ ${result.message}`);
+            return;
         }
-        
+
     } catch (error) {
         logger.error('Ошибка одобрения заявки на вывод', error, { userId, requestId });
         await ctx.answerCbQuery('❌ Ошибка при одобрении заявки');
@@ -1824,13 +1859,24 @@ async function handleApproveWithdrawal(ctx, action) {
 async function handleRejectWithdrawal(ctx, action) {
     const userId = ctx.from.id;
     const requestId = action.replace('reject_withdrawal_', '');
-    
-    logger.info('Попытка отклонения заявки на вывод', { userId, requestId });
-    
+    const messageId = ctx.callbackQuery?.message?.message_id;
+    const chatId = ctx.chat?.id;
+
+    logger.info('Попытка отклонения заявки на вывод', {
+        userId,
+        requestId,
+        messageId,
+        chatId,
+        chatType: ctx.chat?.type
+    });
+
     try {
+        // Отвечаем на callback-запрос сразу, чтобы избежать таймаута
+        await ctx.answerCbQuery('⏳ Обрабатываем заявку...', false);
+
         // Проверяем, является ли пользователь админом
         if (!isAdmin(userId)) {
-            await ctx.answerCbQuery('❌ У вас нет прав для отклонения заявок');
+            await ctx.answerCbQuery('❌ У вас нет прав для отклонения заявок', true);
             return;
         }
         
@@ -1853,9 +1899,25 @@ async function handleRejectWithdrawal(ctx, action) {
                 `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
                 `💬 **Комментарий:** ${result.request.comment}\n\n` +
                 `💰 **Звезды возвращены пользователю**`;
-            
+
             // Обновляем сообщение в канале
-            await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
+            try {
+                await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
+                logger.info('Сообщение в канале успешно обновлено (отклонение)', {
+                    userId,
+                    requestId,
+                    messageId,
+                    chatId
+                });
+            } catch (editError) {
+                logger.error('Ошибка обновления сообщения в канале (отклонение)', editError, {
+                    userId,
+                    requestId,
+                    messageId,
+                    chatId
+                });
+                // Не возвращаем ошибку, продолжаем выполнение
+            }
             
             // Уведомляем пользователя
             await ctx.telegram.sendMessage(result.request.userId, 
@@ -1871,11 +1933,15 @@ async function handleRejectWithdrawal(ctx, action) {
             );
             
             logger.info('Заявка на вывод отклонена', { userId, requestId, adminId: userId });
-            
+
+            // Отвечаем на callback-запрос об успешном отклонении
+            await ctx.answerCbQuery('❌ Заявка отклонена', false);
+
         } else {
             await ctx.answerCbQuery(`❌ ${result.message}`);
+            return;
         }
-        
+
     } catch (error) {
         logger.error('Ошибка отклонения заявки на вывод', error, { userId, requestId });
         await ctx.answerCbQuery('❌ Ошибка при отклонении заявки');
