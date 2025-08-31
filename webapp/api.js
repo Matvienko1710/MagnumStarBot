@@ -133,6 +133,10 @@ router.post('/user/click/:userId', validateUserId, ensureDataManagerConnection, 
 
         console.log(`✅ API: updateBalance вернул:`, newBalance);
 
+        // Добавляем опыт за клик (5 опыта за клик)
+        const expResult = await dm.addExperience(Number(userId), 5, 'webapp_click');
+        console.log(`🎯 API: Опыт добавлен:`, expResult);
+
         // Получаем обновленный баланс
         const updatedUser = await dm.getUser(Number(userId));
         const balance = updatedUser.balance || { stars: 0, coins: 0 };
@@ -304,6 +308,48 @@ router.use((err, req, res, next) => {
     });
 });
 
+// Получение уровня пользователя
+router.get('/user/level/:userId', ensureDataManagerConnection, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        console.log('🔍 Запрос уровня пользователя:', userId);
+
+        const levelInfo = await req.dataManager.getUserLevel(userId);
+
+        if (!levelInfo) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+
+        // Рассчитываем прогресс до следующего уровня
+        const progress = req.dataManager.getLevelProgress(levelInfo.experience, levelInfo.nextLevelExp);
+
+        res.json({
+            success: true,
+            data: {
+                level: levelInfo.current,
+                experience: levelInfo.experience,
+                nextLevelExp: levelInfo.nextLevelExp,
+                progress: progress,
+                expToNext: levelInfo.nextLevelExp - levelInfo.experience
+            },
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('❌ Ошибка получения уровня пользователя:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Внутренняя ошибка сервера',
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 // Диагностика системы майнинга
 router.get('/mining/diagnose', ensureDataManagerConnection, async (req, res) => {
     try {
@@ -349,6 +395,7 @@ router.use('*', (req, res) => {
             '/api/user/click/:userId',
             '/api/user/stats/:userId',
             '/api/user/info/:userId',
+            '/api/user/level/:userId',
             '/api/mining/diagnose'
         ]
     });

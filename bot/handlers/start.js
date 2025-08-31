@@ -96,7 +96,10 @@ async function startHandler(ctx) {
         
         // Получаем актуальный баланс пользователя
         const userBalance = await dataManager.getUserBalance(userId);
-        
+
+        // Получаем уровень пользователя
+        const userLevel = await dataManager.getUserLevel(userId);
+
         // Получаем статистику бота
         const botStats = await dataManager.getBotStats();
         
@@ -105,7 +108,8 @@ async function startHandler(ctx) {
             `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
             `👤 **Профиль**\n` +
             `├ 🆔 ID: \`${userId}\`\n` +
-            `└ ✨ Имя: ${ctx.from.first_name || 'Не указано'}\n\n` +
+            `├ ✨ Имя: ${ctx.from.first_name || 'Не указано'}\n` +
+            `└ 🎯 Уровень: ${userLevel.current}\n\n` +
             `💎 **Баланс**\n` +
             `├ ⭐ Stars: ${userBalance.stars}\n` +
             `└ 🪙 Magnum Coins: ${userBalance.coins}\n\n` +

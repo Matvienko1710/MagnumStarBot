@@ -180,6 +180,97 @@ class DataManager {
         }
     }
 
+    // ===== СИСТЕМА УРОВНЕЙ =====
+
+    // Получение информации об уровне пользователя
+    async getUserLevel(userId) {
+        try {
+            const user = await this.getUser(userId);
+            return user.level || {
+                current: 1,
+                experience: 0,
+                nextLevelExp: 100
+            };
+        } catch (error) {
+            logger.error('Ошибка получения уровня пользователя', error, { userId });
+            return {
+                current: 1,
+                experience: 0,
+                nextLevelExp: 100
+            };
+        }
+    }
+
+    // Добавление опыта пользователю
+    async addExperience(userId, expAmount, reason = 'unknown') {
+        try {
+            const user = await this.getUser(userId);
+            let userLevel = user.level || {
+                current: 1,
+                experience: 0,
+                nextLevelExp: 100
+            };
+
+            // Добавляем опыт
+            userLevel.experience += expAmount;
+
+            // Проверяем повышение уровня
+            let leveledUp = false;
+            while (userLevel.experience >= userLevel.nextLevelExp) {
+                userLevel.experience -= userLevel.nextLevelExp;
+                userLevel.current++;
+                userLevel.nextLevelExp = Math.floor(userLevel.nextLevelExp * 1.5); // Увеличиваем требуемый опыт
+                leveledUp = true;
+            }
+
+            // Сохраняем изменения
+            await this.db.collection('users').updateOne(
+                { userId: Number(userId) },
+                {
+                    $set: {
+                        level: userLevel,
+                        lastActivity: new Date()
+                    }
+                }
+            );
+
+            logger.info('Опыт добавлен пользователю', {
+                userId,
+                expAdded: expAmount,
+                newLevel: userLevel.current,
+                newExp: userLevel.experience,
+                leveledUp,
+                reason
+            });
+
+            return {
+                success: true,
+                level: userLevel,
+                leveledUp,
+                expAdded: expAmount
+            };
+
+        } catch (error) {
+            logger.error('Ошибка добавления опыта пользователю', error, { userId, expAmount, reason });
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Получение требуемого опыта для следующего уровня
+    getRequiredExpForLevel(level) {
+        // Базовый опыт для уровня 1: 100
+        // Каждый следующий уровень требует на 50% больше опыта
+        return Math.floor(100 * Math.pow(1.5, level - 1));
+    }
+
+    // Получение прогресса до следующего уровня (в процентах)
+    getLevelProgress(currentExp, nextLevelExp) {
+        if (nextLevelExp === 0) return 100;
+        return Math.floor((currentExp / nextLevelExp) * 100);
+    }
+
+    // ===== КОНЕЦ СИСТЕМЫ УРОВНЕЙ =====
+
     // Остановка планировщика автоматического дохода
     stopMiningIncomeScheduler() {
         try {
@@ -291,11 +382,16 @@ class DataManager {
                     username: null,
                     firstName: null,
                     lastName: null,
-                    balance: {
-                        stars: 0,
-                        coins: 0,
-                        totalEarned: { stars: 0, coins: 0 }
-                    },
+                                    balance: {
+                    stars: 0,
+                    coins: 0,
+                    totalEarned: { stars: 0, coins: 0 }
+                },
+                level: {
+                    current: 1,
+                    experience: 0,
+                    nextLevelExp: 100
+                },
                     referral: {
                         referralId: null,
                         referrerId: null,
@@ -2052,12 +2148,16 @@ class DataManager {
                 reward: keyDoc.reward
             });
             
-            logger.info('Ключ успешно активирован', { 
-                key: key.substring(0, 6) + '...', 
-                userId, 
-                reward: keyDoc.reward 
+            // Добавляем опыт за активацию ключа (20 опыта за ключ)
+            const expResult = await this.addExperience(userId, 20, 'key_activation');
+            logger.info('Опыт добавлен за активацию ключа', expResult);
+
+            logger.info('Ключ успешно активирован', {
+                key: key.substring(0, 6) + '...',
+                userId,
+                reward: keyDoc.reward
             });
-            
+
             return {
                 success: true,
                 type: keyDoc.type,
