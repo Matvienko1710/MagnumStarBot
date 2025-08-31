@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Magnum Stars - Premium Fintech App</title>
+
+    <!-- Preconnect to Google Fonts for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Inter Font - Modern fintech typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/svg+xml" href="assets/icons/star.svg">
+    <meta name="theme-color" content="#3b82f6">
+
+    <!-- SEO and Social -->
+    <meta name="description" content="Premium mobile fintech app for earning stars and coins">
+    <meta name="keywords" content="fintech, mobile app, telegram webapp, cryptocurrency">
+</head>
+<body>
+    <!-- App Container -->
+    <div class="app" id="app">
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Header Section -->
+                <header class="header">
+                    <!-- User Profile Card -->
+                    <div class="user-card">
+                        <div class="user-info">
+                            <div class="user-avatar" id="user-avatar">
+                                <!-- Dynamic user avatar/initials -->
+                                <span id="user-initials">U</span>
+                            </div>
+                            <div class="user-details">
+                                <h2 id="user-name">
+                                    <!-- Dynamic user name -->
+                                    <span class="loading">Пользователь</span>
+                                </h2>
+                                <p id="user-id">
+                                    <!-- Dynamic user ID -->
+                                    ID: <span class="loading">Загрузка...</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Balance Cards Grid -->
+                    <div class="balance-grid">
+                        <!-- Stars Balance Card -->
+                        <div class="balance-card" tabindex="0" role="button" aria-label="Баланс звезд">
+                            <svg class="balance-icon" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <div class="balance-label">Звезды</div>
+                            <div class="balance-amount" id="stars-balance">
+                                <!-- Dynamic stars balance -->
+                                <span class="loading">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Coins Balance Card -->
+                        <div class="balance-card coins" tabindex="0" role="button" aria-label="Баланс монет">
+                            <svg class="balance-icon" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 6V18M9 9H15M9 15H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <div class="balance-label">Монеты</div>
+                            <div class="balance-amount" id="coins-balance">
+                                <!-- Dynamic coins balance -->
+                                <span class="loading">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- CTA Section -->
+                <section class="cta-section">
+                    <h1 class="cta-title">🎯 Зарабатывай монеты</h1>
+                    <p class="cta-subtitle">Каждый клик приносит +1 монету в твой кошелек</p>
+
+                    <!-- Main CTA Button -->
+                    <button class="main-cta" id="click-button" aria-label="Кликнуть для заработка монет">
+                        <svg class="main-cta-icon" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 6V18M9 9H15M9 15H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </section>
+
+                <!-- Stats Section -->
+                <section class="stats-section">
+                    <h2 class="stats-title">📊 Статистика</h2>
+                    <div class="stats-grid">
+                        <!-- Total Clicks -->
+                        <div class="stat-item">
+                            <span class="stat-label">Всего кликов</span>
+                            <span class="stat-value" id="total-clicks">
+                                <span class="loading">0</span>
+                            </span>
+                        </div>
+
+                        <!-- Today's Clicks -->
+                        <div class="stat-item">
+                            <span class="stat-label">Сегодня</span>
+                            <span class="stat-value" id="today-clicks">
+                                <span class="loading">0</span>
+                            </span>
+                        </div>
+
+                        <!-- Last Click -->
+                        <div class="stat-item">
+                            <span class="stat-label">Последний клик</span>
+                            <span class="stat-value" id="last-click">
+                                <span class="loading">Никогда</span>
+                            </span>
+                        </div>
+
+                        <!-- Session Earnings -->
+                        <div class="stat-item">
+                            <span class="stat-label">За сессию</span>
+                            <span class="stat-value" id="session-earnings">
+                                <span class="loading">0</span>
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Empty State Example (hidden by default) -->
+                <div class="empty-state" id="empty-state" style="display: none;">
+                    <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <path d="M12 6V18M9 9H15M9 15H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <h3 class="empty-state-title">Начни зарабатывать!</h3>
+                    <p class="empty-state-text">Нажми на кнопку выше, чтобы заработать свои первые монеты</p>
+                </div>
+
+                <!-- Error State Example (hidden by default) -->
+                <div class="error-state" id="error-state" style="display: none;">
+                    <div class="error">
+                        <p>❌ Ошибка загрузки данных. Попробуйте позже.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav" role="navigation" aria-label="Основная навигация">
+            <div class="bottom-nav-content">
+                <!-- Home Tab -->
+                <a href="#" class="nav-item active" data-page="home" aria-label="Главная страница">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 12L5 10M5 10L12 3L19 10M5 10V20C5 20.5523 5.44772 21 6 21H9M19 10L21 12M19 10V20C19 20.5523 18.5523 21 18 21H15M9 21V15C9 14.4477 9.44772 14 10 14H14C14.5523 14 15 14.4477 15 15V21M9 21H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="nav-label">Главная</span>
+                </a>
+
+                <!-- Tasks Tab -->
+                <a href="#" class="nav-item" data-page="tasks" aria-label="Задания">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="nav-label">Задания</span>
+                </a>
+
+                <!-- Earn Tab -->
+                <a href="#" class="nav-item" data-page="earn" aria-label="Заработать">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2V6M12 18V22M4.93 4.93L7.76 7.76M16.24 16.24L19.07 19.07M2 12H6M18 12H22M4.93 19.07L7.76 16.24M16.24 7.76L19.07 4.93M22 2L22 6M22 18L22 22M2 2L2 6M2 18L2 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="nav-label">Заработать</span>
+                </a>
+
+                <!-- Profile Tab -->
+                <a href="#" class="nav-item" data-page="profile" aria-label="Профиль">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                        <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="nav-label">Профиль</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true">
+        <!-- Toasts will be dynamically added here -->
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                <path d="M12 2C13.1046 2 14 2.89543 14 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // ===== MAGNUM STARS WEBAPP SCRIPT =====
+        // Premium fintech mobile app functionality
+
+        // Global state management
+        class AppState {
+            constructor() {
+                this.user = null;
+                this.balances = { stars: 0, coins: 0 };
+                this.stats = { totalClicks: 0, todayClicks: 0, lastClick: null, sessionEarnings: 0 };
+                this.currentPage = 'home';
+                this.isLoading = false;
+                this.clickTimestamps = []; // For rate limiting
+                this.maxClicksPerSecond = 5;
+            }
+
+            // Update user data
+            updateUser(userData) {
+                this.user = userData;
+                this.updateUI();
+            }
+
+            // Update balances
+            updateBalances(balances) {
+                this.balances = { ...this.balances, ...balances };
+                this.updateUI();
+            }
+
+            // Update stats
+            updateStats(stats) {
+                this.stats = { ...this.stats, ...stats };
+                this.updateUI();
+            }
+
+            // Update UI elements
+            updateUI() {
+                // Update user info
+                if (this.user) {
+                    document.getElementById('user-name').textContent = this.user.first_name || 'Пользователь';
+                    document.getElementById('user-id').textContent = `ID: ${this.user.id}`;
+                    document.getElementById('user-initials').textContent = (this.user.first_name || 'U').charAt(0).toUpperCase();
+                }
+
+                // Update balances
+                document.getElementById('stars-balance').textContent = this.balances.stars.toLocaleString();
+                document.getElementById('coins-balance').textContent = this.balances.coins.toLocaleString();
+
+                // Update stats
+                document.getElementById('total-clicks').textContent = this.stats.totalClicks.toLocaleString();
+                document.getElementById('today-clicks').textContent = this.stats.todayClicks.toLocaleString();
+                document.getElementById('session-earnings').textContent = this.stats.sessionEarnings.toLocaleString();
+
+                if (this.stats.lastClick) {
+                    document.getElementById('last-click').textContent = this.stats.lastClick.toLocaleTimeString();
+                }
+            }
+
+            // Show loading state
+            setLoading(loading) {
+                this.isLoading = loading;
+                const overlay = document.getElementById('loading-overlay');
+                overlay.style.display = loading ? 'flex' : 'none';
+            }
+
+            // Show toast notification
+            showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `
+                    <div class="toast-content">
+                        <span class="toast-message">${message}</span>
+                    </div>
+                `;
+
+                const container = document.getElementById('toast-container');
+                container.appendChild(toast);
+
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 3000);
+            }
+
+            // Check click rate limit
+            canClick() {
+                const now = Date.now();
+                this.clickTimestamps = this.clickTimestamps.filter(timestamp => now - timestamp < 1000);
+
+                if (this.clickTimestamps.length >= this.maxClicksPerSecond) {
+                    this.showToast(`Максимум ${this.maxClicksPerSecond} кликов в секунду`, 'warning');
+                    return false;
+                }
+
+                this.clickTimestamps.push(now);
+                return true;
+            }
+        }
+
+        // Initialize app state
+        const appState = new AppState();
+
+        // ===== TELEGRAM WEBAPP INITIALIZATION =====
+        function initializeTelegramWebApp() {
+            console.log('🚀 Initializing Telegram WebApp...');
+
+            if (window.Telegram?.WebApp) {
+                const tg = window.Telegram.WebApp;
+
+                // Configure WebApp
+                tg.ready();
+                tg.expand();
+
+                // Set theme
+                if (tg.colorScheme) {
+                    document.documentElement.setAttribute('data-theme', tg.colorScheme);
+                }
+
+                // Get user data
+                if (tg.initDataUnsafe?.user) {
+                    appState.updateUser(tg.initDataUnsafe.user);
+                    console.log('✅ User data loaded from Telegram');
+
+                    // Load user balance and stats
+                    loadUserData(tg.initDataUnsafe.user.id);
+                } else {
+                    console.warn('⚠️ No user data available from Telegram');
+                    appState.showToast('Не удалось загрузить данные пользователя', 'warning');
+                }
+
+                // Set up haptic feedback if available
+                if (tg.HapticFeedback) {
+                    window.hapticFeedback = tg.HapticFeedback;
+                }
+
+            } else {
+                console.warn('⚠️ Telegram WebApp not available, running in browser mode');
+                // Fallback for development
+                setupFallbackMode();
+            }
+        }
+
+        // ===== API FUNCTIONS =====
+        async function loadUserData(userId) {
+            try {
+                appState.setLoading(true);
+
+                // Load balance
+                const balanceResponse = await fetch(`/api/user/balance/${userId}`);
+                if (balanceResponse.ok) {
+                    const balanceData = await balanceResponse.json();
+                    if (balanceData.success) {
+                        appState.updateBalances(balanceData.balance);
+                    }
+                }
+
+                // Load stats
+                const statsResponse = await fetch(`/api/user/stats/${userId}`);
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    if (statsData.success) {
+                        appState.updateStats({
+                            totalClicks: statsData.stats.totalTransactions,
+                            todayClicks: statsData.stats.todayClicks,
+                            lastClick: statsData.stats.lastTransaction ?
+                                new Date(statsData.stats.lastTransaction.timestamp) : null
+                        });
+                    }
+                }
+
+                console.log('✅ User data loaded successfully');
+
+            } catch (error) {
+                console.error('❌ Error loading user data:', error);
+                appState.showToast('Ошибка загрузки данных', 'error');
+            } finally {
+                appState.setLoading(false);
+            }
+        }
+
+        async function handleClick() {
+            // Check rate limit
+            if (!appState.canClick()) {
+                return;
+            }
+
+            if (!appState.user) {
+                appState.showToast('Пользователь не авторизован', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/user/click/${appState.user.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Update local state
+                        appState.updateBalances(data.balance);
+                        appState.updateStats({
+                            totalClicks: appState.stats.totalClicks + 1,
+                            todayClicks: appState.stats.todayClicks + 1,
+                            lastClick: new Date(),
+                            sessionEarnings: appState.stats.sessionEarnings + 1
+                        });
+
+                        // Haptic feedback
+                        if (window.hapticFeedback) {
+                            window.hapticFeedback.impactOccurred('medium');
+                        }
+
+                        // Success animation
+                        const button = document.getElementById('click-button');
+                        button.style.animation = 'none';
+                        setTimeout(() => {
+                            button.style.animation = 'pulse 0.3s ease';
+                        }, 10);
+
+                        appState.showToast('+1 монета!', 'success');
+                    }
+                } else {
+                    throw new Error('API request failed');
+                }
+
+            } catch (error) {
+                console.error('❌ Click error:', error);
+                appState.showToast('Ошибка при клике', 'error');
+            }
+        }
+
+        // ===== NAVIGATION =====
+        function setupNavigation() {
+            const navItems = document.querySelectorAll('.nav-item');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    // Update active state
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+
+                    // Get target page
+                    const page = item.dataset.page;
+                    appState.currentPage = page;
+
+                    // Handle page navigation (placeholder for future implementation)
+                    console.log(`📱 Navigating to: ${page}`);
+
+                    // Show toast for demo
+                    appState.showToast(`Переход на страницу: ${page}`, 'info');
+                });
+            });
+        }
+
+        // ===== FALLBACK MODE =====
+        function setupFallbackMode() {
+            console.log('🔄 Setting up fallback mode for development');
+
+            // Mock user data
+            const mockUser = {
+                id: 123456789,
+                first_name: 'Тестовый',
+                last_name: 'Пользователь',
+                username: 'testuser'
+            };
+
+            appState.updateUser(mockUser);
+            appState.updateBalances({ stars: 1000, coins: 500 });
+            appState.updateStats({
+                totalClicks: 150,
+                todayClicks: 25,
+                lastClick: new Date(Date.now() - 300000), // 5 minutes ago
+                sessionEarnings: 15
+            });
+        }
+
+        // ===== EVENT LISTENERS =====
+        function setupEventListeners() {
+            // Click button
+            const clickButton = document.getElementById('click-button');
+            clickButton.addEventListener('click', handleClick);
+
+            // Balance cards (for future functionality)
+            const balanceCards = document.querySelectorAll('.balance-card');
+            balanceCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    appState.showToast('Функция в разработке', 'info');
+                });
+            });
+
+            // Prevent double-click zoom and selection
+            document.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                return false;
+            });
+
+            document.addEventListener('selectstart', (e) => {
+                e.preventDefault();
+                return false;
+            });
+        }
+
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🎨 Magnum Stars Premium WebApp initialized');
+
+            // Setup navigation
+            setupNavigation();
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Initialize Telegram WebApp
+            initializeTelegramWebApp();
+        });
+
+        // ===== UTILITY FUNCTIONS =====
+        // Format currency
+        function formatCurrency(amount, currency = 'coins') {
+            const symbol = currency === 'stars' ? '⭐' : '🪙';
+            return `${symbol} ${amount.toLocaleString()}`;
+        }
+
+        // Debounce function for performance
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html>
