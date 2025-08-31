@@ -6,9 +6,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     let userId = urlParams.get('userId') || localStorage.getItem('magnumBot_userId');
 
+    // Проверяем Telegram WebApp API для автоматического получения userId
+    if (window.Telegram && window.Telegram.WebApp) {
+        const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+        if (telegramUser && telegramUser.id) {
+            userId = telegramUser.id.toString();
+            localStorage.setItem('magnumBot_userId', userId);
+            console.log('✅ User ID получен автоматически через Telegram WebApp:', userId);
+        }
+    }
+
     if (!userId) {
-        // Если userId не найден, показываем форму для ввода
-        showUserIdPrompt();
+        // Если userId не найден, показываем демо режим
+        showDemoMode();
         return;
     }
 
@@ -163,7 +173,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
     }
 
-    // Функция показа формы для ввода userId
+    // Функция показа демо режима
+    function showDemoMode() {
+        console.log('🎮 Запуск демо режима...');
+
+        // Устанавливаем демо данные
+        updateBalanceDisplay('stars', 1250);
+        updateBalanceDisplay('magnum', 5678);
+
+        // Показываем демо статистику
+        const userStats = document.getElementById('user-stats');
+        const totalEarnedStars = document.getElementById('total-earned-stars');
+        const totalEarnedCoins = document.getElementById('total-earned-coins');
+
+        if (totalEarnedStars) totalEarnedStars.textContent = '2,500 ⭐';
+        if (totalEarnedCoins) totalEarnedCoins.textContent = '11,350 🪙';
+        if (userStats) userStats.style.display = 'block';
+
+        // Меняем заголовок на демо режим
+        const headerTitle = document.querySelector('.header h1');
+        if (headerTitle) {
+            headerTitle.textContent = 'MagnumStarBot (Демо)';
+        }
+
+        // Показываем кнопку для ввода User ID
+        const enterUserIdBtn = document.getElementById('enter-user-id-btn');
+        if (enterUserIdBtn) {
+            enterUserIdBtn.style.display = 'block';
+            enterUserIdBtn.addEventListener('click', showUserIdPrompt);
+        }
+
+        // Показываем уведомление о демо режиме
+        setTimeout(() => {
+            showError('🎮 Это демо режим. Нажмите "Ввести User ID" для просмотра вашего реального баланса.');
+        }, 2000);
+
+        // Запускаем пульсирующий эффект для привлечения внимания
+        setTimeout(addPulseEffect, 1000);
+    }
+
+    // Функция показа формы для ввода userId (теперь вызывается только при необходимости)
     function showUserIdPrompt() {
         const promptDiv = document.createElement('div');
         promptDiv.innerHTML = `
