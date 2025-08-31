@@ -28,8 +28,7 @@
             --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
             --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            --glass-bg: rgba(255, 255, 255, 0.95);
-            --glass-border: rgba(255, 255, 255, 0.2);
+
             --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
             --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
             --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
@@ -90,6 +89,28 @@
             transform: translateY(-2px);
             box-shadow: var(--shadow-strong);
         }
+
+        /* ===== UTILITY CLASSES ===== */
+        .text-center { text-align: center; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .gap-1 { gap: 4px; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .gap-4 { gap: 16px; }
+        .p-2 { padding: 8px; }
+        .p-3 { padding: 12px; }
+        .p-4 { padding: 16px; }
+        .p-5 { padding: 20px; }
+        .p-6 { padding: 24px; }
+        .m-2 { margin: 8px; }
+        .m-3 { margin: 12px; }
+        .m-4 { margin: 16px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-5 { margin-bottom: 20px; }
+        .mb-6 { margin-bottom: 24px; }
 
         /* ===== HEADER ===== */
         .header {
@@ -641,12 +662,12 @@
             .header {
                 padding: 32px;
             }
-
+            
             .main-button {
                 width: 200px;
                 height: 200px;
             }
-
+            
             .main-button .star {
                 font-size: 80px;
             }
@@ -728,7 +749,7 @@
                     💰 Заработать
                 </button>
             </div>
-        </div>
+                </div>
     </div>
 
     <!-- Нижняя навигация -->
@@ -750,8 +771,8 @@
                 <div class="bottom-nav-icon">👤</div>
                 <div class="bottom-nav-label">Профиль</div>
             </a>
+            </div>
         </div>
-    </div>
 
     <script>
         // Глобальные переменные
@@ -1185,7 +1206,8 @@
             });
 
             // Добавляем активный класс нужной кнопке
-            const activeButton = document.querySelector(`[onclick="show${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}()"]`);
+            const functionName = `show${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}`;
+            const activeButton = document.querySelector(`[onclick*="${functionName}"]`);
             if (activeButton) {
                 activeButton.classList.add('active');
             }
