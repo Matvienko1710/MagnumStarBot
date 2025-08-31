@@ -30,7 +30,7 @@ const initializeUserBalance = async (userId) => {
 // Получение баланса пользователя
 const getUserBalance = async (userId) => {
   try {
-    return await dataManager.getBalance(userId);
+    return await dataManager.getUserBalance(userId);
   } catch (error) {
     logger.error('Ошибка получения баланса пользователя', error, { userId });
     return {

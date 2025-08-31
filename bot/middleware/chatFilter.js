@@ -63,9 +63,20 @@ const privateChatOnly = (handler) => {
 // Специальная функция для отправки уведомлений ТОЛЬКО в определенный канал
 const sendChannelNotification = async (ctx, message, channelUsername = '@magnumtapchat') => {
     try {
-        // Проверяем, что это именно канал для уведомлений
-        if (channelUsername !== '@magnumtapchat') {
-            console.warn('🚫 Попытка отправить уведомление не в разрешенный канал', { channelUsername });
+        // Строгая проверка - разрешаем ТОЛЬКО определенные каналы
+        const allowedChannels = ['@magnumtapchat'];
+
+        if (!allowedChannels.includes(channelUsername)) {
+            console.warn('🚫 Попытка отправить уведомление не в разрешенный канал', {
+                channelUsername,
+                allowedChannels
+            });
+            return false;
+        }
+
+        // Дополнительная проверка на корректность формата канала
+        if (!channelUsername.startsWith('@') || channelUsername.length < 5) {
+            console.warn('🚫 Некорректный формат канала', { channelUsername });
             return false;
         }
 

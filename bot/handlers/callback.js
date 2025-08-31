@@ -5,7 +5,6 @@ const { getUserBalance } = require('../utils/currency');
 const { getReferralStats } = require('../utils/referral');
 const { isAdmin } = require('../utils/admin');
 const dataManager = require('../utils/dataManager');
-const { autoDeleteReplyMessage } = require('../utils/autoDelete');
 
 // Состояния пользователей для создания ключей
 const userStates = new Map();

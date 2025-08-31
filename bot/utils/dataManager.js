@@ -1,5 +1,6 @@
 const database = require('./database');
 const logger = require('./logger');
+const { MINER_TYPES } = require('./miners');
 
 class DataManager {
     constructor() {
@@ -270,7 +271,7 @@ class DataManager {
     }
 
     // ===== КОНЕЦ СИСТЕМЫ УРОВНЕЙ =====
-
+    
     // Остановка планировщика автоматического дохода
     stopMiningIncomeScheduler() {
         try {
@@ -382,11 +383,11 @@ class DataManager {
                     username: null,
                     firstName: null,
                     lastName: null,
-                                    balance: {
-                    stars: 0,
-                    coins: 0,
-                    totalEarned: { stars: 0, coins: 0 }
-                },
+                    balance: {
+                        stars: 0,
+                        coins: 0,
+                        totalEarned: { stars: 0, coins: 0 }
+                    },
                 level: {
                     current: 1,
                     experience: 0,
@@ -605,16 +606,7 @@ class DataManager {
         }
     }
 
-    async getBalance(userId) {
-        try {
-            const user = await this.getUser(userId);
-            return user.balance;
-            
-        } catch (error) {
-            logger.error('Ошибка получения баланса', error, { userId });
-            throw error;
-        }
-    }
+
 
     // === УПРАВЛЕНИЕ ТРАНЗАКЦИЯМИ ===
     
@@ -2073,7 +2065,6 @@ class DataManager {
             // Обработка ключа майнера
             if (keyDoc.type === 'miner') {
                 // Получаем информацию о майнере
-                const { MINER_TYPES } = require('./miners');
                 const minerInfo = MINER_TYPES[keyDoc.minerType.toUpperCase()];
 
                 if (!minerInfo) {
@@ -2151,13 +2142,13 @@ class DataManager {
             // Добавляем опыт за активацию ключа (20 опыта за ключ)
             const expResult = await this.addExperience(userId, 20, 'key_activation');
             logger.info('Опыт добавлен за активацию ключа', expResult);
-
-            logger.info('Ключ успешно активирован', {
-                key: key.substring(0, 6) + '...',
-                userId,
-                reward: keyDoc.reward
+            
+            logger.info('Ключ успешно активирован', { 
+                key: key.substring(0, 6) + '...', 
+                userId, 
+                reward: keyDoc.reward 
             });
-
+            
             return {
                 success: true,
                 type: keyDoc.type,
@@ -2253,15 +2244,14 @@ class DataManager {
             
         } catch (error) {
             logger.error('Ошибка отметки сообщения как удаленного', error, { messageId });
-        }
     }
+}
 
     // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ МАЙНЕРОВ ===
 
     // Создание майнера для пользователя из ключа
     async createMinerForUser(userId, minerType) {
         try {
-            const { MINER_TYPES } = require('./miners');
             const minerInfo = MINER_TYPES[minerType.toUpperCase()];
 
             if (!minerInfo) {
