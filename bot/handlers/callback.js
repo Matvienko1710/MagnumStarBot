@@ -1502,26 +1502,50 @@ async function handleKeyCreation(ctx, text) {
             
             try {
                 const createResult = await dataManager.createKey(keyData);
-                
+
                 if (createResult.success) {
             const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
-            
+
             const successMessage = `✅ **Ключ успешно создан!**\n\n` +
                 `🔑 Ключ: \`${key}\`\n` +
                 `🎯 Тип: ${rewardTypeText}\n` +
                 `💰 Награда: ${userState.data[userState.data.rewardType]} ${rewardTypeText}\n` +
                 `🔄 Максимум активаций: ${maxUses}\n\n` +
                 `💡 Пользователи могут активировать этот ключ в разделе "Активировать ключ"`;
-            
+
             const keyboard = Markup.inlineKeyboard([
                 [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
                 [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
             ]);
-            
+
             await ctx.reply(successMessage, {
                 parse_mode: 'Markdown',
                 reply_markup: keyboard.reply_markup
             });
+
+            // Отправляем уведомление в чат
+            try {
+                const chatUsername = '@magnumtapchat';
+                const chatMessage = `🎉 **Новый ключ создан!**\n\n` +
+                    `🔑 Ключ: \`${key}\`\n` +
+                    `🎯 Тип награды: ${rewardTypeText}\n` +
+                    `💰 Размер награды: ${userState.data[userState.data.rewardType]} ${rewardTypeText}\n` +
+                    `🔄 Максимум активаций: ${maxUses}\n` +
+                    `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
+                    `💡 Пользователи могут активировать этот ключ в боте!`;
+
+                await ctx.telegram.sendMessage(chatUsername, chatMessage, {
+                    parse_mode: 'Markdown'
+                });
+
+                console.log('✅ Уведомление о создании ключа отправлено в чат', {
+                    key: key.substring(0, 6) + '...',
+                    chat: chatUsername
+                });
+
+            } catch (error) {
+                console.error('❌ Не удалось отправить уведомление в чат:', error);
+            }
                 } else {
                     await ctx.reply('❌ Ошибка создания ключа в базе данных');
                 }
@@ -2229,6 +2253,36 @@ async function handleMinerKeyCreation(ctx, text) {
                         parse_mode: 'Markdown',
                         reply_markup: keyboard.reply_markup
                     });
+
+                    // Отправляем уведомление в чат
+                    try {
+                        const chatUsername = '@magnumtapchat';
+                        const minerName = userState.data.minerType === 'novice' ? 'Новичок' : 'Путь к звездам';
+                        const priceSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+                        const rewardSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
+                        const incomeRate = userState.data.minerType === 'novice' ? '1' : '0.01';
+
+                        const chatMessage = `🎉 **Новый ключ майнера создан!**\n\n` +
+                            `🔑 Ключ: \`${key}\`\n` +
+                            `⛏️ Майнер: ${minerName}\n` +
+                            `💰 Цена: 100 ${priceSymbol}\n` +
+                            `⚡ Доход: ${incomeRate} ${rewardSymbol}/мин\n` +
+                            `🔄 Максимум активаций: ${maxUses}\n` +
+                            `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
+                            `💡 Пользователи могут активировать этот ключ в боте!`;
+
+                        await ctx.telegram.sendMessage(chatUsername, chatMessage, {
+                            parse_mode: 'Markdown'
+                        });
+
+                        console.log('✅ Уведомление о создании ключа майнера отправлено в чат', {
+                            key: key.substring(0, 6) + '...',
+                            chat: chatUsername
+                        });
+
+                    } catch (error) {
+                        console.error('❌ Не удалось отправить уведомление в чат:', error);
+                    }
                 } else {
                     await ctx.reply('❌ Ошибка создания ключа майнера в базе данных');
                 }

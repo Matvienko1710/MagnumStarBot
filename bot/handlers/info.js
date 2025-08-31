@@ -252,29 +252,65 @@ async function handleKeyMaxUses(ctx, text) {
     }
     
     const keyData = createKey(userState.data.rewardType, reward, numMaxUses);
-    
+
+    // Сохраняем ключ в базе данных
+    const dataManager = require('../utils/dataManager');
+    const dbKeyData = {
+        key: keyData.key,
+        type: userState.data.rewardType,
+        reward: reward,
+        maxUses: numMaxUses,
+        createdBy: userId
+    };
+
+    await dataManager.createKey(dbKeyData);
+
     // Очищаем состояние
     userStates.delete(userId);
-    
+
     const rewardTypeText = userState.data.rewardType === 'stars' ? '⭐ Stars' : '🪙 Magnum Coins';
     const rewardAmount = userState.data.rewardType === 'stars' ? userState.data.stars : userState.data.coins;
-    
+
     const successMessage = `✅ **Ключ успешно создан!**\n\n` +
         `🔑 Ключ: \`${keyData.key}\`\n` +
         `🎯 Тип: ${rewardTypeText}\n` +
         `💰 Награда: ${rewardAmount} ${rewardTypeText}\n` +
         `🔄 Максимум активаций: ${numMaxUses}\n\n` +
         `📝 Скопируйте ключ и отправьте пользователям`;
-    
+
     const keyboard = Markup.inlineKeyboard([
         [Markup.button.callback('🔑 Создать еще ключ', 'create_key')],
         [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
     ]);
-    
+
     await ctx.reply(successMessage, {
         parse_mode: 'Markdown',
         reply_markup: keyboard.reply_markup
     });
+
+    // Отправляем уведомление в чат
+    try {
+        const chatUsername = '@magnumtapchat';
+        const chatMessage = `🎉 **Новый ключ создан!**\n\n` +
+            `🔑 Ключ: \`${keyData.key}\`\n` +
+            `🎯 Тип награды: ${rewardTypeText}\n` +
+            `💰 Размер награды: ${rewardAmount} ${rewardTypeText}\n` +
+            `🔄 Максимум активаций: ${numMaxUses}\n` +
+            `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
+            `💡 Пользователи могут активировать этот ключ в боте!`;
+
+        await ctx.telegram.sendMessage(chatUsername, chatMessage, {
+            parse_mode: 'Markdown'
+        });
+
+        console.log('✅ Уведомление о создании ключа отправлено в чат', {
+            key: keyData.key.substring(0, 6) + '...',
+            chat: chatUsername
+        });
+
+    } catch (error) {
+        console.error('❌ Не удалось отправить уведомление в чат:', error);
+    }
 }
 
 // Обработка создания ключа титула
@@ -307,14 +343,30 @@ async function handleTitleKeyCreation(ctx, text) {
             try {
                 logger.info('Создание ключа титула', { userId, data: userState.data });
                 
-                // Здесь будет логика создания ключа титула
+                // Создаем ключ титула
                 const newKey = 'TITLE_' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                
-                logger.info('Ключ титула успешно создан', { userId, key: newKey, data: userState.data });
-                
+
+                // Сохраняем ключ в базе данных
+                const titleKeyData = {
+                    key: newKey,
+                    type: 'title',
+                    reward: {
+                        stars: userState.data.stars,
+                        coins: userState.data.coins,
+                        title: userState.data.titleId
+                    },
+                    maxUses: userState.data.maxUses,
+                    createdBy: userId,
+                    description: userState.data.description
+                };
+
+                await dataManager.createKey(titleKeyData);
+
+                logger.info('Ключ титула успешно создан и сохранен', { userId, key: newKey, data: userState.data });
+
                 // Очищаем состояние
                 userStates.delete(userId);
-                
+
                 await ctx.reply(
                     `✅ Ключ титула успешно создан!\n\n` +
                     `🔑 Ключ: ${newKey}\n` +
@@ -329,6 +381,34 @@ async function handleTitleKeyCreation(ctx, text) {
                         [Markup.button.callback('🔙 Отмена', 'admin_panel')]
                     ]).reply_markup
                 );
+
+                // Отправляем уведомление в чат
+                try {
+                    const chatUsername = '@magnumtapchat';
+                    const chatMessage = `🎉 **Новый ключ титула создан!**\n\n` +
+                        `🔑 Ключ: \`${newKey}\`\n` +
+                        `👑 Титул: ${userState.data.titleId}\n` +
+                        `📝 Описание: ${userState.data.description}\n` +
+                        `🎁 Награда:\n` +
+                        `├ ⭐ Stars: ${userState.data.stars}\n` +
+                        `├ 🪙 Magnum Coins: ${userState.data.coins}\n` +
+                        `└ 👑 Титул: ${userState.data.titleId}\n` +
+                        `🔄 Максимум активаций: ${userState.data.maxUses}\n` +
+                        `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
+                        `💡 Пользователи могут активировать этот ключ в боте!`;
+
+                    await ctx.telegram.sendMessage(chatUsername, chatMessage, {
+                        parse_mode: 'Markdown'
+                    });
+
+                    console.log('✅ Уведомление о создании ключа титула отправлено в чат', {
+                        key: newKey,
+                        chat: chatUsername
+                    });
+
+                } catch (error) {
+                    console.error('❌ Не удалось отправить уведомление в чат:', error);
+                }
             } catch (error) {
                 logger.error('Ошибка создания ключа титула', error, { userId, data: userState.data });
                 

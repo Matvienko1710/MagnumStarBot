@@ -64,10 +64,13 @@ function initializeBot() {
         // Регистрация обработчиков
         logger.info('Регистрация обработчиков...');
 
+        // Middleware для ограничения команд в чате
+        const { privateChatOnly } = require('./middleware/chatFilter');
+
         // Обработчик /start
         logger.info('Обработчик start зарегистрирован');
         const startHandler = require('./handlers/start');
-        bot.start(safeAsync(startHandler));
+        bot.start(safeAsync(privateChatOnly(startHandler)));
 
         // Обработчик текстовых сообщений
         logger.info('Обработчик info зарегистрирован');
@@ -77,12 +80,12 @@ function initializeBot() {
         // Добавляем middleware для автоматического удаления сообщений пользователя
         bot.use(autoDeleteUserMessageMiddleware());
         
-        bot.on('text', safeAsync(infoHandler));
+        bot.on('text', safeAsync(privateChatOnly(infoHandler)));
 
         // Обработчик callback запросов
         logger.info('Обработчик callback зарегистрирован');
         const { callbackHandler } = require('./handlers/callback');
-        bot.on('callback_query', safeAsync(callbackHandler));
+        bot.on('callback_query', safeAsync(privateChatOnly(callbackHandler)));
 
         // Глобальная обработка ошибок
         bot.catch((error, ctx) => {
