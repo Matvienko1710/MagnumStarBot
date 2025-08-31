@@ -312,30 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Запускаем автоматическое обновление баланса каждые 30 секунд
     setInterval(() => loadUserBalance(userId), 30000);
 
-    // Анимация появления карточек
-    const features = document.querySelectorAll('.feature');
 
-    features.forEach((feature, index) => {
-        feature.style.opacity = '0';
-        feature.style.transform = 'translateY(20px)';
-
-        setTimeout(() => {
-            feature.style.transition = 'all 0.5s ease';
-            feature.style.opacity = '1';
-            feature.style.transform = 'translateY(0)';
-        }, index * 200);
-    });
-
-    // Добавляем эффект при наведении
-    features.forEach(feature => {
-        feature.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-10px) scale(1.02)';
-        });
-
-        feature.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0) scale(1)';
-        });
-    });
 
     // Простая анимация заголовка
     const header = document.querySelector('.header h1');
