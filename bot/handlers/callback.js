@@ -207,7 +207,7 @@ async function handleProfile(ctx) {
             `✨ Ник: ${ctx.from.first_name || 'Не указано'}\n` +
             `🆔 ID: \`${userId}\`\n` +
             `🏅 Титул: ${currentTitle.name}\n\n` +
-            `💎 **Баланс:**\n` +
+            `💰 **Баланс:**\n` +
             `⭐ Stars → ${userBalance.stars}\n` +
             `🪙 Magnum Coins → ${userBalance.coins}\n\n` +
             `👥 Друзья: ${referralStats.totalReferrals}\n` +
@@ -280,13 +280,13 @@ async function handleMiners(ctx) {
             `⛏️ **Ваши майнеры:**\n` +
             `├ 📊 Всего майнеров: ${userMiners.length}\n` +
             `├ ⚡ Общий доход: ${totalIncome.coins} 🪙/мин\n` +
-            `└ 💎 Доход в Stars: ${totalIncome.stars} ⭐/мин\n\n` +
+            `└ 🌟 Доход в Stars: ${totalIncome.stars} ⭐/мин\n\n` +
             `📊 **Лимиты:**\n` +
             `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
             `├ 🌐 Активные майнеры на сервере: ${minerAvailability.activeCount}/${minerAvailability.globalLimit}\n` +
             `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
-    
+
     const minersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
@@ -535,7 +535,7 @@ async function handleWithdraw(ctx) {
         // Получаем баланс пользователя
         const userBalance = await dataManager.getUserBalance(userId);
         
-        const withdrawMessage = `⭐ **Вывод звезд**\n\n` +
+        const withdrawMessage = `🌟 **Вывод звезд**\n\n` +
             `💰 **Ваш баланс:** ${userBalance.stars} ⭐ Stars\n\n` +
             `📋 **Условия вывода:**\n` +
             `├ 💰 Минимальная сумма: 50 ⭐ Stars\n` +
@@ -546,7 +546,7 @@ async function handleWithdraw(ctx) {
             `2️⃣ Введите сумму для вывода\n` +
             `3️⃣ Отправьте заявку\n` +
             `4️⃣ Ожидайте одобрения админа`;
-        
+
         const withdrawKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('💳 Создать заявку', 'create_withdrawal')],
             [Markup.button.callback('📋 Мои заявки', 'my_withdrawals')],
@@ -1023,9 +1023,9 @@ async function handleMainMenu(ctx) {
         
         // Создаем основное меню
         const mainMenuButtons = [
-            [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
+            [Markup.button.callback('⚒️ Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
-            [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
+            [Markup.button.callback('🌟 Вывести звезды', 'withdraw')]
         ];
         
         // Добавляем кнопку админ панели только для админов
@@ -1085,7 +1085,7 @@ async function handleAdminPanel(ctx) {
             `🧹 **Управление кэшем:**\n` +
             `📈 Статистика кэша доступна\n` +
             `🗑️ Очистка кэша`;
-        
+
         const adminKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔑 Создать ключ', 'create_key')],
             [Markup.button.callback('👑 Выдать/забрать титул', 'manage_titles')],
@@ -1561,7 +1561,7 @@ async function handleCreateWithdrawal(ctx) {
                 `💡 Заработайте больше звезд, чтобы создать заявку на вывод`;
             
             const insufficientKeyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('💰 Майнеры', 'miners')],
+                [Markup.button.callback('⚒️ Майнеры', 'miners')],
                 [Markup.button.callback('🔙 Назад к выводу', 'withdraw')]
             ]);
             
@@ -1844,9 +1844,9 @@ async function handleCheckSubscription(ctx) {
             
             // Создаем основное меню
             const mainMenuButtons = [
-                [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
+                [Markup.button.callback('⚒️ Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
                 [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), Markup.button.webApp('🌐 WebApp', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')],
-                [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
+                [Markup.button.callback('🌟 Вывести звезды', 'withdraw')]
             ];
             
             // Добавляем кнопку админ панели только для админов

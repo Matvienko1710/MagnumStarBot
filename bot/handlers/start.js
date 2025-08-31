@@ -118,11 +118,11 @@ async function startHandler(ctx) {
         
         // Создаем основное меню
         const mainMenuButtons = [
-            [Markup.button.url('💬 Чат', `https://t.me/${process.env.CHAT_URL || 'magnumchat'}`), Markup.button.url('📰 Новости', `https://t.me/${process.env.NEWS_URL || 'magnumnews'}`)],
-            [Markup.button.url('💰 Выплаты', `https://t.me/${process.env.PAYMENTS_URL || 'magnumpayments'}`)],
-            [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
+            [Markup.button.url('🗣️ Чат', `https://t.me/${process.env.CHAT_URL || 'magnumchat'}`), Markup.button.url('📋 Новости', `https://t.me/${process.env.NEWS_URL || 'magnumnews'}`)],
+            [Markup.button.url('💎 Выплаты', `https://t.me/${process.env.PAYMENTS_URL || 'magnumpayments'}`)],
+            [Markup.button.callback('⚒️ Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-            [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
+            [Markup.button.callback('🌟 Вывести звезды', 'withdraw')]
         ];
         
         // Добавляем кнопку админ панели только для админов

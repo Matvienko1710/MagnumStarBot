@@ -9,8 +9,8 @@ const inlineKeyboard = (isAdmin = false) => {
   const buttons = [
     [Markup.button.callback('👤 Профиль', 'profile')],
     [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-    [Markup.button.callback('⛏️ Майнеры', 'miners')],
-    [Markup.button.callback('💰 Вывести звезды', 'withdraw_stars')],
+    [Markup.button.callback('⚒️ Майнеры', 'miners')],
+    [Markup.button.callback('🌟 Вывести звезды', 'withdraw_stars')],
     [Markup.button.callback('👥 Рефералы', 'referrals')]
   ];
   
@@ -30,8 +30,8 @@ const inlineKeyboardWithBack = (isAdmin = false) => {
   const buttons = [
     [Markup.button.callback('👤 Профиль', 'profile')],
     [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-    [Markup.button.callback('⛏️ Майнеры', 'miners')],
-    [Markup.button.callback('💰 Вывести звезды', 'withdraw_stars')]
+    [Markup.button.callback('⚒️ Майнеры', 'miners')],
+    [Markup.button.callback('🌟 Вывести звезды', 'withdraw_stars')]
   ];
   
   // Добавляем кнопки админа только если пользователь является администратором
@@ -89,7 +89,7 @@ const minersKeyboard = () => {
   return Markup.inlineKeyboard([
     [Markup.button.callback('⛏️ Купить майнер', 'buy_miner')],
     [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
-    [Markup.button.callback('💰 Забрать награды', 'collect_rewards')],
+    [Markup.button.callback('💎 Забрать награды', 'collect_rewards')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
   ]);
 };
@@ -168,7 +168,7 @@ const changeTitleKeyboard = (unlockedTitles, currentTitleId) => {
 // Клавиатура для вывода звезд
 const withdrawKeyboard = () => {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('💰 Вывести все звезды', 'withdraw_all_stars')],
+    [Markup.button.callback('🌟 Вывести все звезды', 'withdraw_all_stars')],
     [Markup.button.callback('💳 Указать сумму', 'withdraw_custom_amount')],
     [Markup.button.callback('📊 История выводов', 'withdraw_history')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
