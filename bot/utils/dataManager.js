@@ -383,15 +383,12 @@ class DataManager {
                 }
 
                 // Устанавливаем значения по умолчанию для новых пользователей
+                // Используем отдельные поля вместо всего объекта balance
                 updateObj.$setOnInsert = {
-                    balance: {
-                        stars: 0,
-                        coins: 0,
-                        totalEarned: {
-                            stars: 0,
-                            coins: 0
-                        }
-                    }
+                    'balance.stars': 0,
+                    'balance.coins': 0,
+                    'balance.totalEarned.stars': 0,
+                    'balance.totalEarned.coins': 0
                 };
 
                 logger.info('🔄 Выполняем атомарное обновление в транзакции', {
