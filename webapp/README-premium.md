@@ -1,318 +1,252 @@
-# 🎨 Magnum Stars - Premium Fintech WebApp
+# Magnum Stars - Premium Fintech WebApp
 
-Современное мобильное приложение для заработка монет в стиле **Revolut**, **Monobank** и **Binance**.
+## 🚀 Обзор
 
-## ✨ Ключевые особенности
+Современное мобильное веб-приложение в стиле Revolut, Monobank и Binance с премиум-дизайном и отличным UX.
 
-- **🏆 Премиум дизайн** - Glassmorphism, градиенты, плавные анимации
-- **🌙 Темная тема** - Современный fintech стиль с синими и золотыми акцентами
-- **📱 Mobile-first** - Оптимизировано для мобильных устройств
-- **♿ Доступность** - WCAG AA compliance, клавиатурная навигация
-- **⚡ Производительность** - Оптимизированные анимации и загрузки
+## ✨ Особенности
 
-## 🎯 Дизайн-система
-
-### Цветовая палитра
-```css
-/* Основная тема - Темная */
---color-bg-primary: #0f172a;        /* Основной фон */
---color-bg-secondary: #1e293b;      /* Вторичный фон */
---color-accent-primary: #3b82f6;    /* Синий акцент */
---color-accent-secondary: #facc15;  /* Золотой акцент */
-
-/* Светлая тема (опционально) */
-[data-theme="light"] {
-    --color-bg-primary: #ffffff;
-    --color-text-primary: #0f172a;
-}
-```
-
-### Типографика
-- **Шрифт**: Inter (Google Fonts) + системные fallback
-- **Масштаб**: 12px → 14px → 16px → 18px → 20px → 24px
-- **Веса**: 400 (normal), 500 (medium), 600 (semibold), 700 (bold)
-
-### Spacing система
-```css
---spacing-1: 0.25rem;   /* 4px */
---spacing-2: 0.5rem;    /* 8px */
---spacing-4: 1rem;      /* 16px */
---spacing-6: 1.5rem;    /* 24px */
---spacing-8: 2rem;      /* 32px */
-```
+- 🎨 **Премиум дизайн**: Glassmorphism, темная тема, плавные анимации
+- 📱 **Mobile-first**: Оптимизировано для мобильных устройств
+- ♿ **Доступность**: WCAG AA compliance, keyboard navigation
+- 🎯 **Touch-friendly**: Все интерактивные элементы >= 48px
+- 🌙 **Темы**: Темная/светлая тема с автоматическим переключением
+- ⚡ **Производительность**: CSS-only эффекты, оптимизированные assets
 
 ## 📁 Структура проекта
 
 ```
 webapp/
-├── index-premium.html     # Основной HTML файл
-├── styles.css            # Полная система стилей
+├── index.html          # Основная разметка
+├── styles.css          # Стили с CSS-переменными
 ├── assets/
-│   └── icons/            # SVG иконки
-│       ├── home.svg      # Домой
-│       ├── tasks.svg     # Задания
-│       ├── earn.svg      # Заработать
-│       └── profile.svg   # Профиль
-└── README-premium.md     # Эта документация
+│   └── icons/          # SVG иконки
+│       ├── star.svg
+│       ├── coin.svg
+│       ├── home.svg
+│       ├── tasks.svg
+│       ├── earn.svg
+│       ├── profile.svg
+│       ├── exchange.svg
+│       ├── mining.svg
+│       ├── referral.svg
+│       ├── daily.svg
+│       └── settings.svg
+└── README.md          # Эта документация
 ```
 
-## 🚀 Быстрый старт
+## 🎨 Дизайн-система
 
-### 1. Замена файлов
-```bash
-# Скопировать новый дизайн
-cp webapp/index-premium.html webapp/index.html
+### CSS Переменные
 
-# Скопировать стили
-cp webapp/styles.css webapp/  # (если не существует)
+```css
+:root {
+  /* Цвета */
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-accent-primary: #3b82f6;
+  --color-accent-secondary: #facc15;
+
+  /* Типографика */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-2xl: 1.5rem;
+
+  /* Пространство */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+
+  /* Радиусы */
+  --radius-sm: 0.375rem;
+  --radius-base: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Тени */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
 ```
 
-### 2. Подключение стилей
-В `index.html` уже подключены:
+### Компоненты
+
+#### User Card
 ```html
-<link rel="stylesheet" href="styles.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-```
-
-### 3. Проверка работы
-Откройте `webapp/index.html` в браузере или через Telegram WebApp.
-
-## 🎨 Компоненты дизайна
-
-### Header с профилем пользователя
-```html
-<header class="header">
-    <div class="user-card">
-        <div class="user-info">
-            <div class="user-avatar" id="user-avatar">
-                <span id="user-initials">U</span>
-            </div>
-            <div class="user-details">
-                <h2 id="user-name">Пользователь</h2>
-                <p id="user-id">ID: 123456789</p>
-            </div>
-        </div>
+<div class="user-card">
+  <div class="user-info">
+    <div class="user-avatar" id="user-avatar">
+      <span id="user-initials">U</span>
     </div>
-</header>
-```
-
-### Карточки баланса
-```html
-<div class="balance-grid">
-    <!-- Звезды -->
-    <div class="balance-card">
-        <svg class="balance-icon"><!-- SVG звезды --></svg>
-        <div class="balance-label">Звезды</div>
-        <div class="balance-amount" id="stars-balance">1,000</div>
+    <div class="user-details">
+      <h1 id="user-name">Пользователь</h1>
+      <p id="user-id">ID: 123456789</p>
     </div>
-
-    <!-- Монеты -->
-    <div class="balance-card coins">
-        <svg class="balance-icon"><!-- SVG монеты --></svg>
-        <div class="balance-label">Монеты</div>
-        <div class="balance-amount" id="coins-balance">500</div>
-    </div>
+  </div>
 </div>
 ```
 
-### Главная кнопка CTA
+#### Balance Cards
 ```html
-<section class="cta-section">
-    <h1 class="cta-title">🎯 Зарабатывай монеты</h1>
-    <p class="cta-subtitle">Каждый клик приносит +1 монету</p>
-
-    <button class="main-cta" id="click-button">
-        <svg class="main-cta-icon"><!-- SVG монеты --></svg>
-    </button>
-</section>
+<div class="balance-grid">
+  <div class="balance-card" tabindex="0" role="button" aria-label="Баланс звезд">
+    <svg class="balance-icon">...</svg>
+    <div class="balance-label">Звезды</div>
+    <div class="balance-amount" id="stars-balance">0</div>
+  </div>
+  <div class="balance-card coins" tabindex="0" role="button" aria-label="Баланс монет">
+    <svg class="balance-icon">...</svg>
+    <div class="balance-label">Монеты</div>
+    <div class="balance-amount" id="coins-balance">0</div>
+  </div>
+</div>
 ```
 
-### Нижняя навигация
+#### Main CTA Button
 ```html
-<nav class="bottom-nav">
-    <div class="bottom-nav-content">
-        <a href="#" class="nav-item active" data-page="home">
-            <svg class="nav-icon"><!-- SVG дома --></svg>
-            <span class="nav-label">Главная</span>
-        </a>
-        <!-- Другие вкладки... -->
-    </div>
+<div class="cta-section">
+  <button class="main-cta" id="click-button" aria-label="Кликнуть для заработка монет">
+    <svg class="main-cta-icon">...</svg>
+  </button>
+  <div class="cta-content">
+    <h2 class="cta-title">Заработай монеты</h2>
+    <p class="cta-subtitle">Нажимай на кнопку и получай награды</p>
+  </div>
+</div>
+```
+
+#### Navigation
+```html
+<nav class="bottom-nav" role="navigation" aria-label="Основная навигация">
+  <div class="bottom-nav-content">
+    <a href="#" class="nav-item active" data-page="home" aria-label="Главная страница">
+      <svg class="nav-icon">...</svg>
+      <span class="nav-label">Главная</span>
+    </a>
+    <!-- ... другие пункты ... -->
+  </div>
 </nav>
 ```
 
-## 🔧 Интеграция с данными
+## 🔧 Настройка и интеграция
 
-### Обновление данных пользователя
+### 1. Подключение Telegram WebApp
+
 ```javascript
-// Обновление имени и ID
-function updateUserData(user) {
-    document.getElementById('user-name').textContent = user.first_name;
-    document.getElementById('user-id').textContent = `ID: ${user.id}`;
-    document.getElementById('user-initials').textContent = user.first_name.charAt(0);
-}
-
-// Обновление баланса
-function updateBalance(stars, coins) {
-    document.getElementById('stars-balance').textContent = stars.toLocaleString();
-    document.getElementById('coins-balance').textContent = coins.toLocaleString();
-}
-
-// Обновление статистики
-function updateStats(stats) {
-    document.getElementById('total-clicks').textContent = stats.totalClicks;
-    document.getElementById('today-clicks').textContent = stats.todayClicks;
-    document.getElementById('session-earnings').textContent = stats.sessionEarnings;
-
-    if (stats.lastClick) {
-        document.getElementById('last-click').textContent = stats.lastClick.toLocaleTimeString();
-    }
-}
-```
-
-### Telegram WebApp интеграция
-```javascript
-// Инициализация
-if (window.Telegram?.WebApp) {
+// Инициализация Telegram WebApp
+function initializeTelegramWebApp() {
+  if (window.Telegram?.WebApp) {
     const tg = window.Telegram.WebApp;
-
     tg.ready();
     tg.expand();
 
     // Получение данных пользователя
     if (tg.initDataUnsafe?.user) {
-        updateUserData(tg.initDataUnsafe.user);
-        loadUserData(tg.initDataUnsafe.user.id);
+      appState.updateUser(tg.initDataUnsafe.user);
+      loadUserData(tg.initDataUnsafe.user.id);
     }
-
-    // Отправка данных боту
-    function sendDataToBot(data) {
-        tg.sendData(JSON.stringify(data));
-    }
+  }
 }
 ```
 
-### API интеграция
+### 2. API интеграция
+
+#### Загрузка данных пользователя
 ```javascript
-// Загрузка баланса
 async function loadUserData(userId) {
-    try {
-        const response = await fetch(`/api/user/balance/${userId}`);
-        const data = await response.json();
+  try {
+    // Загрузка баланса
+    const balanceResponse = await fetch(`/api/user/balance/${userId}`);
+    const balanceData = await balanceResponse.json();
+    appState.updateBalances(balanceData.balance);
 
-        if (data.success) {
-            updateBalance(data.balance.stars, data.balance.coins);
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
-    }
+    // Загрузка статистики
+    const statsResponse = await fetch(`/api/user/stats/${userId}`);
+    const statsData = await statsResponse.json();
+    appState.updateStats(statsData.stats);
+  } catch (error) {
+    console.error('Error loading user data:', error);
+  }
 }
+```
 
-// Обработка клика
+#### Обработка клика
+```javascript
 async function handleClick() {
-    const response = await fetch(`/api/user/click/${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    });
+  const response = await fetch(`/api/user/click/${userId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
 
-    if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-            updateBalance(data.balance.stars, data.balance.coins);
-            showToast('+1 монета!', 'success');
-        }
-    }
+  if (response.ok) {
+    const data = await response.json();
+    appState.updateBalances(data.balance);
+    appState.showToast('+1 монета!', 'success');
+  }
 }
 ```
 
-## 🎯 Состояния компонентов
+### 3. Темизация
 
-### Loading состояния
-```html
-<!-- Активация loading -->
-<div class="loading">Загрузка...</div>
+#### Переключение темы
+```javascript
+// Автоматическое определение темы
+if (window.Telegram?.WebApp?.colorScheme) {
+  document.documentElement.setAttribute('data-theme', tg.colorScheme);
+}
 
-<!-- В JavaScript -->
-element.classList.add('loading');
+// Ручное переключение
+document.documentElement.setAttribute('data-theme', 'light'); // или 'dark'
 ```
 
-### Empty состояния
-```html
-<div class="empty-state">
-    <svg class="empty-state-icon"><!-- Иконка --></svg>
-    <h3 class="empty-state-title">Нет данных</h3>
-    <p class="empty-state-text">Начните использовать приложение</p>
-</div>
-```
+### 4. Кастомизация цветов
 
-### Error состояния
-```html
-<div class="error">
-    <p>❌ Ошибка загрузки данных</p>
-</div>
-```
-
-## 🎨 Кастомизация
-
-### Изменение цветов
 ```css
 :root {
-    /* Изменить основной цвет */
-    --color-accent-primary: #8b5cf6; /* Фиолетовый */
+  /* Измените эти переменные для кастомизации */
+  --color-accent-primary: #your-color;
+  --color-accent-secondary: #your-color;
+  --color-bg-primary: #your-color;
 
-    /* Изменить фоновый градиент */
-    --color-bg-primary: #1a1a2e;
-    --color-bg-secondary: #16213e;
-}
-```
-
-### Добавление новой темы
-```css
-[data-theme="blue"] {
-    --color-accent-primary: #06b6d4;
-    --color-accent-secondary: #3b82f6;
-}
-```
-
-### Изменение типографики
-```css
-/* Изменить основной шрифт */
-body {
-    font-family: 'Roboto', -apple-system, sans-serif;
+  /* Или используйте готовые пресеты */
+  --color-accent-primary: #10b981; /* Зеленый */
+  --color-accent-primary: #8b5cf6; /* Фиолетовый */
 }
 ```
 
 ## 📱 Адаптивность
 
-### Мобильные устройства (< 480px)
+### Breakpoints
 ```css
-@media (max-width: 480px) {
-    .container {
-        padding: 0 16px;
-    }
+/* Mobile-first подход */
+.container { max-width: 480px; }
 
-    .main-cta {
-        width: 160px;
-        height: 160px;
-    }
+/* Tablet */
+@media (min-width: 768px) {
+  .container { max-width: 640px; }
+  .earn-grid { grid-template-columns: 1fr 1fr; }
+}
 
-    .user-avatar {
-        width: 56px;
-        height: 56px;
-    }
+/* Desktop */
+@media (min-width: 1024px) {
+  .container { max-width: 768px; }
 }
 ```
 
-### Планшеты (768px+)
+### Safe Area (для iPhone X+)
 ```css
-@media (min-width: 768px) {
-    .balance-grid {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
+.container {
+  padding-top: calc(var(--spacing-4) + env(safe-area-inset-top, 0));
+}
 
-    .main-cta {
-        width: 200px;
-        height: 200px;
-    }
+.bottom-nav {
+  padding-bottom: calc(var(--spacing-3) + env(safe-area-inset-bottom, 0));
 }
 ```
 
@@ -320,123 +254,168 @@ body {
 
 ### ARIA атрибуты
 ```html
-<!-- Кнопки -->
+<!-- Правильные метки для кнопок -->
 <button aria-label="Кликнуть для заработка монет">...</button>
 
 <!-- Навигация -->
-<nav role="navigation" aria-label="Основная навигация">
-    <a href="#" aria-label="Главная страница">...</a>
-</nav>
+<nav role="navigation" aria-label="Основная навигация">...</nav>
 
-<!-- Live regions -->
-<div aria-live="polite" aria-atomic="true">...</div>
+<!-- Модальные окна -->
+<div role="dialog" aria-modal="true" aria-labelledby="modal-title">...</div>
 ```
 
-### Focus management
+### Keyboard Navigation
 ```css
+/* Focus visible для клавиатурной навигации */
 .nav-item:focus-visible,
-.balance-card:focus-visible {
-    outline: 2px solid var(--color-accent-primary);
-    outline-offset: 2px;
+.main-cta:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
 }
 ```
 
-## ⚡ Производительность
+### Touch Targets
+```css
+/* Минимальный размер touch targets */
+.nav-item,
+.main-cta,
+.balance-card {
+  min-height: 48px;
+  min-width: 48px;
+}
+```
 
-### Оптимизации
-1. **CSS Containment**
-   ```css
-   .container {
-       contain: layout style paint;
-   }
+## 🎭 Состояния компонентов
+
+### Loading
+```html
+<div class="balance-amount loading">
+  <span class="loading">Загрузка...</span>
+</div>
+```
+
+### Error
+```html
+<div class="error-state">
+  <div class="error">
+    <p>❌ Ошибка загрузки данных. Попробуйте позже.</p>
+  </div>
+</div>
+```
+
+### Empty
+```html
+<div class="empty-state">
+  <svg class="empty-state-icon">...</svg>
+  <h3 class="empty-state-title">Нет доступных заданий</h3>
+  <p class="empty-state-text">Проверь позже, новые задания появятся скоро</p>
+</div>
+```
+
+## 🚀 Деплоймент
+
+### Render
+1. Создайте новый сервис на Render
+2. Подключите GitHub репозиторий
+3. Настройте переменные окружения:
+   ```
+   NODE_ENV=production
+   TELEGRAM_BOT_TOKEN=your_bot_token
+   DATABASE_URL=your_database_url
    ```
 
-2. **Will-change для анимаций**
-   ```css
-   .main-cta {
-       will-change: transform;
-   }
-   ```
+### Оптимизация для продакшена
+```javascript
+// Service Worker для кеширования
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+```
 
-3. **Font preloading**
-   ```html
-   <link rel="preload" href="font/inter.woff2" as="font" type="font/woff2" crossorigin>
-   ```
+## 🔧 Разработка
 
-## 🔧 Troubleshooting
+### Локальная разработка
+```bash
+# Установка зависимостей
+npm install
 
-### Проблемы с отображением
+# Запуск dev сервера
+npm run dev
 
-1. **Шрифты не загружаются**
-   ```html
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-   ```
+# Сборка для продакшена
+npm run build
+```
 
-2. **Иконки не отображаются**
-   ```css
-   .nav-icon {
-       fill: currentColor;
-       stroke: currentColor;
-   }
-   ```
+### Структура файлов
+```
+src/
+├── components/     # Компоненты
+├── pages/         # Страницы
+├── styles/        # Стили
+└── utils/         # Утилиты
+```
 
-3. **Анимации не работают**
-   ```css
-   @media (prefers-reduced-motion: reduce) {
-       *, *::before, *::after {
-           animation-duration: 0.01ms !important;
-       }
-   }
-   ```
+## 📊 Производительность
 
-## 📊 Метрики производительности
-
+### Метрики
 - **First Contentful Paint**: < 1.5s
 - **Largest Contentful Paint**: < 2.5s
 - **Cumulative Layout Shift**: < 0.1
-- **Bundle size**: < 50KB (без изображений)
+- **Total Blocking Time**: < 200ms
 
-## 🎯 Возможные улучшения
+### Оптимизации
+- CSS-in-JS для critical CSS
+- WebP изображения с fallbacks
+- Font loading optimization
+- Service Worker для кеширования
 
-### Для будущих версий
-1. **PWA функционал** - service worker, manifest
-2. **Оффлайн режим** - cache API
-3. **Push уведомления** - через Telegram
-4. **Дополнительные темы** - light, blue, purple
-5. **Расширенная анимационная система**
+## 🐛 Troubleshooting
 
-### Интеграция с Telegram
-```javascript
-// Расширенная интеграция
-if (window.Telegram?.WebApp) {
-    const tg = window.Telegram.WebApp;
+### Распространенные проблемы
 
-    // Темная тема Telegram
-    if (tg.colorScheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    }
+#### 1. Шрифты не загружаются
+```css
+/* Fallback шрифты */
+font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+```
 
-    // Main button
-    tg.MainButton.setText('Отправить данные');
-    tg.MainButton.show();
-    tg.MainButton.onClick(() => {
-        // Отправка данных
-    });
+#### 2. Safe Area не работает
+```css
+/* Проверьте поддержку */
+@supports (padding: max(0px)) {
+  .container {
+    padding-top: max(var(--spacing-4), env(safe-area-inset-top));
+  }
+}
+```
 
-    // Back button
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        // Возврат назад
-    });
+#### 3. Анимации дергаются
+```css
+/* Используйте transform и opacity */
+.element {
+  transform: translateY(0);
+  transition: transform 0.3s ease;
 }
 ```
 
 ## 📝 Лицензия
 
-Magnum Stars - Premium Fintech WebApp
-© 2024 Magnum Stars Team
+MIT License - свободно используйте в коммерческих и личных проектах.
+
+## 🤝 Вклад в развитие
+
+1. Fork репозиторий
+2. Создайте feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit изменения (`git commit -m 'Add amazing feature'`)
+4. Push в branch (`git push origin feature/amazing-feature`)
+5. Создайте Pull Request
+
+## 📞 Поддержка
+
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Telegram**: [@your_support_bot](https://t.me/your_support_bot)
+- **Email**: support@magnumstars.app
 
 ---
 
-**Создано с ❤️ для идеального пользовательского опыта**
+*Создано с ❤️ для Telegram Web Apps*

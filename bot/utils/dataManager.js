@@ -365,24 +365,33 @@ class DataManager {
 
                 // Создаем объект для атомарного обновления
                 const updateObj = {
-                    $inc: {},
                     $set: { lastActivity: new Date() }
                 };
 
-                // Атомарно увеличиваем баланс
-                updateObj.$inc[`balance.${currency}`] = amount;
-
-                // Атомарно увеличиваем totalEarned только для положительных сумм
+                // Атомарно увеличиваем баланс и totalEarned
                 if (amount > 0) {
-                    updateObj.$inc[`balance.totalEarned.${currency}`] = amount;
+                    // Для положительных сумм обновляем оба поля
+                    updateObj.$inc = {
+                        [`balance.${currency}`]: amount,
+                        [`balance.totalEarned.${currency}`]: amount
+                    };
+                } else {
+                    // Для отрицательных сумм обновляем только баланс
+                    updateObj.$inc = {
+                        [`balance.${currency}`]: amount
+                    };
                 }
 
                 // Устанавливаем значения по умолчанию для новых пользователей
                 updateObj.$setOnInsert = {
-                    'balance.stars': 0,
-                    'balance.coins': 0,
-                    'balance.totalEarned.stars': 0,
-                    'balance.totalEarned.coins': 0
+                    balance: {
+                        stars: 0,
+                        coins: 0,
+                        totalEarned: {
+                            stars: 0,
+                            coins: 0
+                        }
+                    }
                 };
 
                 logger.info('🔄 Выполняем атомарное обновление в транзакции', {
