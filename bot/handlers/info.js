@@ -105,7 +105,7 @@ async function handleKeyActivation(ctx, text) {
             const { userStates } = require('./callback');
             userStates.delete(userId);
             
-            await ctx.reply(
+            const successMessage = await ctx.reply(
                 `✅ **Ключ успешно активирован!**\n\n` +
                 `🎁 Получено:\n` +
                 `${result.rewardText.join('\n')}\n\n` +
@@ -114,6 +114,19 @@ async function handleKeyActivation(ctx, text) {
                     [Markup.button.callback('🏠 Главное меню', 'main_menu')]
                 ]).reply_markup
             );
+
+            // Удаляем уведомление через 5 секунд
+            setTimeout(async () => {
+                try {
+                    await ctx.telegram.deleteMessage(ctx.chat.id, successMessage.message_id);
+                } catch (error) {
+                    logger.warn('Не удалось удалить сообщение об активации ключа', { 
+                        error: error.message, 
+                        userId, 
+                        messageId: successMessage.message_id 
+                    });
+                }
+            }, 5000);
         } else {
             await ctx.reply(
                 `❌ **Ошибка активации ключа**\n\n` +

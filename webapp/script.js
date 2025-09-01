@@ -1,6 +1,13 @@
 // MagnumStarBot WebApp JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('MagnumStarBot WebApp загружен');
+    console.log('🔥 MagnumStarBot WebApp загружен');
+    console.log('🔥 DOM готов, проверяем элементы...');
+    
+    // Проверяем наличие кнопок навигации
+    const earnBtn = document.getElementById('earn-btn');
+    const tasksBtn = document.getElementById('tasks-btn');
+    console.log('🔥 earn-btn найден:', !!earnBtn);
+    console.log('🔥 tasks-btn найден:', !!tasksBtn);
 
     // Упрощенная логика получения userId
     let userId = getUserId();
@@ -58,11 +65,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Инициализация приложения
     function initializeApp(userId) {
-                // Сохраняем userId в localStorage
+        // Сохраняем userId в localStorage
         localStorage.setItem('magnumBot_userId', userId.toString());
 
-    // Загружаем данные пользователя
-    loadUserData(userId);
+        // Загружаем данные пользователя
+        loadUserData(userId);
+        
+        // Показываем страницу "Заработать" по умолчанию
+        showEarnPage();
 
     // Анимация появления панели баланса
         animateBalancePanel();
@@ -435,3 +445,56 @@ document.addEventListener('DOMContentLoaded', function() {
         header.style.textShadow = `2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px hsl(${hue}, 70%, 50%)`;
     }, 50);
 });
+
+// Функции навигации (глобальные)
+function showEarnPage() {
+    console.log('🔥 showEarnPage вызвана!');
+    console.log('Показываем страницу "Заработать"');
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('earn-btn').classList.add('active');
+    
+    // Загружаем контент страницы "Заработать"
+    const mainContent = document.getElementById('main-content');
+    mainContent.innerHTML = `
+        <div class="page-content active">
+            <div class="page-header">
+                <h2 class="page-title">⭐ Заработать</h2>
+                <p class="page-subtitle">Зарабатывайте Stars и Magnum Coins различными способами</p>
+            </div>
+            
+            <div class="coming-soon">
+                <div class="coming-soon-icon">🚀</div>
+                <h3>Скоро будет доступно</h3>
+                <p>Функции заработка будут добавлены в ближайшее время</p>
+            </div>
+        </div>
+    `;
+}
+
+function showTasksPage() {
+    console.log('🔥 showTasksPage вызвана!');
+    console.log('Показываем страницу "Задания"');
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('tasks-btn').classList.add('active');
+    
+    // Загружаем контент страницы "Задания"
+    const mainContent = document.getElementById('main-content');
+    mainContent.innerHTML = `
+        <div class="page-content active">
+            <div class="page-header">
+                <h2 class="page-title">📋 Задания</h2>
+                <p class="page-subtitle">Выполняйте задания для получения дополнительных наград</p>
+            </div>
+            
+            <div class="coming-soon">
+                <div class="coming-soon-icon">🎯</div>
+                <h3>Скоро будет доступно</h3>
+                <p>Система заданий будет добавлена в ближайшее время</p>
+            </div>
+        </div>
+    `;
+}

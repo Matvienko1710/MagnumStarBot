@@ -31,11 +31,27 @@
     <div class="container">
         <header class="header">
             <h1>MagnumStarBot</h1>
-
         </header>
 
-
+        <!-- Основной контент -->
+        <div id="main-content" class="main-content">
+            <!-- Контент будет загружаться динамически -->
+        </div>
     </div>
+
+    <!-- Закрепленные кнопки в нижней части -->
+    <nav class="bottom-navbar">
+        <div class="bottom-nav-container">
+            <button class="bottom-nav-btn active" id="earn-btn" onclick="showEarnPage()">
+                <div class="nav-icon">⭐</div>
+                <div class="nav-label">Заработать</div>
+            </button>
+            <button class="bottom-nav-btn" id="tasks-btn" onclick="showTasksPage()">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">Задания</div>
+            </button>
+        </div>
+    </nav>
 
     <script src="script.js"></script>
 </body>
