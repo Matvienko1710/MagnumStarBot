@@ -58,11 +58,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Инициализация приложения
     function initializeApp(userId) {
-        // Сохраняем userId в localStorage
+                // Сохраняем userId в localStorage
         localStorage.setItem('magnumBot_userId', userId.toString());
-        
-        // Добавляем кнопку сброса данных
-    addResetButton();
 
     // Загружаем данные пользователя
     loadUserData(userId);
@@ -340,52 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    // Функция добавления кнопки сброса данных
-    function addResetButton() {
-        const existingResetBtn = document.getElementById('reset-user-id-btn');
-        if (existingResetBtn) {
-            existingResetBtn.remove();
-        }
 
-        const resetBtn = document.createElement('button');
-        resetBtn.id = 'reset-user-id-btn';
-        resetBtn.textContent = '🔄 Сбросить данные';
-        resetBtn.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 8px 12px;
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 12px;
-            z-index: 1000;
-            transition: all 0.3s ease;
-        `;
-
-        resetBtn.addEventListener('mouseenter', function() {
-            this.style.background = 'rgba(255, 0, 0, 1)';
-            this.style.transform = 'scale(1.05)';
-        });
-
-        resetBtn.addEventListener('mouseleave', function() {
-            this.style.background = 'rgba(255, 0, 0, 0.8)';
-            this.style.transform = 'scale(1)';
-        });
-
-        resetBtn.addEventListener('click', function() {
-            const confirmMessage = 'Вы уверены, что хотите сбросить данные и ввести новый User ID?';
-
-            if (confirm(confirmMessage)) {
-                localStorage.removeItem('magnumBot_userId');
-                location.reload();
-            }
-        });
-
-        document.body.appendChild(resetBtn);
-    }
 
 
 
