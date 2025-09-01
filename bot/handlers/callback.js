@@ -2854,6 +2854,9 @@ async function handleAttachPaymentScreenshot(ctx, action) {
             return;
         }
         
+        // Импортируем dataManager
+        const { dataManager } = require('../utils/dataManager');
+        
         // Получаем информацию о заявке
         const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
         
@@ -2953,6 +2956,9 @@ async function handleCancelScreenshot(ctx, action) {
             return;
         }
         
+        // Импортируем dataManager
+        const { dataManager } = require('../utils/dataManager');
+        
         // Получаем информацию о заявке
         const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
         
@@ -3039,6 +3045,9 @@ async function handleCompleteWithdrawal(ctx, action) {
             return;
         }
         
+        // Импортируем dataManager
+        const { dataManager } = require('../utils/dataManager');
+        
         // Получаем информацию о заявке
         const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
         
@@ -3095,8 +3104,10 @@ async function handleSupport(ctx) {
     logger.info('Обработка раздела поддержки', { userId });
     
     try {
-        // Получаем активные тикеты пользователя
+        // Импортируем dataManager
         const { dataManager } = require('../utils/dataManager');
+        
+        // Получаем активные тикеты пользователя
         const activeTickets = await dataManager.db.collection('support_tickets')
             .find({ userId: Number(userId), status: { $in: ['open', 'in_progress'] } })
             .sort({ createdAt: -1 })
@@ -3191,7 +3202,9 @@ async function handleMyTickets(ctx) {
     logger.info('Просмотр тикетов пользователя', { userId });
     
     try {
+        // Импортируем dataManager
         const { dataManager } = require('../utils/dataManager');
+        
         const tickets = await dataManager.db.collection('support_tickets')
             .find({ userId: Number(userId) })
             .sort({ createdAt: -1 })
