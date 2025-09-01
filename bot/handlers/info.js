@@ -529,6 +529,9 @@ async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
             [
                 Markup.button.callback('✅ Одобрить', `approve_withdrawal_${withdrawalRequest.id}`),
                 Markup.button.callback('❌ Отклонить', `reject_withdrawal_${withdrawalRequest.id}`)
+            ],
+            [
+                Markup.button.callback('📸 Прикрепить скрин выплаты', `attach_payment_screenshot_${withdrawalRequest.id}`)
             ]
         ]);
         

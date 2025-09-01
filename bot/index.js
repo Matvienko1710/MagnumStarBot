@@ -88,6 +88,97 @@ function initializeBot() {
         // Добавляем middleware для автоматического удаления сообщений пользователя
         bot.use(autoDeleteUserMessageMiddleware());
 
+        // Обработка скриншота выплаты от админа
+        const handlePaymentScreenshot = async (ctx, requestId, withdrawalRequest) => {
+            try {
+                const userId = ctx.from.id;
+                const messageType = ctx.message.photo ? 'photo' : ctx.message.document ? 'document' : 'text';
+                
+                logger.info('📸 Обработка скриншота выплаты', { 
+                    userId, 
+                    requestId, 
+                    messageType,
+                    hasPhoto: !!ctx.message.photo,
+                    hasDocument: !!ctx.message.document
+                });
+                
+                if (messageType === 'photo') {
+                    // Получаем фото с максимальным размером
+                    const photo = ctx.message.photo[ctx.message.photo.length - 1];
+                    const fileId = photo.file_id;
+                    
+                    // Сохраняем информацию о скриншоте в базе данных
+                    const { dataManager } = require('./utils/dataManager');
+                    await dataManager.db.collection('withdrawals').updateOne(
+                        { id: requestId },
+                        { 
+                            $set: { 
+                                paymentScreenshot: {
+                                    fileId: fileId,
+                                    uploadedAt: new Date(),
+                                    uploadedBy: userId
+                                },
+                                status: 'payment_confirmed'
+                            }
+                        }
+                    );
+                    
+                    // Обновляем сообщение в канале
+                    const updatedMessage = `📋 **Заявка на вывод - ВЫПЛАТА ПОДТВЕРЖДЕНА** ✅\n\n` +
+                        `👤 **Пользователь:**\n` +
+                        `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
+                        `├ 👤 Имя: ${withdrawalRequest.firstName}\n` +
+                        `└ 🏷️ Username: ${withdrawalRequest.username}\n\n` +
+                        `💰 **Детали заявки:**\n` +
+                        `├ 🆔 ID заявки: \`${withdrawalRequest.id}\`\n` +
+                        `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+                        `├ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n` +
+                        `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+                        `📸 **Скриншот выплаты прикреплен:**\n` +
+                        `├ ✅ Статус: Выплата подтверждена\n` +
+                        `├ 📅 Дата: ${new Date().toLocaleDateString('ru-RU')}\n` +
+                        `└ 👨‍💼 Админ: ${ctx.from.first_name || 'Не указано'}\n\n` +
+                        `💡 **Заявка полностью обработана**`;
+                    
+                    const updatedKeyboard = Markup.inlineKeyboard([
+                        [Markup.button.callback('✅ Заявка завершена', `complete_withdrawal_${requestId}`)]
+                    ]);
+                    
+                    await ctx.reply(updatedMessage, {
+                        parse_mode: 'Markdown',
+                        reply_markup: updatedKeyboard.reply_markup
+                    });
+                    
+                    // Уведомляем пользователя
+                    await ctx.telegram.sendMessage(withdrawalRequest.userId, 
+                        `🎉 **Ваша выплата подтверждена!**\n\n` +
+                        `📋 **Детали заявки:**\n` +
+                        `├ 🆔 ID: \`${withdrawalRequest.id}\`\n` +
+                        `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+                        `└ ✅ Статус: Выплата подтверждена\n\n` +
+                        `📸 **Скриншот выплаты прикреплен администратором**\n` +
+                        `⏰ **Дата подтверждения:** ${new Date().toLocaleDateString('ru-RU')}\n\n` +
+                        `💡 **Выплата успешно завершена!**`
+                    );
+                    
+                    logger.info('Скриншот выплаты успешно обработан', { userId, requestId, fileId });
+                    
+                } else if (messageType === 'document') {
+                    // Обработка документа
+                    const document = ctx.message.document;
+                    await ctx.reply('📄 Документ получен, но для скриншота лучше использовать фото. Попробуйте отправить скриншот как изображение.');
+                    
+                } else {
+                    // Текстовое сообщение
+                    await ctx.reply('📝 Для подтверждения выплаты отправьте скриншот как изображение, а не текст.');
+                }
+                
+            } catch (error) {
+                logger.error('Ошибка обработки скриншота выплаты', error, { userId: ctx.from.id, requestId });
+                await ctx.reply('❌ Ошибка при обработке скриншота. Попробуйте еще раз.');
+            }
+        };
+
         // Специальный обработчик для канала выплат (без ограничения privateChatOnly)
         const withdrawalChannelHandler = async (ctx) => {
             try {
@@ -95,13 +186,37 @@ function initializeBot() {
                 if (ctx.chat.username === 'magnumwithdraw') {
                     const userId = ctx.from.id;
                     const text = ctx.message.text;
+                    const hasPhoto = !!ctx.message.photo;
+                    const hasDocument = !!ctx.message.document;
 
-                    logger.info('Сообщение в канале выплат', { userId, chatId: ctx.chat.id, text });
+                    logger.info('Сообщение в канале выплат', { 
+                        userId, 
+                        chatId: ctx.chat.id, 
+                        text,
+                        hasPhoto,
+                        hasDocument,
+                        messageType: hasPhoto ? 'photo' : hasDocument ? 'document' : 'text'
+                    });
 
                     // Проверяем, является ли пользователь админом
                     const { isAdmin } = require('./utils/admin');
                     if (!isAdmin(userId)) {
                         logger.warn('Неавторизованная попытка в канале выплат', { userId });
+                        return;
+                    }
+
+                    // Проверяем, находится ли админ в состоянии ожидания скриншота
+                    const { userStates } = require('./handlers/callback');
+                    const userState = userStates.get(userId);
+                    
+                    if (userState && userState.state === 'waiting_for_payment_screenshot') {
+                        logger.info('Админ отправляет скриншот выплаты', { userId, requestId: userState.data.requestId });
+                        
+                        // Обрабатываем скриншот
+                        await handlePaymentScreenshot(ctx, userState.data.requestId, userState.data.withdrawalRequest);
+                        
+                        // Очищаем состояние
+                        userStates.delete(userId);
                         return;
                     }
 
@@ -176,8 +291,10 @@ function initializeBot() {
             }
         };
 
-        // Регистрируем обработчик текстовых сообщений с поддержкой канала выплат
+        // Регистрируем обработчики сообщений с поддержкой канала выплат
         bot.on('text', safeAsync(withdrawalChannelHandler));
+        bot.on('photo', safeAsync(withdrawalChannelHandler));
+        bot.on('document', safeAsync(withdrawalChannelHandler));
 
         // Обработчик callback запросов для всех типов чатов
         logger.info('Обработчик callback зарегистрирован');

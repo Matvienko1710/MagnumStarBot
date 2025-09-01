@@ -228,6 +228,24 @@ async function callbackHandler(ctx) {
                     return;
                 }
                 
+                if (callbackData.startsWith('attach_payment_screenshot_')) {
+                    logger.info('📸 Вызываем handleAttachPaymentScreenshot', { action: callbackData, userId });
+                    await handleAttachPaymentScreenshot(ctx, callbackData);
+                    return;
+                }
+                
+                if (callbackData.startsWith('cancel_screenshot_')) {
+                    logger.info('❌ Вызываем handleCancelScreenshot', { action: callbackData, userId });
+                    await handleCancelScreenshot(ctx, callbackData);
+                    return;
+                }
+                
+                if (callbackData.startsWith('complete_withdrawal_')) {
+                    logger.info('✅ Вызываем handleCompleteWithdrawal', { action: callbackData, userId });
+                    await handleCompleteWithdrawal(ctx, callbackData);
+                    return;
+                }
+                
                 // Если команда не найдена
                 logger.warn('Неизвестная команда', { userId, callbackData });
                 await ctx.answerCbQuery('❌ Неизвестная команда', true);
@@ -2741,6 +2759,246 @@ async function handleMyReferralCode(ctx) {
     }
 }
 
+// Обработка прикрепления скриншота выплаты
+async function handleAttachPaymentScreenshot(ctx, action) {
+    const userId = ctx.from.id;
+    const requestId = action.replace('attach_payment_screenshot_', '');
+    const messageId = ctx.callbackQuery?.message?.message_id;
+    const chatId = ctx.chat?.id;
+
+    logger.info('📸 НАЧАЛО ОБРАБОТКИ ПРИКРЕПЛЕНИЯ СКРИНШОТА ВЫПЛАТЫ', {
+        userId,
+        requestId,
+        messageId,
+        chatId,
+        chatType: ctx.chat?.type,
+        chatUsername: ctx.chat?.username,
+        action: action,
+        callbackData: ctx.callbackQuery?.data,
+        timestamp: new Date().toISOString()
+    });
+
+    try {
+        // Отвечаем на callback-запрос сразу, чтобы избежать таймаута
+        await ctx.answerCbQuery('📸 Готовим форму для скриншота...', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            await ctx.answerCbQuery('❌ У вас нет прав для прикрепления скриншотов выплат', true);
+            return;
+        }
+        
+        // Получаем информацию о заявке
+        const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
+        
+        if (!withdrawalRequest) {
+            await ctx.answerCbQuery('❌ Заявка не найдена', true);
+            return;
+        }
+        
+        // Показываем инструкцию для прикрепления скриншота
+        const screenshotMessage = `📸 **Прикрепление скриншота выплаты**\n\n` +
+            `📋 **Детали заявки:**\n` +
+            `├ 🆔 ID: \`${withdrawalRequest.id}\`\n` +
+            `├ 👤 Пользователь: ${withdrawalRequest.firstName}\n` +
+            `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+            `└ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n\n` +
+            `📸 **Инструкция:**\n` +
+            `1️⃣ Сделайте скриншот подтверждения выплаты\n` +
+            `2️⃣ Отправьте его в этот чат\n` +
+            `3️⃣ Скриншот будет прикреплен к заявке\n\n` +
+            `💡 **Важно:** Отправляйте только скриншоты подтверждений выплат!`;
+        
+        const screenshotKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('❌ Отмена', `cancel_screenshot_${requestId}`)]
+        ]);
+        
+        // Обновляем сообщение в канале
+        try {
+            await ctx.editMessageText(screenshotMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: screenshotKeyboard.reply_markup
+            });
+            
+            // Устанавливаем состояние ожидания скриншота для админа
+            const { userStates } = require('./callback');
+            userStates.set(userId, {
+                state: 'waiting_for_payment_screenshot',
+                currentStep: 'waiting_screenshot',
+                data: {
+                    requestId: requestId,
+                    withdrawalRequest: withdrawalRequest
+                },
+                timestamp: Date.now()
+            });
+            
+            logger.info('Админ переведен в состояние ожидания скриншота выплаты', { 
+                userId, 
+                requestId, 
+                state: 'waiting_for_payment_screenshot' 
+            });
+            
+        } catch (editError) {
+            logger.error('Ошибка обновления сообщения в канале (скриншот)', editError, {
+                userId,
+                requestId,
+                messageId,
+                chatId
+            });
+            
+            // Отправляем новое сообщение если не удалось обновить
+            await ctx.reply(screenshotMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: screenshotKeyboard.reply_markup
+            });
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка обработки прикрепления скриншота выплаты', error, { userId, requestId });
+        await ctx.answerCbQuery('❌ Ошибка при подготовке формы для скриншота');
+    }
+}
+
+// Обработка отмены прикрепления скриншота
+async function handleCancelScreenshot(ctx, action) {
+    const userId = ctx.from.id;
+    const requestId = action.replace('cancel_screenshot_', '');
+
+    logger.info('❌ ОТМЕНА ПРИКРЕПЛЕНИЯ СКРИНШОТА ВЫПЛАТЫ', {
+        userId,
+        requestId,
+        timestamp: new Date().toISOString()
+    });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery('❌ Прикрепление скриншота отменено', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Получаем информацию о заявке
+        const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
+        
+        if (!withdrawalRequest) {
+            return;
+        }
+        
+        // Возвращаем исходное сообщение с заявкой
+        const originalMessage = `📋 **Заявка на вывод**\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
+            `├ 👤 Имя: ${withdrawalRequest.firstName}\n` +
+            `└ 🏷️ Username: ${withdrawalRequest.username}\n\n` +
+            `💰 **Детали заявки:**\n` +
+            `├ 🆔 ID заявки: №${withdrawalRequest.id}\n` +
+            `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+            `├ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `🎯 **Действия:**`;
+        
+        const originalKeyboard = Markup.inlineKeyboard([
+            [
+                Markup.button.callback('✅ Одобрить', `approve_withdrawal_${withdrawalRequest.id}`),
+                Markup.button.callback('❌ Отклонить', `reject_withdrawal_${withdrawalRequest.id}`)
+            ],
+            [
+                Markup.button.callback('📸 Прикрепить скрин выплаты', `attach_payment_screenshot_${withdrawalRequest.id}`)
+            ]
+        ]);
+        
+        // Обновляем сообщение в канале
+        try {
+            await ctx.editMessageText(originalMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: originalKeyboard.reply_markup
+            });
+        } catch (editError) {
+            logger.error('Ошибка восстановления исходного сообщения', editError, { userId, requestId });
+        }
+        
+        // Очищаем состояние админа
+        const { userStates } = require('./callback');
+        userStates.delete(userId);
+        
+        logger.info('Состояние админа очищено, возвращено исходное сообщение', { userId, requestId });
+        
+    } catch (error) {
+        logger.error('Ошибка отмены прикрепления скриншота', error, { userId, requestId });
+    }
+}
+
+// Обработка завершения заявки на вывод
+async function handleCompleteWithdrawal(ctx, action) {
+    const userId = ctx.from.id;
+    const requestId = action.replace('complete_withdrawal_', '');
+
+    logger.info('✅ ЗАВЕРШЕНИЕ ЗАЯВКИ НА ВЫВОД', {
+        userId,
+        requestId,
+        timestamp: new Date().toISOString()
+    });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery('✅ Заявка завершена!', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Получаем информацию о заявке
+        const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
+        
+        if (!withdrawalRequest) {
+            return;
+        }
+        
+        // Обновляем статус заявки на завершенную
+        await dataManager.db.collection('withdrawals').updateOne(
+            { id: requestId },
+            { 
+                $set: { 
+                    status: 'completed',
+                    completedAt: new Date(),
+                    completedBy: userId
+                }
+            }
+        );
+        
+        // Обновляем сообщение в канале
+        const finalMessage = `📋 **Заявка на вывод ЗАВЕРШЕНА** 🎉\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
+            `├ 👤 Имя: ${withdrawalRequest.firstName}\n` +
+            `└ 🏷️ Username: ${withdrawalRequest.username}\n\n` +
+            `💰 **Детали заявки:**\n` +
+            `├ 🆔 ID заявки: \`${withdrawalRequest.id}\`\n` +
+            `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+            `├ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `📸 **Скриншот выплаты:** ✅ Прикреплен\n` +
+            `✅ **Статус:** Заявка завершена\n` +
+            `⏰ **Завершено:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n` +
+            `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
+            `🎉 **Выплата успешно завершена!**`;
+        
+        try {
+            await ctx.editMessageText(finalMessage, { parse_mode: 'Markdown' });
+        } catch (editError) {
+            logger.error('Ошибка обновления финального сообщения', editError, { userId, requestId });
+        }
+        
+        logger.info('Заявка на вывод успешно завершена', { userId, requestId });
+        
+    } catch (error) {
+        logger.error('Ошибка завершения заявки на вывод', error, { userId, requestId });
+    }
+}
+
 module.exports = {
     callbackHandler,
     updateLastBotMessage,
@@ -2756,5 +3014,8 @@ module.exports = {
     handleReferrals,
     handleApproveWithdrawal,
     handleRejectWithdrawal,
+    handleAttachPaymentScreenshot,
+    handleCancelScreenshot,
+    handleCompleteWithdrawal,
     userStates
 };
