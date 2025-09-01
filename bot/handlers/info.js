@@ -48,6 +48,18 @@ async function infoHandler(ctx) {
             return;
         }
         
+        if (userState && userState.state === 'creating_support_ticket') {
+            // Обработка создания тикета поддержки
+            await handleSupportTicketCreation(ctx, text);
+            return;
+        }
+        
+        // Обработка скриншотов от пользователей для тикетов поддержки
+        if (ctx.message.photo || ctx.message.document) {
+            await handleSupportAttachment(ctx);
+            return;
+        }
+        
         // Если нет специального состояния, отправляем сообщение о помощи
         await ctx.reply(
             '💡 Используйте кнопки меню для навигации по боту.\n\n' +
@@ -552,6 +564,267 @@ async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
             userId: withdrawalRequest.userId, 
             requestId: withdrawalRequest.id 
         });
+    }
+}
+
+// Обработка создания тикета поддержки
+async function handleSupportTicketCreation(ctx, text) {
+    const userId = ctx.from.id;
+    
+    logger.info('Создание тикета поддержки', { userId, textLength: text.length });
+    
+    try {
+        if (text.trim().length < 10) {
+            await ctx.reply(
+                '❌ **Описание слишком короткое!**\n\n' +
+                '📝 Описание должно содержать минимум 10 символов\n' +
+                '💡 Опишите проблему подробно, чтобы мы могли помочь\n\n' +
+                'Попробуйте еще раз или нажмите "Отмена"'
+            );
+            return;
+        }
+        
+        // Создаем тикет в базе данных
+        const { dataManager } = require('../utils/dataManager');
+        const ticketData = {
+            id: Date.now().toString(), // Простой ID на основе времени
+            userId: Number(userId),
+            firstName: ctx.from.first_name || 'Не указано',
+            username: ctx.from.username || null,
+            description: text.trim(),
+            status: 'open',
+            priority: 'normal',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            attachments: [],
+            messages: [{
+                type: 'user',
+                content: text.trim(),
+                timestamp: new Date(),
+                userId: Number(userId)
+            }]
+        };
+        
+        // Сохраняем тикет в базе данных
+        await dataManager.db.collection('support_tickets').insertOne(ticketData);
+        
+        // Отправляем тикет в канал поддержки
+        await sendSupportTicketToChannel(ctx, ticketData);
+        
+        // Показываем сообщение об успехе
+        const successMessage = `✅ **Тикет поддержки создан!**\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID: \`${ticketData.id}\`\n` +
+            `├ 📝 Описание: ${text.trim().substring(0, 100)}${text.length > 100 ? '...' : ''}\n` +
+            `├ 📅 Дата: ${new Date().toLocaleDateString('ru-RU')}\n` +
+            `└ 📊 Статус: 🆕 Открыт\n\n` +
+            `⏰ **Время ответа:** 24 часа\n` +
+            `💡 **Что дальше:** Ожидайте ответа от администратора`;
+        
+        const successKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📋 Мои тикеты', 'my_tickets')],
+            [Markup.button.callback('📝 Создать еще тикет', 'create_ticket')],
+            [Markup.button.callback('🆘 Поддержка', 'support')]
+        ]);
+        
+        await ctx.reply(successMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: successKeyboard.reply_markup
+        });
+        
+        // Очищаем состояние
+        const { userStates } = require('./callback');
+        userStates.delete(userId);
+        
+        logger.info('Тикет поддержки успешно создан', { userId, ticketId: ticketData.id });
+        
+    } catch (error) {
+        logger.error('Ошибка создания тикета поддержки', error, { userId, text });
+        
+        await ctx.reply(
+            '❌ **Ошибка создания тикета!**\n\n' +
+            '🚫 Не удалось создать тикет поддержки\n' +
+            '🔧 Попробуйте позже или обратитесь к администратору\n\n' +
+            '💬 Ошибка: ' + error.message,
+            Markup.inlineKeyboard([
+                [Markup.button.callback('🔄 Попробовать снова', 'create_ticket')],
+                [Markup.button.callback('🔙 Назад к поддержке', 'support')]
+            ]).reply_markup
+        );
+        
+        // Очищаем состояние
+        const { userStates } = require('./callback');
+        userStates.delete(userId);
+    }
+}
+
+// Отправка тикета поддержки в канал
+async function sendSupportTicketToChannel(ctx, ticketData) {
+    try {
+        const channelUsername = '@magnumsupported';
+
+        const adminMessage = `🆘 **Новый тикет поддержки**\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${ticketData.userId}\`\n` +
+            `├ 👤 Имя: ${ticketData.firstName}\n` +
+            `└ 🏷️ Username: ${ticketData.username ? `@${ticketData.username}` : '@username'}\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID тикета: \`${ticketData.id}\`\n` +
+            `├ 📝 Описание: ${ticketData.description.substring(0, 200)}${ticketData.description.length > 200 ? '...' : ''}\n` +
+            `├ 📅 Дата: ${new Date(ticketData.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(ticketData.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `🎯 **Действия:**`;
+        
+        const adminKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('👨‍💼 Взять в работу', `take_ticket_${ticketData.id}`)]
+        ]);
+        
+        // Отправляем в канал поддержки
+        await ctx.telegram.sendMessage(channelUsername, adminMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: adminKeyboard.reply_markup
+        });
+        
+        logger.info('Тикет поддержки отправлен в канал', { 
+            userId: ticketData.userId, 
+            ticketId: ticketData.id,
+            channel: channelUsername
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка отправки тикета в канал поддержки', error, { 
+            userId: ticketData.userId, 
+            ticketId: ticketData.id 
+        });
+    }
+}
+
+// Обработка вложений для тикетов поддержки
+async function handleSupportAttachment(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка вложения для тикета поддержки', { userId });
+    
+    try {
+        // Проверяем, есть ли у пользователя активный тикет
+        const { dataManager } = require('../utils/dataManager');
+        const activeTicket = await dataManager.db.collection('support_tickets')
+            .findOne({ 
+                userId: Number(userId), 
+                status: { $in: ['open', 'in_progress'] } 
+            });
+        
+        if (!activeTicket) {
+            await ctx.reply(
+                '❌ **Нет активного тикета!**\n\n' +
+                '📝 Сначала создайте тикет поддержки\n' +
+                '💡 Используйте кнопку "🆘 Поддержка" в профиле',
+                Markup.inlineKeyboard([
+                    [Markup.button.callback('🆘 Поддержка', 'support')],
+                    [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+                ]).reply_markup
+            );
+            return;
+        }
+        
+        // Обрабатываем вложение
+        let attachmentData = {};
+        
+        if (ctx.message.photo) {
+            // Получаем фото с максимальным размером
+            const photo = ctx.message.photo[ctx.message.photo.length - 1];
+            attachmentData = {
+                type: 'photo',
+                fileId: photo.file_id,
+                caption: ctx.message.caption || ''
+            };
+        } else if (ctx.message.document) {
+            const document = ctx.message.document;
+            attachmentData = {
+                type: 'document',
+                fileId: document.file_id,
+                fileName: document.file_name,
+                caption: ctx.message.caption || ''
+            };
+        }
+        
+        // Сохраняем вложение в базе данных
+        await dataManager.db.collection('support_tickets').updateOne(
+            { id: activeTicket.id },
+            { 
+                $push: { 
+                    attachments: {
+                        ...attachmentData,
+                        uploadedAt: new Date(),
+                        uploadedBy: Number(userId)
+                    }
+                },
+                $push: {
+                    messages: {
+                        type: 'user',
+                        content: `[${attachmentData.type === 'photo' ? '📸 Скриншот' : '📄 Документ'}]`,
+                        fileId: attachmentData.fileId,
+                        timestamp: new Date(),
+                        userId: Number(userId)
+                    }
+                },
+                $set: { updatedAt: new Date() }
+            }
+        );
+        
+        // Уведомляем пользователя
+        const successMessage = `✅ **Вложение добавлено к тикету!**\n\n` +
+            `📋 **Тикет:** #${activeTicket.id}\n` +
+            `📎 **Тип:** ${attachmentData.type === 'photo' ? '📸 Скриншот' : '📄 Документ'}\n` +
+            `⏰ **Время:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n\n` +
+            `💡 **Что дальше:** Администратор получит уведомление и сможет ответить`;
+        
+        const successKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📋 Мои тикеты', 'my_tickets')],
+            [Markup.button.callback('🆘 Поддержка', 'support')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.reply(successMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: successKeyboard.reply_markup
+        });
+        
+        // Уведомляем админа в канале поддержки (если тикет в работе)
+        if (activeTicket.status === 'in_progress' && activeTicket.assignedTo) {
+            try {
+                const adminMessage = `📎 **Новое вложение в тикете #${activeTicket.id}**\n\n` +
+                    `👤 **Пользователь:** ${activeTicket.firstName}\n` +
+                    `📎 **Тип:** ${attachmentData.type === 'photo' ? '📸 Скриншот' : '📄 Документ'}\n` +
+                    `⏰ **Время:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n\n` +
+                    `💡 **Пользователь добавил дополнительную информацию к тикету**`;
+                
+                await ctx.telegram.sendMessage('@magnumsupported', adminMessage, {
+                    parse_mode: 'Markdown'
+                });
+            } catch (notifyError) {
+                logger.error('Ошибка уведомления админа о вложении', notifyError, { ticketId: activeTicket.id });
+            }
+        }
+        
+        logger.info('Вложение для тикета поддержки успешно обработано', { 
+            userId, 
+            ticketId: activeTicket.id, 
+            attachmentType: attachmentData.type 
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка обработки вложения для тикета поддержки', error, { userId });
+        
+        await ctx.reply(
+            '❌ **Ошибка добавления вложения!**\n\n' +
+            '🚫 Не удалось добавить вложение к тикету\n' +
+            '🔧 Попробуйте позже или обратитесь к администратору',
+            Markup.inlineKeyboard([
+                [Markup.button.callback('🔄 Попробовать снова', 'support')],
+                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+            ]).reply_markup
+        );
     }
 }
 

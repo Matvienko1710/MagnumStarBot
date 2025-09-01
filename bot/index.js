@@ -179,6 +179,170 @@ function initializeBot() {
             }
         };
 
+        // Специальный обработчик для канала поддержки
+        const supportChannelHandler = async (ctx) => {
+            try {
+                // Проверяем, что сообщение из канала поддержки
+                if (ctx.chat.username === 'magnumsupported') {
+                    const userId = ctx.from.id;
+                    const text = ctx.message.text;
+                    const hasPhoto = !!ctx.message.photo;
+                    const hasDocument = !!ctx.message.document;
+
+                    logger.info('Сообщение в канале поддержки', { 
+                        userId, 
+                        chatId: ctx.chat.id, 
+                        text,
+                        hasPhoto,
+                        hasDocument,
+                        messageType: hasPhoto ? 'photo' : hasDocument ? 'document' : 'text'
+                    });
+
+                    // Проверяем, является ли пользователь админом
+                    const { isAdmin } = require('./utils/admin');
+                    if (!isAdmin(userId)) {
+                        logger.warn('Неавторизованная попытка в канале поддержки', { userId });
+                        return;
+                    }
+
+                    // Проверяем, находится ли админ в состоянии ответа на тикет
+                    const { userStates } = require('./handlers/callback');
+                    const userState = userStates.get(userId);
+                    
+                    if (userState && userState.state === 'replying_to_ticket') {
+                        logger.info('Админ отвечает на тикет поддержки', { userId, ticketId: userState.data.ticketId });
+                        
+                        // Обрабатываем ответ на тикет
+                        await handleTicketReply(ctx, userState.data.ticketId, userState.data.ticketData);
+                        
+                        // Очищаем состояние
+                        userStates.delete(userId);
+                        return;
+                    }
+                }
+
+                // Для всех остальных сообщений используем обычный обработчик
+                await infoHandler(ctx);
+
+            } catch (error) {
+                logger.error('Ошибка в обработчике канала поддержки', error);
+                throw error;
+            }
+        };
+
+        // Обработка ответа на тикет поддержки от админа
+        const handleTicketReply = async (ctx, ticketId, ticketData) => {
+            try {
+                const userId = ctx.from.id;
+                const messageType = ctx.message.photo ? 'photo' : ctx.message.document ? 'document' : 'text';
+                
+                logger.info('💬 Обработка ответа на тикет поддержки', { 
+                    userId, 
+                    ticketId, 
+                    messageType,
+                    hasPhoto: !!ctx.message.photo,
+                    hasDocument: !!ctx.message.document
+                });
+                
+                if (messageType === 'photo') {
+                    // Получаем фото с максимальным размером
+                    const photo = ctx.message.photo[ctx.message.photo.length - 1];
+                    const fileId = photo.file_id;
+                    
+                    // Сохраняем ответ админа в базе данных
+                    const { dataManager } = require('./utils/dataManager');
+                    await dataManager.db.collection('support_tickets').updateOne(
+                        { id: ticketId },
+                        { 
+                            $push: { 
+                                messages: {
+                                    type: 'admin',
+                                    content: '[Скриншот]',
+                                    fileId: fileId,
+                                    timestamp: new Date(),
+                                    userId: userId
+                                }
+                            },
+                            $set: { updatedAt: new Date() }
+                        }
+                    );
+                    
+                    // Уведомляем пользователя
+                    await ctx.telegram.sendPhoto(ticketData.userId, fileId, {
+                        caption: `💬 **Ответ администратора на тикет #${ticketId}**\n\n` +
+                            `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
+                            `⏰ **Время:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n\n` +
+                            `📸 **Скриншот прикреплен**`
+                    });
+                    
+                } else if (messageType === 'document') {
+                    // Обработка документа
+                    const document = ctx.message.document;
+                    await ctx.reply('📄 Документ получен, но для ответа лучше использовать фото или текст.');
+                    
+                } else if (messageType === 'text') {
+                    // Текстовый ответ
+                    const { dataManager } = require('./utils/dataManager');
+                    await dataManager.db.collection('support_tickets').updateOne(
+                        { id: ticketId },
+                        { 
+                            $push: { 
+                                messages: {
+                                    type: 'admin',
+                                    content: ctx.message.text,
+                                    timestamp: new Date(),
+                                    userId: userId
+                                }
+                            },
+                            $set: { updatedAt: new Date() }
+                        }
+                    );
+                    
+                    // Уведомляем пользователя
+                    await ctx.telegram.sendMessage(ticketData.userId, 
+                        `💬 **Ответ администратора на тикет #${ticketId}**\n\n` +
+                            `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
+                            `⏰ **Время:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n\n` +
+                            `💬 **Сообщение:**\n${ctx.message.text}`
+                    );
+                }
+                
+                // Обновляем сообщение в канале
+                const updatedMessage = `🆘 **Тикет поддержки - ОТВЕЧЕН** 💬\n\n` +
+                    `👤 **Пользователь:**\n` +
+                    `├ 🆔 ID: \`${ticketData.userId}\`\n` +
+                    `├ 👤 Имя: ${ticketData.firstName}\n` +
+                    `└ 🏷️ Username: ${ticketData.username ? `@${ticketData.username}` : '@username'}\n\n` +
+                    `📋 **Детали тикета:**\n` +
+                    `├ 🆔 ID тикета: \`${ticketId}\`\n` +
+                    `├ 📝 Описание: ${ticketData.description.substring(0, 200)}${ticketData.description.length > 200 ? '...' : ''}\n` +
+                    `├ 📅 Дата: ${new Date(ticketData.createdAt).toLocaleDateString('ru-RU')}\n` +
+                    `└ ⏰ Время: ${new Date(ticketData.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+                    `👨‍💼 **Ответил:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n` +
+                    `👤 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
+                    `💬 **Ответ отправлен пользователю**`;
+                
+                const updatedKeyboard = Markup.inlineKeyboard([
+                    [Markup.button.callback('✅ Закрыть тикет', `close_ticket_${ticketId}`)]
+                ]);
+                
+                try {
+                    await ctx.editMessageText(updatedMessage, {
+                        parse_mode: 'Markdown',
+                        reply_markup: updatedKeyboard.reply_markup
+                    });
+                } catch (editError) {
+                    logger.error('Ошибка обновления сообщения в канале поддержки', editError, { userId, ticketId });
+                }
+                
+                logger.info('Ответ на тикет поддержки успешно отправлен', { userId, ticketId, messageType });
+                
+            } catch (error) {
+                logger.error('Ошибка обработки ответа на тикет', error, { userId: ctx.from.id, ticketId });
+                await ctx.reply('❌ Ошибка при отправке ответа. Попробуйте еще раз.');
+            }
+        };
+
         // Специальный обработчик для канала выплат (без ограничения privateChatOnly)
         const withdrawalChannelHandler = async (ctx) => {
             try {
@@ -291,10 +455,37 @@ function initializeBot() {
             }
         };
 
-        // Регистрируем обработчики сообщений с поддержкой канала выплат
-        bot.on('text', safeAsync(withdrawalChannelHandler));
-        bot.on('photo', safeAsync(withdrawalChannelHandler));
-        bot.on('document', safeAsync(withdrawalChannelHandler));
+        // Регистрируем обработчики сообщений с поддержкой каналов
+        bot.on('text', safeAsync(async (ctx) => {
+            // Сначала проверяем канал поддержки
+            if (ctx.chat?.username === 'magnumsupported') {
+                await supportChannelHandler(ctx);
+            } else if (ctx.chat?.username === 'magnumwithdraw') {
+                await withdrawalChannelHandler(ctx);
+            } else {
+                await infoHandler(ctx);
+            }
+        }));
+        
+        bot.on('photo', safeAsync(async (ctx) => {
+            if (ctx.chat?.username === 'magnumsupported') {
+                await supportChannelHandler(ctx);
+            } else if (ctx.chat?.username === 'magnumwithdraw') {
+                await withdrawalChannelHandler(ctx);
+            } else {
+                await infoHandler(ctx);
+            }
+        }));
+        
+        bot.on('document', safeAsync(async (ctx) => {
+            if (ctx.chat?.username === 'magnumsupported') {
+                await supportChannelHandler(ctx);
+            } else if (ctx.chat?.username === 'magnumwithdraw') {
+                await withdrawalChannelHandler(ctx);
+            } else {
+                await infoHandler(ctx);
+            }
+        }));
 
         // Обработчик callback запросов для всех типов чатов
         logger.info('Обработчик callback зарегистрирован');

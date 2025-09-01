@@ -136,6 +136,10 @@ async function callbackHandler(ctx) {
             case 'my_referral_code':
                 await handleMyReferralCode(ctx);
                 break;
+                
+            case 'support':
+                await handleSupport(ctx);
+                break;
 
                 
             case 'main_menu':
@@ -246,6 +250,50 @@ async function callbackHandler(ctx) {
                     return;
                 }
                 
+                // Обработка кнопок поддержки
+                if (callbackData === 'create_ticket') {
+                    logger.info('📝 Вызываем handleCreateTicket', { userId });
+                    await handleCreateTicket(ctx);
+                    return;
+                }
+                
+                if (callbackData === 'my_tickets') {
+                    logger.info('📋 Вызываем handleMyTickets', { userId });
+                    await handleMyTickets(ctx);
+                    return;
+                }
+                
+                if (callbackData === 'support_faq') {
+                    logger.info('📚 Вызываем handleSupportFAQ', { userId });
+                    await handleSupportFAQ(ctx);
+                    return;
+                }
+                
+                // Обработка кнопок в канале поддержки
+                if (callbackData.startsWith('take_ticket_')) {
+                    logger.info('👨‍💼 Вызываем handleTakeTicket', { action: callbackData, userId });
+                    await handleTakeTicket(ctx, callbackData);
+                    return;
+                }
+                
+                if (callbackData.startsWith('close_ticket_')) {
+                    logger.info('✅ Вызываем handleCloseTicket', { action: callbackData, userId });
+                    await handleCloseTicket(ctx, callbackData);
+                    return;
+                }
+                
+                if (callbackData.startsWith('reply_ticket_')) {
+                    logger.info('💬 Вызываем handleReplyTicket', { action: callbackData, userId });
+                    await handleReplyTicket(ctx, callbackData);
+                    return;
+                }
+                
+                if (callbackData.startsWith('cancel_reply_')) {
+                    logger.info('❌ Вызываем handleCancelReply', { action: callbackData, userId });
+                    await handleCancelReply(ctx, callbackData);
+                    return;
+                }
+                
                 // Если команда не найдена
                 logger.warn('Неизвестная команда', { userId, callbackData });
                 await ctx.answerCbQuery('❌ Неизвестная команда', true);
@@ -315,6 +363,7 @@ async function handleProfile(ctx) {
         const profileKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('👑 Титулы', 'titles')],
             [Markup.button.callback('👥 Рефералы', 'referrals')],
+            [Markup.button.callback('🆘 Поддержка', 'support')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
         
@@ -2999,6 +3048,518 @@ async function handleCompleteWithdrawal(ctx, action) {
     }
 }
 
+// Обработка раздела поддержки
+async function handleSupport(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка раздела поддержки', { userId });
+    
+    try {
+        // Получаем активные тикеты пользователя
+        const { dataManager } = require('../utils/dataManager');
+        const activeTickets = await dataManager.db.collection('support_tickets')
+            .find({ userId: Number(userId), status: { $in: ['open', 'in_progress'] } })
+            .sort({ createdAt: -1 })
+            .toArray();
+        
+        const supportMessage = `🆘 **Центр поддержки Magnum Stars**\n\n` +
+            `💬 **Как мы можем помочь?**\n\n` +
+            `📋 **Ваши активные тикеты:** ${activeTickets.length}\n\n` +
+            `🎯 **Доступные действия:**\n` +
+            `├ 📝 Создать новый тикет\n` +
+            `├ 📋 Мои тикеты\n` +
+            `└ 📚 FAQ и инструкции\n\n` +
+            `💡 **Совет:** Опишите проблему подробно, приложите скриншоты если нужно`;
+        
+        const supportKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📝 Создать тикет', 'create_ticket')],
+            [Markup.button.callback('📋 Мои тикеты', 'my_tickets')],
+            [Markup.button.callback('📚 FAQ', 'support_faq')],
+            [Markup.button.callback('🔙 Назад к профилю', 'profile')]
+        ]);
+        
+        await ctx.editMessageText(supportMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: supportKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка обработки раздела поддержки', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки поддержки**\n\n` +
+            `🚫 Не удалось загрузить данные\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'support')],
+            [Markup.button.callback('🔙 Назад к профилю', 'profile')]
+        ]);
+        
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
+// Создание нового тикета поддержки
+async function handleCreateTicket(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Создание нового тикета поддержки', { userId });
+    
+    try {
+        // Устанавливаем состояние создания тикета
+        const { userStates } = require('./callback');
+        userStates.set(userId, {
+            state: 'creating_support_ticket',
+            currentStep: 'waiting_description',
+            data: {
+                description: '',
+                attachments: []
+            },
+            timestamp: Date.now()
+        });
+        
+        const createTicketMessage = `📝 **Создание тикета поддержки**\n\n` +
+            `💬 **Опишите вашу проблему:**\n\n` +
+            `💡 **Советы:**\n` +
+            `├ 📝 Будьте конкретны и подробны\n` +
+            `├ 🖼️ Можете приложить скриншоты\n` +
+            `└ ⏰ Ответим в течение 24 часов\n\n` +
+            `📝 **Отправьте описание проблемы в чат:**`;
+        
+        const createTicketKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔙 Отмена', 'support')]
+        ]);
+        
+        await ctx.editMessageText(createTicketMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: createTicketKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка создания тикета поддержки', error, { userId });
+        await ctx.reply('❌ Ошибка при создании тикета. Попробуйте позже.');
+    }
+}
+
+// Просмотр тикетов пользователя
+async function handleMyTickets(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Просмотр тикетов пользователя', { userId });
+    
+    try {
+        const { dataManager } = require('../utils/dataManager');
+        const tickets = await dataManager.db.collection('support_tickets')
+            .find({ userId: Number(userId) })
+            .sort({ createdAt: -1 })
+            .toArray();
+        
+        if (tickets.length === 0) {
+            const noTicketsMessage = `📋 **Мои тикеты**\n\n` +
+                `❌ У вас пока нет тикетов\n\n` +
+                `💡 Создайте первый тикет, нажав "📝 Создать тикет"`;
+            
+            const noTicketsKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('📝 Создать тикет', 'create_ticket')],
+                [Markup.button.callback('🔙 Назад к поддержке', 'support')]
+            ]);
+            
+            await ctx.editMessageText(noTicketsMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: noTicketsKeyboard.reply_markup
+            });
+            return;
+        }
+        
+        let ticketsMessage = `📋 **Мои тикеты**\n\n`;
+        
+        for (const ticket of tickets) {
+            const status = ticket.status === 'open' ? '🆕 Открыт' : 
+                          ticket.status === 'in_progress' ? '⏳ В работе' : 
+                          ticket.status === 'closed' ? '✅ Закрыт' : '❓ Неизвестно';
+            
+            const date = new Date(ticket.createdAt).toLocaleDateString('ru-RU');
+            const time = new Date(ticket.createdAt).toLocaleTimeString('ru-RU');
+            
+            ticketsMessage += `📋 **Тикет #${ticket.id}**\n` +
+                `├ 📝 Описание: ${ticket.description.substring(0, 50)}${ticket.description.length > 50 ? '...' : ''}\n` +
+                `├ 📅 Дата: ${date} ${time}\n` +
+                `├ 📊 Статус: ${status}\n`;
+            
+            if (ticket.status === 'closed') {
+                const closedDate = new Date(ticket.closedAt).toLocaleDateString('ru-RU');
+                const closedTime = new Date(ticket.closedAt).toLocaleTimeString('ru-RU');
+                ticketsMessage += `└ ⏰ Закрыт: ${closedDate} ${closedTime}\n`;
+            } else {
+                ticketsMessage += `└ ⏰ Ожидает ответа\n`;
+            }
+            
+            ticketsMessage += '\n';
+        }
+        
+        const ticketsKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📝 Создать новый тикет', 'create_ticket')],
+            [Markup.button.callback('🔙 Назад к поддержке', 'support')]
+        ]);
+        
+        await ctx.editMessageText(ticketsMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: ticketsKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка просмотра тикетов', error, { userId });
+        await ctx.reply('❌ Ошибка при загрузке тикетов. Попробуйте позже.');
+    }
+}
+
+// FAQ поддержки
+async function handleSupportFAQ(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Просмотр FAQ поддержки', { userId });
+    
+    try {
+        const faqMessage = `📚 **FAQ - Часто задаваемые вопросы**\n\n` +
+            `❓ **Как создать тикет?**\n` +
+            `├ 📝 Нажмите "📝 Создать тикет"\n` +
+            `├ 💬 Опишите проблему подробно\n` +
+            `└ 🖼️ Приложите скриншоты если нужно\n\n` +
+            `❓ **Сколько ждать ответа?**\n` +
+            `├ ⏰ Обычно в течение 24 часов\n` +
+            `├ 🚀 В рабочее время быстрее\n` +
+            `└ 📱 Вы получите уведомление\n\n` +
+            `❓ **Что делать если тикет не решен?**\n` +
+            `├ 💬 Напишите в тикет дополнительную информацию\n` +
+            `├ 🖼️ Приложите новые скриншоты\n` +
+            `└ 📞 Обратитесь к администратору\n\n` +
+            `❓ **Как закрыть тикет?**\n` +
+            `├ ✅ Администратор закроет тикет\n` +
+            `├ 💬 После решения проблемы\n` +
+            `└ 📋 Вы получите уведомление`;
+        
+        const faqKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📝 Создать тикет', 'create_ticket')],
+            [Markup.button.callback('🔙 Назад к поддержке', 'support')]
+        ]);
+        
+        await ctx.editMessageText(faqMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: faqKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка показа FAQ', error, { userId });
+        await ctx.reply('❌ Ошибка при загрузке FAQ. Попробуйте позже.');
+    }
+}
+
+// Взятие тикета в работу
+async function handleTakeTicket(ctx, action) {
+    const userId = ctx.from.id;
+    const ticketId = action.replace('take_ticket_', '');
+
+    logger.info('👨‍💼 Взятие тикета в работу', { userId, ticketId });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery('👨‍💼 Тикет взят в работу!', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Получаем информацию о тикете
+        const { dataManager } = require('../utils/dataManager');
+        const ticket = await dataManager.db.collection('support_tickets').findOne({ id: ticketId });
+        
+        if (!ticket) {
+            return;
+        }
+        
+        // Обновляем статус тикета
+        await dataManager.db.collection('support_tickets').updateOne(
+            { id: ticketId },
+            { 
+                $set: { 
+                    status: 'in_progress',
+                    assignedTo: userId,
+                    assignedAt: new Date(),
+                    updatedAt: new Date()
+                }
+            }
+        );
+        
+        // Обновляем сообщение в канале
+        const updatedMessage = `🆘 **Тикет поддержки - В РАБОТЕ** ⏳\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${ticket.userId}\`\n` +
+            `├ 👤 Имя: ${ticket.firstName}\n` +
+            `└ 🏷️ Username: ${ticket.username ? `@${ticket.username}` : '@username'}\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID тикета: \`${ticket.id}\`\n` +
+            `├ 📝 Описание: ${ticket.description.substring(0, 200)}${ticket.description.length > 200 ? '...' : ''}\n` +
+            `├ 📅 Дата: ${new Date(ticket.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(ticket.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `👨‍💼 **Взят в работу:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n` +
+            `👤 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
+            `💬 **Теперь вы можете отвечать на тикет**`;
+        
+        const updatedKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('💬 Ответить на тикет', `reply_ticket_${ticketId}`)],
+            [Markup.button.callback('✅ Закрыть тикет', `close_ticket_${ticketId}`)]
+        ]);
+        
+        try {
+            await ctx.editMessageText(updatedMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: updatedKeyboard.reply_markup
+            });
+        } catch (editError) {
+            logger.error('Ошибка обновления сообщения в канале', editError, { userId, ticketId });
+        }
+        
+        // Уведомляем пользователя
+        await ctx.telegram.sendMessage(ticket.userId, 
+            `⏳ **Ваш тикет взят в работу!**\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID: \`${ticket.id}\`\n` +
+            `├ 📝 Описание: ${ticket.description.substring(0, 100)}${ticket.description.length > 100 ? '...' : ''}\n` +
+            `└ ⏳ Статус: В работе\n\n` +
+            `👨‍💼 **Администратор работает над решением**\n` +
+            `⏰ **Время ответа:** В ближайшее время`
+        );
+        
+        logger.info('Тикет успешно взят в работу', { userId, ticketId });
+        
+    } catch (error) {
+        logger.error('Ошибка взятия тикета в работу', error, { userId, ticketId });
+    }
+}
+
+// Закрытие тикета
+async function handleCloseTicket(ctx, action) {
+    const userId = ctx.from.id;
+    const ticketId = action.replace('close_ticket_', '');
+
+    logger.info('✅ Закрытие тикета', { userId, ticketId });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery('✅ Тикет закрыт!', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Получаем информацию о тикете
+        const { dataManager } = require('../utils/dataManager');
+        const ticket = await dataManager.db.collection('support_tickets').updateOne(
+            { id: ticketId },
+            { 
+                $set: { 
+                    status: 'closed',
+                    closedAt: new Date(),
+                    closedBy: userId,
+                    updatedAt: new Date()
+                }
+            }
+        );
+        
+        // Обновляем сообщение в канале
+        const finalMessage = `🆘 **Тикет поддержки - ЗАКРЫТ** ✅\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${ticket.userId}\`\n` +
+            `├ 👤 Имя: ${ticket.firstName}\n` +
+            `└ 🏷️ Username: ${ticket.username ? `@${ticket.username}` : '@username'}\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID тикета: \`${ticket.id}\`\n` +
+            `├ 📝 Описание: ${ticket.description.substring(0, 200)}${ticket.description.length > 200 ? '...' : ''}\n` +
+            `├ 📅 Дата: ${new Date(ticket.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(ticket.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `✅ **Закрыт:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}\n` +
+            `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
+            `🎉 **Тикет успешно решен!**`;
+        
+        try {
+            await ctx.editMessageText(finalMessage, { parse_mode: 'Markdown' });
+        } catch (editError) {
+            logger.error('Ошибка обновления финального сообщения', editError, { userId, ticketId });
+        }
+        
+        // Уведомляем пользователя
+        await ctx.telegram.sendMessage(ticket.userId, 
+            `✅ **Ваш тикет закрыт!**\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID: \`${ticket.id}\`\n` +
+            `├ 📝 Описание: ${ticket.description.substring(0, 100)}${ticket.description.length > 100 ? '...' : ''}\n` +
+            `└ ✅ Статус: Закрыт\n\n` +
+            `🎉 **Проблема решена!**\n` +
+            `💡 Если у вас есть еще вопросы, создайте новый тикет`
+        );
+        
+        logger.info('Тикет успешно закрыт', { userId, ticketId });
+        
+    } catch (error) {
+        logger.error('Ошибка закрытия тикета', error, { userId, ticketId });
+    }
+}
+
+// Ответ на тикет поддержки
+async function handleReplyTicket(ctx, action) {
+    const userId = ctx.from.id;
+    const ticketId = action.replace('reply_ticket_', '');
+
+    logger.info('💬 Ответ на тикет поддержки', { userId, ticketId });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery('💬 Готовим форму для ответа...', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Получаем информацию о тикете
+        const { dataManager } = require('../utils/dataManager');
+        const ticket = await dataManager.db.collection('support_tickets').findOne({ id: ticketId });
+        
+        if (!ticket) {
+            return;
+        }
+        
+        // Показываем инструкцию для ответа
+        const replyMessage = `💬 **Ответ на тикет поддержки**\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID: \`${ticket.id}\`\n` +
+            `├ 👤 Пользователь: ${ticket.firstName}\n` +
+            `├ 📝 Описание: ${ticket.description.substring(0, 100)}${ticket.description.length > 100 ? '...' : ''}\n` +
+            `└ 📅 Дата: ${new Date(ticket.createdAt).toLocaleDateString('ru-RU')}\n\n` +
+            `💬 **Инструкция:**\n` +
+            `1️⃣ Напишите ответ пользователю\n` +
+            `2️⃣ Или отправьте скриншот\n` +
+            `3️⃣ Ответ будет автоматически отправлен\n\n` +
+            `💡 **Важно:** Отправляйте ответ прямо в этот чат!`;
+        
+        const replyKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('❌ Отмена', `cancel_reply_${ticketId}`)]
+        ]);
+        
+        // Обновляем сообщение в канале
+        try {
+            await ctx.editMessageText(replyMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: replyKeyboard.reply_markup
+            });
+            
+            // Устанавливаем состояние ожидания ответа для админа
+            const { userStates } = require('./callback');
+            userStates.set(userId, {
+                state: 'replying_to_ticket',
+                currentStep: 'waiting_reply',
+                data: {
+                    ticketId: ticketId,
+                    ticketData: ticket
+                },
+                timestamp: Date.now()
+            });
+            
+            logger.info('Админ переведен в состояние ответа на тикет', { 
+                userId, 
+                ticketId, 
+                state: 'replying_to_ticket' 
+            });
+            
+        } catch (editError) {
+            logger.error('Ошибка обновления сообщения в канале (ответ)', editError, {
+                userId,
+                ticketId
+            });
+            
+            // Отправляем новое сообщение если не удалось обновить
+            await ctx.reply(replyMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: replyKeyboard.reply_markup
+            });
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка подготовки ответа на тикет', error, { userId, ticketId });
+        await ctx.answerCbQuery('❌ Ошибка при подготовке формы для ответа');
+    }
+}
+
+// Отмена ответа на тикет
+async function handleCancelReply(ctx, action) {
+    const userId = ctx.from.id;
+    const ticketId = action.replace('cancel_reply_', '');
+
+    logger.info('❌ Отмена ответа на тикет', { userId, ticketId });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery('❌ Ответ отменен', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Получаем информацию о тикете
+        const { dataManager } = require('../utils/dataManager');
+        const ticket = await dataManager.db.collection('support_tickets').findOne({ id: ticketId });
+        
+        if (!ticket) {
+            return;
+        }
+        
+        // Возвращаем исходное сообщение с тикетом
+        const originalMessage = `🆘 **Тикет поддержки - В РАБОТЕ** ⏳\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${ticket.userId}\`\n` +
+            `├ 👤 Имя: ${ticket.firstName}\n` +
+            `└ 🏷️ Username: ${ticket.username ? `@${ticket.username}` : '@username'}\n\n` +
+            `📋 **Детали тикета:**\n` +
+            `├ 🆔 ID тикета: \`${ticket.id}\`\n` +
+            `├ 📝 Описание: ${ticket.description.substring(0, 200)}${ticket.description.length > 200 ? '...' : ''}\n` +
+            `├ 📅 Дата: ${new Date(ticket.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(ticket.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `👨‍💼 **Взят в работу:** ${new Date(ticket.assignedAt).toLocaleDateString('ru-RU')} ${new Date(ticket.assignedAt).toLocaleTimeString('ru-RU')}\n` +
+            `👤 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
+            `💬 **Теперь вы можете отвечать на тикет**`;
+        
+        const originalKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('💬 Ответить на тикет', `reply_ticket_${ticket.id}`)],
+            [Markup.button.callback('✅ Закрыть тикет', `close_ticket_${ticket.id}`)]
+        ]);
+        
+        // Обновляем сообщение в канале
+        try {
+            await ctx.editMessageText(originalMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: originalKeyboard.reply_markup
+            });
+        } catch (editError) {
+            logger.error('Ошибка восстановления исходного сообщения', editError, { userId, ticketId });
+        }
+        
+        // Очищаем состояние админа
+        const { userStates } = require('./callback');
+        userStates.delete(userId);
+        
+        logger.info('Состояние админа очищено, возвращено исходное сообщение', { userId, ticketId });
+        
+    } catch (error) {
+        logger.error('Ошибка отмены ответа на тикет', error, { userId, ticketId });
+    }
+}
+
 module.exports = {
     callbackHandler,
     updateLastBotMessage,
@@ -3017,5 +3578,13 @@ module.exports = {
     handleAttachPaymentScreenshot,
     handleCancelScreenshot,
     handleCompleteWithdrawal,
+    handleSupport,
+    handleCreateTicket,
+    handleMyTickets,
+    handleSupportFAQ,
+    handleTakeTicket,
+    handleCloseTicket,
+    handleReplyTicket,
+    handleCancelReply,
     userStates
 };
