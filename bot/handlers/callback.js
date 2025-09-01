@@ -2884,15 +2884,25 @@ async function handleReferrals(ctx) {
 // Обработка раздела поддержки
 async function handleSupport(ctx) {
     const userId = ctx.from.id;
-    
+
     logger.info('Обработка раздела поддержки', { userId });
-    
+
     try {
         // Импортируем dataManager
         const { dataManager } = require('../utils/dataManager');
-        
+
+        // Проверяем, инициализирован ли dataManager и подключена ли база данных
+        if (!dataManager.isInitialized) {
+            throw new Error('Система поддержки временно недоступна. Попробуйте позже.');
+        }
+
+        const db = dataManager.getDb();
+        if (!db) {
+            throw new Error('База данных недоступна');
+        }
+
         // Получаем активные тикеты пользователя
-        const activeTickets = await dataManager.db.collection('support_tickets')
+        const activeTickets = await db.collection('support_tickets')
             .find({ userId: Number(userId), status: { $in: ['open', 'in_progress'] } })
             .sort({ createdAt: -1 })
             .toArray();

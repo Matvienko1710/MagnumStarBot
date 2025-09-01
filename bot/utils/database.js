@@ -94,6 +94,12 @@ class DatabaseManager {
         try {
             logger.info('Создание индексов...');
 
+            // Проверяем, подключена ли база данных
+            if (!this.db) {
+                logger.warn('База данных не подключена, пропускаем создание индексов');
+                return;
+            }
+
             // Вспомогательная функция для создания индекса с обработкой конфликтов
             const createIndexSafe = async (collection, keys, options = {}) => {
                 try {
@@ -109,10 +115,11 @@ class DatabaseManager {
                     await collection.createIndex(keys, options);
                     logger.info(`Индекс ${indexName} создан`);
                 } catch (error) {
-                    if (error.code === 11000 || error.message.includes('already exists')) {
+                    if (error.code === 11000 || error.message.includes('already exists') || error.message.includes('index already exists')) {
                         logger.info(`Индекс для ${JSON.stringify(keys)} уже существует`);
                     } else {
-                        throw error;
+                        logger.error(`Ошибка создания индекса для ${JSON.stringify(keys)}`, error);
+                        // Не выбрасываем ошибку, продолжаем создание других индексов
                     }
                 }
             };
@@ -149,6 +156,12 @@ class DatabaseManager {
             await createIndexSafe(this.db.collection('message_deletions'), { deleteAt: 1 });
             await createIndexSafe(this.db.collection('message_deletions'), { messageId: 1 });
             await createIndexSafe(this.db.collection('message_deletions'), { isDeleted: 1 });
+
+            // Индекс для поддержки
+            await createIndexSafe(this.db.collection('support_tickets'), { userId: 1 });
+            await createIndexSafe(this.db.collection('support_tickets'), { status: 1 });
+            await createIndexSafe(this.db.collection('support_tickets'), { createdAt: -1 });
+            await createIndexSafe(this.db.collection('support_tickets'), { id: 1 }, { unique: true });
 
             logger.info('✅ Индексы созданы');
 
