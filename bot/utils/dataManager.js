@@ -1685,7 +1685,7 @@ class DataManager {
                 id: 'epic',
                 name: 'Епический',
                 price: { coins: 10000, stars: 0 },
-                speed: { coins: 0, stars: 0.6944 }, // 0.6944 Stars в минуту
+                speed: { coins: 0.6944, stars: 0 }, // 0.6944 Magnum Coins в минуту
                 rarity: 'Епический',
                 maxPerUser: 1, // Максимум 1 майнер на пользователя
                 globalLimit: 100 // Общий лимит на сервере (всего 100 майнеров)
