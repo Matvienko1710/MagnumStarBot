@@ -114,8 +114,8 @@ class DatabaseManager {
             await this.db.collection('key_activations').createIndex({ userId: 1 });
             await this.db.collection('key_activations').createIndex({ activatedAt: 1 });
             
-            // Индекс для рефералов
-            await this.db.collection('referrals').createIndex({ userId: 1, referrerId: 1 });
+            // Индекс для рефералов (уникальный, чтобы предотвратить дублирование)
+            await this.db.collection('referrals').createIndex({ userId: 1, referrerId: 1 }, { unique: true });
             
             // Индекс для заявок на вывод
             await this.db.collection('withdrawals').createIndex({ id: 1 }, { unique: true });

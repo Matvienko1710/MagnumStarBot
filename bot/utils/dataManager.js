@@ -717,6 +717,30 @@ class DataManager {
                 return user.referral;
             }
             
+            // Дополнительная проверка: если пользователь уже является чьим-то рефералом
+            if (referrerId) {
+                const existingReferral = await this.db.collection('referrals').findOne({
+                    userId: Number(userId)
+                });
+                
+                if (existingReferral) {
+                    logger.warn('Пользователь уже является чьим-то рефералом', { 
+                        userId, 
+                        existingReferrerId: existingReferral.referrerId,
+                        requestedReferrerId: referrerId 
+                    });
+                    
+                    // Возвращаем существующие данные без изменения
+                    return user.referral || {
+                        referralId: userId,
+                        referrerId: existingReferral.referrerId,
+                        totalEarned: { stars: 0, coins: 0 },
+                        level: 1,
+                        hasReceivedReferralBonus: true
+                    };
+                }
+            }
+            
             // Генерируем новый referralId (используем userId пользователя)
             let referralId = userId;
             let actualReferrerId = null;
@@ -748,6 +772,20 @@ class DataManager {
                 logger.info('Начинаем начисление наград за реферала', { referrerId: actualReferrerId, newUserId: userId });
                 
                 await this.addReferralToUser(actualReferrerId, userId);
+                
+                // Проверяем, был ли реферал успешно добавлен
+                const referralAdded = await this.db.collection('referrals').findOne({
+                    userId: Number(userId),
+                    referrerId: Number(actualReferrerId)
+                });
+                
+                if (!referralAdded) {
+                    logger.warn('Реферал не был добавлен, пропускаем начисление награды', { 
+                        referrerId: actualReferrerId, 
+                        newUserId: userId 
+                    });
+                    return referralData;
+                }
                 
                 // Начисляем награду рефереру (5 звезд + 1000 магнум коинов)
                 logger.info('Начисляем награду рефереру', { referrerId: actualReferrerId, stars: 5, coins: 1000 });
@@ -798,6 +836,21 @@ class DataManager {
         try {
             logger.info('Начинаем добавление реферала к пользователю', { referrerId, newUserId });
             
+            // Дополнительная проверка на дублирование для надежности
+            const existingReferral = await this.db.collection('referrals').findOne({
+                userId: Number(newUserId),
+                referrerId: Number(referrerId)
+            });
+            
+            if (existingReferral) {
+                logger.warn('Реферал уже существует, пропускаем добавление', { 
+                    referrerId, 
+                    newUserId, 
+                    existingReferralId: existingReferral._id 
+                });
+                return;
+            }
+            
             // Создаем запись в коллекции referrals
             const referralRecord = {
                 userId: Number(newUserId),
@@ -808,8 +861,21 @@ class DataManager {
             };
             
             // Сохраняем в коллекцию referrals
-            await this.db.collection('referrals').insertOne(referralRecord);
-            logger.info('Запись о реферале сохранена в коллекции referrals', { referrerId, newUserId, referralId: referralRecord._id });
+            try {
+                await this.db.collection('referrals').insertOne(referralRecord);
+                logger.info('Запись о реферале сохранена в коллекции referrals', { referrerId, newUserId, referralId: referralRecord._id });
+            } catch (insertError) {
+                // Проверяем, не является ли ошибка связанной с дублированием
+                if (insertError.code === 11000) {
+                    logger.warn('Попытка создать дублирующую запись реферала заблокирована уникальным индексом', { 
+                        referrerId, 
+                        newUserId, 
+                        error: insertError.message 
+                    });
+                    return; // Выходим без начисления награды
+                }
+                throw insertError; // Пробрасываем другие ошибки
+            }
             
             // Обновляем статистику реферера в коллекции users
             const referrer = await this.getUser(referrerId);
