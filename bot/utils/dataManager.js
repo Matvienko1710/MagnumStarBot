@@ -307,13 +307,21 @@ class DataManager {
                 }
             }
             
-            // Индексы для пользователей (только userId, username уже создан в database.js)
-            await this.db.collection('users').createIndex({ userId: 1 }, { unique: true });
-            // Убираем дублирующий индекс username - он уже создается в database.js
+            // Индексы для пользователей (только userId, остальные уже созданы в database.js)
+            try {
+                await this.db.collection('users').createIndex({ userId: 1 }, { unique: true });
+            } catch (error) {
+                // Индекс уже существует
+                logger.info('Индекс userId для users уже существует');
+            }
             
             // Индексы для транзакций
-            await this.db.collection('transactions').createIndex({ userId: 1 });
-            await this.db.collection('transactions').createIndex({ timestamp: -1 });
+            try {
+                await this.db.collection('transactions').createIndex({ userId: 1 });
+                await this.db.collection('transactions').createIndex({ timestamp: -1 });
+            } catch (error) {
+                logger.info('Индексы для transactions уже существуют');
+            }
             
             // Индексы для ключей
             try {
@@ -323,8 +331,6 @@ class DataManager {
             } catch (error) {
                 logger.info('Коллекция keys уже существует');
             }
-            
-
             
             logger.info('Индексы созданы');
             
@@ -344,11 +350,14 @@ class DataManager {
             }
             
             // Создаем индексы для оптимизации
-            await this.db.collection('user_activity').createIndex({ userId: 1 });
-            await this.db.collection('user_activity').createIndex({ lastActivity: -1 });
-            await this.db.collection('user_activity').createIndex({ userId: 1, lastActivity: -1 });
-            
-            logger.info('Индексы для user_activity созданы');
+            try {
+                await this.db.collection('user_activity').createIndex({ userId: 1 });
+                await this.db.collection('user_activity').createIndex({ lastActivity: -1 });
+                await this.db.collection('user_activity').createIndex({ userId: 1, lastActivity: -1 });
+                logger.info('Индексы для user_activity созданы');
+            } catch (error) {
+                logger.info('Индексы для user_activity уже существуют');
+            }
             
         } catch (error) {
             logger.error('Ошибка создания коллекции user_activity', error);
