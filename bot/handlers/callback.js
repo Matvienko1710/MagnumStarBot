@@ -173,6 +173,10 @@ async function callbackHandler(ctx) {
             case 'create_miner_key':
                 await handleCreateMinerKey(ctx);
                 break;
+                
+            case 'create_post':
+                await handleCreatePost(ctx);
+                break;
 
             case 'miner_key_novice':
                 await handleMinerKeyType(ctx, 'novice');
@@ -1316,6 +1320,7 @@ async function handleAdminPanel(ctx) {
         
         const adminKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔑 Создать ключ', 'create_key')],
+            [Markup.button.callback('📝 Создать пост', 'create_post')],
             [Markup.button.callback('👑 Выдать/забрать титул', 'manage_titles')],
             [Markup.button.callback('⛏️ Проверить пропущенные награды', 'check_missed_rewards')],
             [Markup.button.callback('📊 Статистика кэша', 'cache_stats')],
@@ -2355,6 +2360,46 @@ async function handleCheckMissedRewards(ctx) {
             reply_markup: errorKeyboard.reply_markup
         });
     }
+}
+
+// Обработка создания поста
+async function handleCreatePost(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Обработка создания поста', { userId });
+    
+    // Устанавливаем состояние создания поста
+    userStates.set(userId, {
+        state: 'creating_post',
+        currentStep: 'text',
+        data: {
+            text: '',
+            buttonText: '',
+            buttonUrl: '',
+            hasScreenshot: false
+        },
+        timestamp: Date.now()
+    });
+    
+    logger.userState(userId, 'set', { state: 'creating_post' });
+    
+    const createPostMessage = `📝 **Создание поста в канал новостей**\n\n` +
+        `📢 Пост будет опубликован в канале @magnumtap\n\n` +
+        `📋 **Что нужно указать:**\n` +
+        `1️⃣ Текст поста\n` +
+        `2️⃣ Название кнопки (опционально)\n` +
+        `3️⃣ Ссылка для кнопки (опционально)\n` +
+        `4️⃣ Скриншот (опционально)\n\n` +
+        `💬 **Отправьте текст поста в чат:**`;
+    
+    const createPostKeyboard = Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+    ]);
+    
+    await ctx.editMessageText(createPostMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: createPostKeyboard.reply_markup
+    });
 }
 
 // Обработка создания ключа майнера
@@ -3588,5 +3633,6 @@ module.exports = {
     handleCancelReply,
     userStates,
     handleProcessWithdrawal,
-    handleRejectWithReason
+    handleRejectWithReason,
+    handleCreatePost
 };

@@ -54,8 +54,21 @@ async function infoHandler(ctx) {
             return;
         }
         
-        // Обработка скриншотов от пользователей для тикетов поддержки
+        if (userState && userState.state === 'creating_post') {
+            // Обработка создания поста
+            await handlePostCreation(ctx, text);
+            return;
+        }
+        
+        // Обработка скриншотов от пользователей для тикетов поддержки и постов
         if (ctx.message.photo || ctx.message.document) {
+            // Проверяем, создает ли админ пост
+            if (userState && userState.state === 'creating_post' && userState.currentStep === 'screenshot') {
+                await handlePostScreenshot(ctx);
+                return;
+            }
+            
+            // Обработка скриншотов для тикетов поддержки
             await handleSupportAttachment(ctx);
             return;
         }
@@ -574,6 +587,112 @@ async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
     }
 }
 
+// Обработка создания поста
+async function handlePostCreation(ctx, text) {
+    const userId = ctx.from.id;
+    const { userStates } = require('./callback');
+    const userState = userStates.get(userId);
+    
+    logger.info('Обработка создания поста', { userId, step: userState.currentStep });
+    
+    try {
+        if (userState.currentStep === 'text') {
+            // Сохраняем текст поста
+            userState.data.text = text;
+            userState.currentStep = 'button_text';
+            
+            const buttonTextMessage = `📝 **Текст поста сохранен!**\n\n` +
+                `💬 **Ваш текст:**\n${text.substring(0, 200)}${text.length > 200 ? '...' : ''}\n\n` +
+                `🔘 **Теперь укажите название кнопки (или отправьте "нет" для пропуска):**`;
+            
+            const buttonTextKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+            ]);
+            
+            await ctx.reply(buttonTextMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: buttonTextKeyboard.reply_markup
+            });
+            
+        } else if (userState.currentStep === 'button_text') {
+            if (text.toLowerCase() === 'нет' || text.toLowerCase() === 'no') {
+                // Пропускаем кнопку
+                userState.currentStep = 'screenshot';
+                userState.data.buttonText = '';
+                userState.data.buttonUrl = '';
+                
+                const screenshotMessage = `🔘 **Кнопка пропущена**\n\n` +
+                    `📸 **Теперь можете прикрепить скриншот к посту (или отправьте "нет" для пропуска):**`;
+                
+                const screenshotKeyboard = Markup.inlineKeyboard([
+                    [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+                ]);
+                
+                await ctx.reply(screenshotMessage, {
+                    parse_mode: 'Markdown',
+                    reply_markup: screenshotKeyboard.reply_markup
+                });
+                
+            } else {
+                // Сохраняем название кнопки
+                userState.data.buttonText = text;
+                userState.currentStep = 'button_url';
+                
+                const buttonUrlMessage = `🔘 **Название кнопки сохранено!**\n\n` +
+                    `📝 **Название:** ${text}\n\n` +
+                    `🔗 **Теперь отправьте ссылку для кнопки:**`;
+                
+                const buttonUrlKeyboard = Markup.inlineKeyboard([
+                    [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+                ]);
+                
+                await ctx.reply(buttonUrlMessage, {
+                    parse_mode: 'Markdown',
+                    reply_markup: buttonUrlKeyboard.reply_markup
+                });
+            }
+            
+        } else if (userState.currentStep === 'button_url') {
+            // Сохраняем ссылку кнопки
+            userState.data.buttonUrl = text;
+            userState.currentStep = 'screenshot';
+            
+            const screenshotMessage = `🔗 **Ссылка кнопки сохранена!**\n\n` +
+                `🔘 **Кнопка:** ${userState.data.buttonText}\n` +
+                `🔗 **Ссылка:** ${text}\n\n` +
+                `📸 **Теперь можете прикрепить скриншот к посту (или отправьте "нет" для пропуска):**`;
+            
+            const screenshotKeyboard = Markup.inlineKeyboard([
+                [Markup.button.callback('🔙 Отмена', 'admin_panel')]
+            ]);
+            
+            await ctx.reply(screenshotMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: screenshotKeyboard.reply_markup
+            });
+            
+        } else if (userState.currentStep === 'screenshot') {
+            if (text.toLowerCase() === 'нет' || text.toLowerCase() === 'no') {
+                // Пропускаем скриншот, публикуем пост
+                await publishPost(ctx, userState.data);
+                
+                // Очищаем состояние
+                userStates.delete(userId);
+                
+            } else {
+                await ctx.reply('📸 Для прикрепления скриншота отправьте фото, а не текст.');
+            }
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка создания поста', error, { userId });
+        await ctx.reply('❌ Произошла ошибка при создании поста. Попробуйте позже.');
+        
+        // Очищаем состояние
+        userStates.delete(userId);
+    }
+}
+
 // Обработка создания тикета поддержки
 async function handleSupportTicketCreation(ctx, text) {
     const userId = ctx.from.id;
@@ -715,6 +834,43 @@ async function sendSupportTicketToChannel(ctx, ticketData) {
     }
 }
 
+// Обработка скриншотов для постов
+async function handlePostScreenshot(ctx) {
+    const userId = ctx.from.id;
+    const { userStates } = require('./callback');
+    const userState = userStates.get(userId);
+    
+    logger.info('Обработка скриншота для поста', { userId });
+    
+    try {
+        if (ctx.message.photo) {
+            // Получаем фото с максимальным размером
+            const photo = ctx.message.photo[ctx.message.photo.length - 1];
+            const fileId = photo.file_id;
+            
+            // Сохраняем fileId в данных поста
+            userState.data.screenshotFileId = fileId;
+            userState.data.hasScreenshot = true;
+            
+            // Публикуем пост со скриншотом
+            await publishPost(ctx, userState.data);
+            
+            // Очищаем состояние
+            userStates.delete(userId);
+            
+        } else if (ctx.message.document) {
+            await ctx.reply('📄 Документы не поддерживаются для постов. Пожалуйста, отправьте фото.');
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка обработки скриншота для поста', error, { userId });
+        await ctx.reply('❌ Произошла ошибка при обработке скриншота. Попробуйте позже.');
+        
+        // Очищаем состояние
+        userStates.delete(userId);
+    }
+}
+
 // Обработка вложений для тикетов поддержки
 async function handleSupportAttachment(ctx) {
     const userId = ctx.from.id;
@@ -841,6 +997,83 @@ async function handleSupportAttachment(ctx) {
                 [Markup.button.callback('🏠 Главное меню', 'main_menu')]
             ]).reply_markup
         );
+    }
+}
+
+// Публикация поста в канал новостей
+async function publishPost(ctx, postData) {
+    const userId = ctx.from.id;
+    
+    logger.info('Публикация поста в канал новостей', { userId, hasScreenshot: postData.hasScreenshot });
+    
+    try {
+        // Формируем клавиатуру для поста
+        let postKeyboard = null;
+        if (postData.buttonText && postData.buttonUrl) {
+            postKeyboard = Markup.inlineKeyboard([
+                [Markup.button.url(postData.buttonText, postData.buttonUrl)]
+            ]).reply_markup;
+        }
+        
+        // Публикуем пост в канал @magnumtap
+        if (postData.hasScreenshot && postData.screenshotFileId) {
+            // Пост со скриншотом
+            await ctx.telegram.sendPhoto('@magnumtap', postData.screenshotFileId, {
+                caption: postData.text,
+                parse_mode: 'Markdown',
+                reply_markup: postKeyboard
+            });
+        } else {
+            // Текстовый пост
+            await ctx.telegram.sendMessage('@magnumtap', postData.text, {
+                parse_mode: 'Markdown',
+                reply_markup: postKeyboard
+            });
+        }
+        
+        // Уведомляем админа об успешной публикации
+        const successMessage = `✅ **Пост успешно опубликован!**\n\n` +
+            `📢 **Канал:** @magnumtap\n` +
+            `📝 **Текст:** ${postData.text.substring(0, 100)}${postData.text.length > 100 ? '...' : ''}\n` +
+            `🔘 **Кнопка:** ${postData.buttonText ? postData.buttonText : 'Нет'}\n` +
+            `📸 **Скриншот:** ${postData.hasScreenshot ? 'Да' : 'Нет'}\n` +
+            `⏰ **Время:** ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}`;
+        
+        const successKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📝 Создать еще пост', 'create_post')],
+            [Markup.button.callback('🔙 Админ панель', 'admin_panel')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.reply(successMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: successKeyboard.reply_markup
+        });
+        
+        logger.info('Пост успешно опубликован в канал новостей', { 
+            userId, 
+            channel: '@magnumtap',
+            hasScreenshot: postData.hasScreenshot,
+            hasButton: !!(postData.buttonText && postData.buttonUrl)
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка публикации поста', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка публикации поста!**\n\n` +
+            `🚫 Не удалось опубликовать пост в канал @magnumtap\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'create_post')],
+            [Markup.button.callback('🔙 Админ панель', 'admin_panel')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.reply(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
     }
 }
 
