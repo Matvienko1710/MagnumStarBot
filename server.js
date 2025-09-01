@@ -77,7 +77,17 @@ async function launchBot() {
 }
 
 // Health Check API
-app.get('/api/health', async (req, res) => {
+// Простой health check для быстрого ответа
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// Детальный health check (для отладки)
+app.get('/api/health/detailed', async (req, res) => {
     try {
         logger.request('Health check запрос', { 
             method: req.method, 

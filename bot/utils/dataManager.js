@@ -23,21 +23,23 @@ class DataManager {
             // Создаем начальные данные
             await this.createDefaultData();
             
-            // Проверяем и начисляем пропущенные награды за майнинг (после редеплоя)
-            logger.info('⛏️ Начинаем проверку пропущенных наград за майнинг...');
-            try {
-                logger.info('🔍 Вызываем processAllMissedMiningRewards...');
-                const missedRewardsResult = await this.processAllMissedMiningRewards();
-                logger.info('📊 Результат processAllMissedMiningRewards получен:', missedRewardsResult);
-                
-                if (missedRewardsResult.success) {
-                    logger.info('✅ Проверка пропущенных наград завершена успешно', missedRewardsResult);
-                } else {
-                    logger.error('❌ Ошибка проверки пропущенных наград', missedRewardsResult.error);
+            // Запускаем проверку пропущенных наград в фоновом режиме (неблокирующе)
+            logger.info('⛏️ Запускаем проверку пропущенных наград в фоновом режиме...');
+            setImmediate(async () => {
+                try {
+                    logger.info('🔍 Вызываем processAllMissedMiningRewards...');
+                    const missedRewardsResult = await this.processAllMissedMiningRewards();
+                    logger.info('📊 Результат processAllMissedMiningRewards получен:', missedRewardsResult);
+                    
+                    if (missedRewardsResult.success) {
+                        logger.info('✅ Проверка пропущенных наград завершена успешно', missedRewardsResult);
+                    } else {
+                        logger.error('❌ Ошибка проверки пропущенных наград', missedRewardsResult.error);
+                    }
+                } catch (missedRewardsError) {
+                    logger.error('💥 Ошибка при проверке пропущенных наград', missedRewardsError);
                 }
-            } catch (missedRewardsError) {
-                logger.error('💥 Ошибка при проверке пропущенных наград', missedRewardsError);
-            }
+            });
             
             logger.info('DataManager успешно инициализирован');
             
@@ -1329,10 +1331,11 @@ class DataManager {
         try {
             logger.info('Начинаем массовую проверку пропущенных наград за майнинг');
             
-            // Получаем всех пользователей с майнерами
+            // Получаем только активных пользователей с майнерами (ограничиваем для быстрого старта)
             const usersWithMiners = await this.db.collection('users').find({
-                'miners.0': { $exists: true } // У пользователя есть хотя бы один майнер
-            }).toArray();
+                'miners.0': { $exists: true }, // У пользователя есть хотя бы один майнер
+                'lastActivity': { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Активные за последние 7 дней
+            }).limit(100).toArray(); // Ограничиваем до 100 пользователей за раз
             
             let totalUsersProcessed = 0;
             let totalCoinsAwarded = 0;
