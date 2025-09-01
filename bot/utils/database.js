@@ -94,38 +94,61 @@ class DatabaseManager {
         try {
             logger.info('Создание индексов...');
 
+            // Вспомогательная функция для создания индекса с обработкой конфликтов
+            const createIndexSafe = async (collection, keys, options = {}) => {
+                try {
+                    const indexName = Object.keys(keys).join('_') + '_' + Object.values(keys).join('_');
+                    const existingIndexes = await collection.indexes();
+                    const indexExists = existingIndexes.some(idx => idx.name === indexName);
+
+                    if (indexExists) {
+                        logger.info(`Индекс ${indexName} уже существует, пропускаем`);
+                        return;
+                    }
+
+                    await collection.createIndex(keys, options);
+                    logger.info(`Индекс ${indexName} создан`);
+                } catch (error) {
+                    if (error.code === 11000 || error.message.includes('already exists')) {
+                        logger.info(`Индекс для ${JSON.stringify(keys)} уже существует`);
+                    } else {
+                        throw error;
+                    }
+                }
+            };
+
             // Индекс для пользователей
-            await this.db.collection('users').createIndex({ userId: 1 }, { unique: true });
-            await this.db.collection('users').createIndex({ lastActivity: 1 });
-            await this.db.collection('users').createIndex({ 'balance.stars': 1 });
-            await this.db.collection('users').createIndex({ 'balance.coins': 1 });
-            await this.db.collection('users').createIndex({ 'miners.0': 1 }); // Для поиска пользователей с майнерами
+            await createIndexSafe(this.db.collection('users'), { userId: 1 }, { unique: true });
+            await createIndexSafe(this.db.collection('users'), { lastActivity: 1 });
+            await createIndexSafe(this.db.collection('users'), { 'balance.stars': 1 });
+            await createIndexSafe(this.db.collection('users'), { 'balance.coins': 1 });
+            await createIndexSafe(this.db.collection('users'), { 'miners.0': 1 }); // Для поиска пользователей с майнерами
 
             // Индекс для транзакций
-            await this.db.collection('transactions').createIndex({ userId: 1, timestamp: -1 });
-            await this.db.collection('transactions').createIndex({ currency: 1, timestamp: -1 });
-            await this.db.collection('transactions').createIndex({ reason: 1, timestamp: -1 });
+            await createIndexSafe(this.db.collection('transactions'), { userId: 1, timestamp: -1 });
+            await createIndexSafe(this.db.collection('transactions'), { currency: 1, timestamp: -1 });
+            await createIndexSafe(this.db.collection('transactions'), { reason: 1, timestamp: -1 });
 
             // Индекс для ключей
-            await this.db.collection('keys').createIndex({ key: 1 }, { unique: true });
-            
+            await createIndexSafe(this.db.collection('keys'), { key: 1 }, { unique: true });
+
             // Индекс для активаций ключей
-            await this.db.collection('key_activations').createIndex({ key: 1 });
-            await this.db.collection('key_activations').createIndex({ userId: 1 });
-            await this.db.collection('key_activations').createIndex({ activatedAt: 1 });
-            
+            await createIndexSafe(this.db.collection('key_activations'), { key: 1 });
+            await createIndexSafe(this.db.collection('key_activations'), { userId: 1 });
+            await createIndexSafe(this.db.collection('key_activations'), { activatedAt: 1 });
+
             // Индекс для рефералов (уникальный, чтобы предотвратить дублирование)
-            await this.db.collection('referrals').createIndex({ userId: 1, referrerId: 1 }, { unique: true });
-            
+            await createIndexSafe(this.db.collection('referrals'), { userId: 1, referrerId: 1 }, { unique: true });
+
             // Индекс для заявок на вывод
-            await this.db.collection('withdrawals').createIndex({ id: 1 }, { unique: true });
-            await this.db.collection('withdrawals').createIndex({ userId: 1 });
-            await this.db.collection('withdrawals').createIndex({ status: 1 });
-            
+            await createIndexSafe(this.db.collection('withdrawals'), { id: 1 }, { unique: true });
+            await createIndexSafe(this.db.collection('withdrawals'), { userId: 1 });
+            await createIndexSafe(this.db.collection('withdrawals'), { status: 1 });
+
             // Индекс для автоматического удаления сообщений
-            await this.db.collection('message_deletions').createIndex({ deleteAt: 1 });
-            await this.db.collection('message_deletions').createIndex({ messageId: 1 });
-            await this.db.collection('message_deletions').createIndex({ isDeleted: 1 });
+            await createIndexSafe(this.db.collection('message_deletions'), { deleteAt: 1 });
+            await createIndexSafe(this.db.collection('message_deletions'), { messageId: 1 });
+            await createIndexSafe(this.db.collection('message_deletions'), { isDeleted: 1 });
 
             logger.info('✅ Индексы созданы');
 
