@@ -1901,7 +1901,7 @@ async function handleApproveWithdrawal(ctx, action) {
         }
         
         // Обрабатываем заявку
-        const result = await dataManager.processWithdrawalRequest(requestId, 'approve', userId, 'Одобрено администратором');
+        const result = await dataManager.processWithdrawalRequest(requestId, 'approve', userId);
         
         if (result.success) {
             // Обновляем сообщение в канале
@@ -1915,9 +1915,7 @@ async function handleApproveWithdrawal(ctx, action) {
                 `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
                 `├ 📅 Дата: ${new Date(result.request.createdAt).toLocaleDateString('ru-RU')}\n` +
                 `└ ⏰ Время: ${new Date(result.request.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
-                `✅ **Одобрено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n` +
-                `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
-                `💬 **Комментарий:** ${result.request.comment}`;
+                `✅ **Одобрено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}`;
 
             // Обновляем сообщение в канале
             try {
@@ -1995,13 +1993,13 @@ async function handleRejectWithdrawal(ctx, action) {
         }
         
         // Обрабатываем заявку
-        const result = await dataManager.processWithdrawalRequest(requestId, 'reject', userId, 'Отклонено администратором');
+        const result = await dataManager.processWithdrawalRequest(requestId, 'reject', userId);
         
         if (result.success) {
             // Обновляем сообщение в канале
             const updatedMessage = `📋 **Заявка на вывод ОТКЛОНЕНА** ❌\n\n` +
                 `👤 **Пользователь:**\n` +
-                `├ 🆔 ID: \`${result.request.userId}\`\n` +
+                `├ 🆔 ID: \`${result.request.id}\`\n` +
                 `├ 👤 Имя: ${result.request.firstName}\n` +
                 `└ 🏷️ Username: ${result.request.username}\n\n` +
                 `💰 **Детали заявки:**\n` +
@@ -2009,9 +2007,7 @@ async function handleRejectWithdrawal(ctx, action) {
                 `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
                 `├ 📅 Дата: ${new Date(result.request.createdAt).toLocaleDateString('ru-RU')}\n` +
                 `└ ⏰ Время: ${new Date(result.request.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
-                `❌ **Отклонено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n` +
-                `👨‍💼 **Админ:** ${ctx.from.first_name || 'Не указано'}\n` +
-                `💬 **Комментарий:** ${result.request.comment}\n\n` +
+                `❌ **Отклонено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n\n` +
                 `💰 **Звезды возвращены пользователю**`;
 
             // Обновляем сообщение в канале
@@ -2040,8 +2036,7 @@ async function handleRejectWithdrawal(ctx, action) {
                 `├ 🆔 ID: \`${result.request.id}\`\n` +
                 `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
                 `└ ❌ Статус: Отклонена\n\n` +
-                `⏰ **Время отклонения:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n` +
-                `💬 **Комментарий:** ${result.request.comment}\n\n` +
+                `⏰ **Время отклонения:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n\n` +
                 `💰 **Звезды возвращены на ваш баланс**\n\n` +
                 `💡 **Что дальше:** Вы можете создать новую заявку на вывод`
             );

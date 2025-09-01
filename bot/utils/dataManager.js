@@ -1804,7 +1804,6 @@ class DataManager {
                 status: action === 'approve' ? 'approved' : 'rejected',
                 processedAt: new Date(),
                 processedBy: Number(adminId),
-                comment: comment,
                 firstName: user.firstName || 'Неизвестно',
                 username: user.username || user.telegramUsername || '@username'
             };
