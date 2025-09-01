@@ -124,6 +124,9 @@ async function callbackHandler(ctx) {
             case 'buy_miner_limited':
                 await handleBuyMiner(ctx, 'limited');
                 break;
+            case 'buy_miner_epic':
+                await handleBuyMiner(ctx, 'epic');
+                break;
                 
             case 'withdraw':
                 await handleWithdraw(ctx);
@@ -429,8 +432,10 @@ async function handleMiners(ctx) {
         // Получаем информацию о лимитах майнеров
         const noviceAvailability = await dataManager.getMinerAvailability('novice');
         const limitedAvailability = await dataManager.getMinerAvailability('limited');
+        const epicAvailability = await dataManager.getMinerAvailability('epic');
         const userNoviceCount = await dataManager.getUserMinerCount(userId, 'novice');
         const userLimitedCount = await dataManager.getUserMinerCount(userId, 'limited');
+        const userEpicCount = await dataManager.getUserMinerCount(userId, 'epic');
         
         const minersMessage = `⛏️ **Главное меню майнеров**\n\n` +
             `💰 **Ваш баланс:**\n` +
@@ -446,7 +451,8 @@ async function handleMiners(ctx) {
             `📊 **Лимиты майнеров:**\n` +
             `├ 🆕 Новичок: ${userNoviceCount}/${noviceAvailability.maxPerUser} (${noviceAvailability.globalCount}/${noviceAvailability.globalLimit})\n` +
             `├ 💎 Лимитированная: ${userLimitedCount}/${limitedAvailability.maxPerUser} (${limitedAvailability.globalCount}/${limitedAvailability.globalLimit})\n` +
-            `└ 🆕 Можно купить еще: ${Math.max(0, noviceAvailability.maxPerUser - userNoviceCount)} + ${Math.max(0, limitedAvailability.maxPerUser - userLimitedCount)} майнеров\n\n` +
+            `├ 🟣 Епический: ${userEpicCount}/${epicAvailability.maxPerUser} (${epicAvailability.globalCount}/${epicAvailability.globalLimit})\n` +
+            `└ 🆕 Можно купить еще: ${Math.max(0, noviceAvailability.maxPerUser - userNoviceCount)} + ${Math.max(0, limitedAvailability.maxPerUser - userLimitedCount)} + ${Math.max(0, epicAvailability.maxPerUser - userEpicCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
     
     const minersKeyboard = Markup.inlineKeyboard([
@@ -509,6 +515,14 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
                 speed: { coins: 0, stars: 0.001999 }, // 0.001999 Stars в минуту
                 rarity: 'Редкий',
                 description: 'Эксклюзивный майнер! Всего 10 на сервере. Добывает 0.001999 ⭐ Stars в минуту'
+            },
+            {
+                id: 'epic',
+                name: 'Епический',
+                price: { coins: 10000, stars: 0 },
+                speed: { coins: 0, stars: 0.6944 }, // 0.6944 Stars в минуту
+                rarity: 'Епический',
+                description: 'Мощный епический майнер! Всего 100 на сервере. Добывает 0.6944 ⭐ Stars в минуту'
             }
         ];
         
@@ -821,7 +835,12 @@ async function updateMiningTimer(ctx, userId, startTime) {
         
         for (const miner of userMiners) {
             if (miner.isActive && miner.lastMiningStart) {
-                const requiredHours = miner.type === 'limited' ? 12 : 4;
+                let requiredHours = 4; // По умолчанию 4 часа
+                if (miner.type === 'limited') {
+                    requiredHours = 12;
+                } else if (miner.type === 'epic') {
+                    requiredHours = 8; // Епический майнер работает 8 часов
+                }
                 const cooldownTime = requiredHours * 60 * 60 * 1000;
                 if (cooldownTime < minCooldownTime) {
                     minCooldownTime = cooldownTime;

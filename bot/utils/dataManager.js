@@ -1291,7 +1291,12 @@ class DataManager {
                 const hoursSinceLastStart = timeSinceLastStart / (1000 * 60 * 60);
                 
                 // Разные интервалы для разных типов майнеров
-                const requiredHours = miner.type === 'limited' ? 12 : 4;
+                let requiredHours = 4; // По умолчанию 4 часа
+                if (miner.type === 'limited') {
+                    requiredHours = 12;
+                } else if (miner.type === 'epic') {
+                    requiredHours = 8; // Епический майнер работает 8 часов
+                }
                 
                 if (hoursSinceLastStart >= requiredHours) {
                     canStartMining = true;
@@ -1416,7 +1421,12 @@ class DataManager {
                 const hoursSinceStart = timeSinceMiningStart / (1000 * 60 * 60);
                 
                 // Разные интервалы для разных типов майнеров
-                const requiredHours = miner.type === 'limited' ? 12 : 4;
+                let requiredHours = 4; // По умолчанию 4 часа
+                if (miner.type === 'limited') {
+                    requiredHours = 12;
+                } else if (miner.type === 'epic') {
+                    requiredHours = 8; // Епический майнер работает 8 часов
+                }
                 
                 if (hoursSinceStart < requiredHours) {
                     // Начисляем доход за последнюю минуту (скорость уже в минуту)
@@ -1493,11 +1503,20 @@ class DataManager {
                 const timeSinceStart = now - miningStartTime;
                 const hoursSinceStart = timeSinceStart / (1000 * 60 * 60);
                 
-                // Если майнинг был запущен менее 4 часов назад
-                if (hoursSinceStart < 4) {
+                // Определяем требуемое время работы для типа майнера
+                let requiredHours = 4; // По умолчанию 4 часа
+                if (miner.type === 'limited') {
+                    requiredHours = 12;
+                } else if (miner.type === 'epic') {
+                    requiredHours = 8;
+                }
+                
+                // Если майнинг был запущен менее требуемого времени назад
+                if (hoursSinceStart < requiredHours) {
                     // Рассчитываем количество пропущенных минут
                     const minutesSinceStart = Math.floor(timeSinceStart / (1000 * 60));
-                    const minutesToProcess = Math.min(minutesSinceStart, 240); // Максимум 4 часа (240 минут)
+                    const maxMinutes = requiredHours * 60; // Максимум в минутах
+                    const minutesToProcess = Math.min(minutesSinceStart, maxMinutes);
                     
                     if (minutesToProcess > 0) {
                         // Начисляем награды за пропущенные минуты
@@ -1636,6 +1655,15 @@ class DataManager {
                 rarity: 'Редкий',
                 maxPerUser: 5, // Максимум 5 майнеров на пользователя
                 globalLimit: 10 // Общий лимит на сервере (всего 10 майнеров)
+            },
+            'epic': {
+                id: 'epic',
+                name: 'Епический',
+                price: { coins: 10000, stars: 0 },
+                speed: { coins: 0, stars: 0.6944 }, // 0.6944 Stars в минуту
+                rarity: 'Епический',
+                maxPerUser: 1, // Максимум 1 майнер на пользователя
+                globalLimit: 100 // Общий лимит на сервере (всего 100 майнеров)
             }
         };
         
