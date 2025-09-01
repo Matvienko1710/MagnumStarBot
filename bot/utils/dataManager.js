@@ -63,7 +63,7 @@ class DataManager {
         try {
             logger.info('🚀 Запускаем планировщик автоматического дохода от майнинга...');
             
-            // Запускаем каждую минуту (60000 мс)
+            // Запускаем каждую минуту (60000 мс) для начисления дохода от всех майнеров
             this.miningIncomeInterval = setInterval(async () => {
                 try {
                     await this.processAllUsersMiningIncome();
@@ -73,13 +73,14 @@ class DataManager {
             }, 60000); // 1 минута
             
             logger.info('✅ Планировщик автоматического дохода запущен (интервал: 1 минута)');
+            logger.info('💎 Все майнеры работают одновременно на 12 часов');
             
         } catch (error) {
             logger.error('❌ Ошибка запуска планировщика автоматического дохода', error);
         }
     }
     
-    // Обработка автоматического дохода для всех пользователей
+    // Обработка автоматического дохода для всех пользователей (все майнеры работают 12 часов)
     async processAllUsersMiningIncome() {
         try {
             logger.info('⏰ Запуск автоматического начисления дохода от майнинга...');
@@ -1342,7 +1343,7 @@ class DataManager {
         }
     }
     
-    // Запуск майнинга (раз в 4 часа для novice, раз в 12 часов для limited)
+    // Запуск майнинга (все майнеры одновременно на 12 часов)
     async startMining(userId) {
         try {
             logger.info('Попытка запуска майнинга', { userId });
@@ -1355,33 +1356,22 @@ class DataManager {
             }
             
             const now = new Date();
-            let canStartMining = false;
-            let nextStartTime = null;
+            let canStartMining = true;
             
             // Проверяем, можно ли запустить майнинг
-            // Если хотя бы один майнер может запуститься - разрешаем
+            // Если хотя бы один майнер был запущен менее 12 часов назад - запрещаем
             for (const miner of miners) {
                 if (!miner.isActive) continue;
                 
-                if (!miner.lastMiningStart) {
-                    canStartMining = true;
-                    break;
-                }
-                
-                const timeSinceLastStart = now - new Date(miner.lastMiningStart);
-                const hoursSinceLastStart = timeSinceLastStart / (1000 * 60 * 60);
-                
-                // Разные интервалы для разных типов майнеров
-                let requiredHours = 4; // По умолчанию 4 часа
-                if (miner.type === 'limited') {
-                    requiredHours = 12;
-                } else if (miner.type === 'epic') {
-                    requiredHours = 8; // Епический майнер работает 8 часов
-                }
-                
-                if (hoursSinceLastStart >= requiredHours) {
-                    canStartMining = true;
-                    break;
+                if (miner.lastMiningStart) {
+                    const timeSinceLastStart = now - new Date(miner.lastMiningStart);
+                    const hoursSinceLastStart = timeSinceLastStart / (1000 * 60 * 60);
+                    
+                    // Все майнеры теперь работают 12 часов
+                    if (hoursSinceLastStart < 12) {
+                        canStartMining = false;
+                        break;
+                    }
                 }
             }
             
@@ -1389,10 +1379,7 @@ class DataManager {
             if (!canStartMining) {
                 const earliestNextStart = new Date(Math.min(...miners
                     .filter(m => m.isActive && m.lastMiningStart)
-                    .map(m => {
-                        const requiredHours = m.type === 'limited' ? 12 : 4;
-                        return new Date(m.lastMiningStart).getTime() + (requiredHours * 60 * 60 * 1000);
-                    })
+                    .map(m => new Date(m.lastMiningStart).getTime() + (12 * 60 * 60 * 1000))
                 ));
                 
                 const timeUntilNext = earliestNextStart - now;
@@ -1405,15 +1392,7 @@ class DataManager {
                 };
             }
             
-            if (!canStartMining) {
-                return { 
-                    success: false, 
-                    message: `Майнинг можно запустить через ${Math.ceil((nextStartTime - now) / (1000 * 60 * 60))} часов`,
-                    nextStartTime: nextStartTime
-                };
-            }
-            
-            // Запускаем майнинг для всех активных майнеров
+            // Запускаем майнинг для всех активных майнеров одновременно
             for (const miner of miners) {
                 if (miner.isActive) {
                     miner.lastMiningStart = now;
@@ -1447,14 +1426,16 @@ class DataManager {
             logger.info('Майнинг успешно запущен', { userId, startTime: now, initialReward: { coins: totalCoins, stars: totalStars } });
             
             // Формируем сообщение о доходе
-            let rewardMessage = 'Майнинг запущен! ';
+            let rewardMessage = '🚀 **Майнинг запущен на 12 часов!**\n\n';
             if (totalCoins > 0) {
-                rewardMessage += `Получено ${totalCoins} 🪙 Coins за первую минуту. `;
+                rewardMessage += `💰 Получено ${totalCoins} 🪙 Coins за первую минуту\n`;
             }
             if (totalStars > 0) {
-                rewardMessage += `Получено ${totalStars} ⭐ Stars за первую минуту. `;
+                rewardMessage += `⭐ Получено ${totalStars} ⭐ Stars за первую минуту\n`;
             }
-            rewardMessage += 'Доход будет начисляться каждую минуту автоматически.';
+            rewardMessage += '\n⏰ **Все майнеры работают одновременно**\n';
+            rewardMessage += '🔄 Следующий запуск возможен через 12 часов\n';
+            rewardMessage += '💎 Доход начисляется каждую минуту автоматически';
             
             return { 
                 success: true, 
@@ -1469,7 +1450,7 @@ class DataManager {
         }
     }
     
-    // Автоматическое начисление дохода каждую минуту (вызывается системой)
+    // Автоматическое начисление дохода каждую минуту (все майнеры работают 12 часов)
     async processMiningIncome(userId) {
         try {
             const user = await this.getUser(userId);
@@ -1483,7 +1464,7 @@ class DataManager {
             let totalStars = 0;
             const now = new Date();
             
-            logger.info('Обрабатываем автоматический доход от майнинга', { userId, minersCount: miners.length });
+            logger.info('Обрабатываем автоматический доход от майнинга (12-часовой цикл)', { userId, minersCount: miners.length });
             
             // Рассчитываем доход для каждого майнера
             for (const miner of miners) {
@@ -1497,17 +1478,12 @@ class DataManager {
                     continue;
                 }
                 
-                // Проверяем, что майнинг был запущен менее требуемого времени назад
+                // Проверяем, что майнинг был запущен менее 12 часов назад
                 const timeSinceMiningStart = now - new Date(miner.lastMiningStart);
                 const hoursSinceStart = timeSinceMiningStart / (1000 * 60 * 60);
                 
-                // Разные интервалы для разных типов майнеров
-                let requiredHours = 4; // По умолчанию 4 часа
-                if (miner.type === 'limited') {
-                    requiredHours = 12;
-                } else if (miner.type === 'epic') {
-                    requiredHours = 8; // Епический майнер работает 8 часов
-                }
+                // Все майнеры теперь работают 12 часов
+                const requiredHours = 12;
                 
                 if (hoursSinceStart < requiredHours) {
                     // Начисляем доход за последнюю минуту (скорость уже в минуту)
@@ -1584,19 +1560,14 @@ class DataManager {
                 const timeSinceStart = now - miningStartTime;
                 const hoursSinceStart = timeSinceStart / (1000 * 60 * 60);
                 
-                // Определяем требуемое время работы для типа майнера
-                let requiredHours = 4; // По умолчанию 4 часа
-                if (miner.type === 'limited') {
-                    requiredHours = 12;
-                } else if (miner.type === 'epic') {
-                    requiredHours = 8;
-                }
+                // Все майнеры теперь работают 12 часов
+                const requiredHours = 12;
                 
-                // Если майнинг был запущен менее требуемого времени назад
+                // Если майнинг был запущен менее 12 часов назад
                 if (hoursSinceStart < requiredHours) {
                     // Рассчитываем количество пропущенных минут
                     const minutesSinceStart = Math.floor(timeSinceStart / (1000 * 60));
-                    const maxMinutes = requiredHours * 60; // Максимум в минутах
+                    const maxMinutes = requiredHours * 60; // Максимум в минутах (12 * 60 = 720 минут)
                     const minutesToProcess = Math.min(minutesSinceStart, maxMinutes);
                     
                     if (minutesToProcess > 0) {
@@ -1651,10 +1622,10 @@ class DataManager {
         }
     }
     
-    // Массовая проверка и начисление пропущенных наград для всех пользователей
+    // Массовая проверка и начисление пропущенных наград для всех пользователей (12-часовой цикл)
     async processAllMissedMiningRewards() {
         try {
-            logger.info('Начинаем массовую проверку пропущенных наград за майнинг');
+            logger.info('Начинаем массовую проверку пропущенных наград за майнинг (12-часовой цикл)');
             
             // Получаем только активных пользователей с майнерами (ограничиваем для быстрого старта)
             const usersWithMiners = await this.db.collection('users').find({
