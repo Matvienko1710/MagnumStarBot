@@ -244,11 +244,18 @@ async function callbackHandler(ctx) {
                     return;
                 }
                 
-
+                if (callbackData.startsWith('process_withdrawal_')) {
+                    logger.info('🔧 Вызываем handleProcessWithdrawal', { action: callbackData, userId });
+                    await handleProcessWithdrawal(ctx, callbackData);
+                    return;
+                }
                 
-
-                
-
+                // Обработчики причин отклонения заявок
+                if (callbackData.startsWith('reject_reason_')) {
+                    logger.info('🚫 Вызываем handleRejectWithReason', { action: callbackData, userId });
+                    await handleRejectWithReason(ctx, callbackData);
+                    return;
+                }
                 
                 // Обработка кнопок поддержки
                 if (callbackData === 'create_ticket') {
@@ -2048,7 +2055,7 @@ async function handleRejectWithdrawal(ctx, action) {
 
     try {
         // Отвечаем на callback-запрос сразу, чтобы избежать таймаута
-        await ctx.answerCbQuery('⏳ Обрабатываем заявку...', false);
+        await ctx.answerCbQuery('🚫 Выберите причину отклонения', false);
 
         // Проверяем, является ли пользователь админом
         if (!isAdmin(userId)) {
@@ -2056,63 +2063,73 @@ async function handleRejectWithdrawal(ctx, action) {
             return;
         }
         
-        // Обрабатываем заявку
-        const result = await dataManager.processWithdrawalRequest(requestId, 'reject', userId);
+        // Импортируем dataManager
+        const { dataManager } = require('../utils/dataManager');
         
-        if (result.success) {
-            // Обновляем сообщение в канале
-            const updatedMessage = `📋 **Заявка на вывод ОТКЛОНЕНА** ❌\n\n` +
-                `👤 **Пользователь:**\n` +
-                `├ 🆔 ID: \`${result.request.id}\`\n` +
-                `├ 👤 Имя: ${result.request.firstName}\n` +
-                `└ 🏷️ Username: ${result.request.username}\n\n` +
-                `💰 **Детали заявки:**\n` +
-                `├ 🆔 ID заявки: \`${result.request.id}\`\n` +
-                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
-                `├ 📅 Дата: ${new Date(result.request.createdAt).toLocaleDateString('ru-RU')}\n` +
-                `└ ⏰ Время: ${new Date(result.request.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
-                `❌ **Отклонено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n\n` +
-                `💰 **Звезды возвращены пользователю**`;
-
-            // Обновляем сообщение в канале
-            try {
-                await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
-                logger.info('Сообщение в канале успешно обновлено (отклонение)', {
-                    userId,
-                    requestId,
-                    messageId,
-                    chatId
-                });
-            } catch (editError) {
-                logger.error('Ошибка обновления сообщения в канале (отклонение)', editError, {
-                    userId,
-                    requestId,
-                    messageId,
-                    chatId
-                });
-                // Не возвращаем ошибку, продолжаем выполнение
-            }
-            
-            // Уведомляем пользователя
-            await ctx.telegram.sendMessage(result.request.userId, 
-                `❌ **Ваша заявка на вывод отклонена**\n\n` +
-                `📋 **Детали заявки:**\n` +
-                `├ 🆔 ID: \`${result.request.id}\`\n` +
-                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
-                `└ ❌ Статус: Отклонена\n\n` +
-                `⏰ **Время отклонения:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n\n` +
-                `💰 **Звезды возвращены на ваш баланс**\n\n` +
-                `💡 **Что дальше:** Вы можете создать новую заявку на вывод`
-            );
-            
-            logger.info('Заявка на вывод отклонена', { userId, requestId, adminId: userId });
-
-            // Отвечаем на callback-запрос об успешном отклонении
-            await ctx.answerCbQuery('❌ Заявка отклонена', false);
-
-        } else {
-            await ctx.answerCbQuery(`❌ ${result.message}`);
+        // Получаем информацию о заявке
+        const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
+        
+        if (!withdrawalRequest) {
             return;
+        }
+        
+        // Обновляем сообщение в канале с кнопками причин отклонения
+        const updatedMessage = `📋 **Заявка на вывод - ВЫБОР ПРИЧИНЫ ОТКЛОНЕНИЯ** 🚫\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
+            `├ 👤 Имя: ${withdrawalRequest.firstName}\n` +
+            `└ 🏷️ Username: ${withdrawalRequest.username}\n\n` +
+            `💰 **Детали заявки:**\n` +
+            `├ 🆔 ID заявки: №${withdrawalRequest.id}\n` +
+            `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+            `├ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `🚫 **Выберите причину отклонения:**`;
+        
+        // Создаем клавиатуру с причинами отклонения
+        const rejectionKeyboard = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '🔍 Махинации',
+                        callback_data: `reject_reason_fraud_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    },
+                    {
+                        text: '🤖 Ферма аккаунтов',
+                        callback_data: `reject_reason_farm_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    }
+                ],
+                [
+                    {
+                        text: '🔄 Повторите попытку',
+                        callback_data: `reject_reason_retry_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    },
+                    {
+                        text: '❌ Без объяснений',
+                        callback_data: `reject_reason_no_comment_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    }
+                ]
+            ]
+        };
+        
+        // Обновляем сообщение в канале
+        try {
+            await ctx.editMessageText(updatedMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: rejectionKeyboard
+            });
+            
+            logger.info('Показаны кнопки причин отклонения', { 
+                userId, 
+                requestId 
+            });
+            
+        } catch (editError) {
+            logger.error('Ошибка обновления сообщения в канале', editError, { userId, requestId });
         }
 
     } catch (error) {
@@ -3365,6 +3382,187 @@ async function handleCancelReply(ctx, action) {
     }
 }
 
+// Обработка заявки на вывод - показ кнопок одобрения/отклонения
+async function handleProcessWithdrawal(ctx, action) {
+    const userId = ctx.from.id;
+    const requestId = action.replace('process_withdrawal_', '');
+
+    logger.info('🔧 ОБРАБОТКА ЗАЯВКИ НА ВЫВОД', {
+        userId,
+        requestId,
+        timestamp: new Date().toISOString()
+    });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery('🔧 Заявка взята в обработку', false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Импортируем dataManager
+        const { dataManager } = require('../utils/dataManager');
+        
+        // Получаем информацию о заявке
+        const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
+        
+        if (!withdrawalRequest) {
+            return;
+        }
+        
+        // Обновляем сообщение в канале с кнопками одобрения/отклонения
+        const updatedMessage = `📋 **Заявка на вывод - В ОБРАБОТКЕ** 🔧\n\n` +
+            `👤 **Пользователь:**\n` +
+            `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
+            `├ 👤 Имя: ${withdrawalRequest.firstName}\n` +
+            `└ 🏷️ Username: ${withdrawalRequest.username}\n\n` +
+            `💰 **Детали заявки:**\n` +
+            `├ 🆔 ID заявки: №${withdrawalRequest.id}\n` +
+            `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
+            `├ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n` +
+            `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+            `🎯 **Действия:**`;
+        
+        // Создаем клавиатуру с кнопками одобрения/отклонения
+        const updatedKeyboard = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '✅ Одобрить',
+                        callback_data: `approve_withdrawal_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    },
+                    {
+                        text: '❌ Отклонить',
+                        callback_data: `reject_withdrawal_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    }
+                ]
+            ]
+        };
+        
+        // Обновляем сообщение в канале
+        try {
+            await ctx.editMessageText(updatedMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: updatedKeyboard
+            });
+            
+            logger.info('Заявка взята в обработку, показаны кнопки одобрения/отклонения', { 
+                userId, 
+                requestId 
+            });
+            
+        } catch (editError) {
+            logger.error('Ошибка обновления сообщения в канале', editError, { userId, requestId });
+        }
+        
+    } catch (error) {
+        logger.error('Ошибка обработки заявки на вывод', error, { userId, requestId });
+    }
+}
+
+// Обработка отклонения заявки с указанием причины
+async function handleRejectWithReason(ctx, action) {
+    const userId = ctx.from.id;
+    
+    // Парсим action для получения причины и ID заявки
+    let reason = '';
+    let requestId = '';
+    
+    if (action.startsWith('reject_reason_fraud_')) {
+        reason = 'Махинации';
+        requestId = action.replace('reject_reason_fraud_', '');
+    } else if (action.startsWith('reject_reason_farm_')) {
+        reason = 'Ферма аккаунтов';
+        requestId = action.replace('reject_reason_farm_', '');
+    } else if (action.startsWith('reject_reason_retry_')) {
+        reason = 'Повторите попытку';
+        requestId = action.replace('reject_reason_retry_', '');
+    } else if (action.startsWith('reject_reason_no_comment_')) {
+        reason = 'Без объяснений';
+        requestId = action.replace('reject_reason_no_comment_', '');
+    }
+
+    logger.info('🚫 ОТКЛОНЕНИЕ ЗАЯВКИ С ПРИЧИНОЙ', {
+        userId,
+        requestId,
+        reason,
+        timestamp: new Date().toISOString()
+    });
+
+    try {
+        // Отвечаем на callback-запрос
+        await ctx.answerCbQuery(`🚫 Заявка отклонена: ${reason}`, false);
+
+        // Проверяем, является ли пользователь админом
+        if (!isAdmin(userId)) {
+            return;
+        }
+        
+        // Обрабатываем заявку
+        const result = await dataManager.processWithdrawalRequest(requestId, 'reject', userId, reason);
+        
+        if (result.success) {
+            // Обновляем сообщение в канале
+            const updatedMessage = `📋 **Заявка на вывод ОТКЛОНЕНА** ❌\n\n` +
+                `👤 **Пользователь:**\n` +
+                `├ 🆔 ID: \`${result.request.userId}\`\n` +
+                `├ 👤 Имя: ${result.request.firstName}\n` +
+                `└ 🏷️ Username: ${result.request.username}\n\n` +
+                `💰 **Детали заявки:**\n` +
+                `├ 🆔 ID заявки: №${result.request.id}\n` +
+                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
+                `├ 📅 Дата: ${new Date(result.request.createdAt).toLocaleDateString('ru-RU')}\n` +
+                `└ ⏰ Время: ${new Date(result.request.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
+                `🚫 **Причина отклонения:** ${reason}\n` +
+                `❌ **Отклонено:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n\n` +
+                `💰 **Звезды возвращены пользователю**`;
+
+            // Обновляем сообщение в канале
+            try {
+                await ctx.editMessageText(updatedMessage, { parse_mode: 'Markdown' });
+                logger.info('Сообщение в канале успешно обновлено (отклонение с причиной)', {
+                    userId,
+                    requestId,
+                    reason
+                });
+            } catch (editError) {
+                logger.error('Ошибка обновления сообщения в канале (отклонение)', editError, {
+                    userId,
+                    requestId,
+                    reason
+                });
+            }
+            
+            // Уведомляем пользователя с указанием причины
+            await ctx.telegram.sendMessage(result.request.userId, 
+                `❌ **Ваша заявка на вывод отклонена**\n\n` +
+                `📋 **Детали заявки:**\n` +
+                `├ 🆔 ID: \`${result.request.id}\`\n` +
+                `├ 💰 Сумма: ${result.request.amount} ⭐ Stars\n` +
+                `└ ❌ Статус: Отклонена\n\n` +
+                `🚫 **Причина:** ${reason}\n` +
+                `⏰ **Время отклонения:** ${new Date(result.request.processedAt).toLocaleDateString('ru-RU')} ${new Date(result.request.processedAt).toLocaleTimeString('ru-RU')}\n\n` +
+                `💰 **Звезды возвращены на ваш баланс**\n\n` +
+                `💡 **Что дальше:** Вы можете создать новую заявку на вывод`
+            );
+            
+            logger.info('Заявка на вывод отклонена с причиной', { userId, requestId, reason, adminId: userId });
+
+        } else {
+            await ctx.answerCbQuery(`❌ ${result.message}`);
+            return;
+        }
+
+    } catch (error) {
+        logger.error('Ошибка отклонения заявки на вывод с причиной', error, { userId, requestId, reason });
+        await ctx.answerCbQuery('❌ Ошибка при отклонении заявки');
+    }
+}
+
 module.exports = {
     callbackHandler,
     updateLastBotMessage,
@@ -3391,5 +3589,7 @@ module.exports = {
     handleCloseTicket,
     handleReplyTicket,
     handleCancelReply,
-    userStates
+    userStates,
+    handleProcessWithdrawal,
+    handleRejectWithReason
 };

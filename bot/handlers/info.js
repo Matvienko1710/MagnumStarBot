@@ -545,14 +545,9 @@ async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
             inline_keyboard: [
                 [
                     {
-                        text: '✅ Одобрить',
-                        callback_data: `approve_withdrawal_${withdrawalRequest.id}`,
+                        text: '🔧 Обработать',
+                        callback_data: `process_withdrawal_${withdrawalRequest.id}`,
                         // Кнопка видна только админам
-                        web_app: undefined
-                    },
-                    {
-                        text: '❌ Отклонить',
-                        callback_data: `reject_withdrawal_${withdrawalRequest.id}`,
                         web_app: undefined
                     }
                 ]
