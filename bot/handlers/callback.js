@@ -414,19 +414,41 @@ async function handleMiners(ctx) {
         
         // Получаем информацию о майнерах пользователя
         const userMiners = await dataManager.getUserMiners(userId);
-        
-        // Рассчитываем общий доход
+
+        // Импортируем типы майнеров для определения валюты
+        const { MINER_TYPES } = require('../utils/miners');
+
+        // Рассчитываем общий доход в минуту и общее заработанное
         let totalCoinsPerMin = 0;
         let totalStarsPerMin = 0;
-        
+        let totalMinersEarnedCoins = 0;
+        let totalMinersEarnedStars = 0;
+
         userMiners.forEach(miner => {
             if (miner.isActive) {
-                totalCoinsPerMin += miner.speed.coins;
-                totalStarsPerMin += miner.speed.stars;
+                // Скорость майнинга (доход в минуту)
+                if (miner.speed) {
+                    totalCoinsPerMin += miner.speed.coins || 0;
+                    totalStarsPerMin += miner.speed.stars || 0;
+                }
+
+                // Общее заработанное майнером
+                if (miner.totalEarned !== undefined && miner.totalEarned > 0) {
+                    // Определяем тип валюты майнера
+                    const minerType = MINER_TYPES[miner.type.toUpperCase()];
+                    if (minerType) {
+                        if (minerType.rewardType === 'coins') {
+                            totalMinersEarnedCoins += miner.totalEarned;
+                        } else if (minerType.rewardType === 'stars') {
+                            totalMinersEarnedStars += miner.totalEarned;
+                        }
+                    }
+                }
             }
         });
-        
+
         const totalIncome = { coins: totalCoinsPerMin, stars: totalStarsPerMin };
+        const totalMinersEarned = { coins: totalMinersEarnedCoins, stars: totalMinersEarnedStars };
         
         // Получаем информацию о лимитах майнеров
         const noviceAvailability = await dataManager.getMinerAvailability('novice');
@@ -440,9 +462,9 @@ async function handleMiners(ctx) {
             `💰 **Ваш баланс:**\n` +
             `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
             `└ ⭐ Stars: ${userBalance.stars}\n\n` +
-            `📈 **Всего заработано:**\n` +
-            `├ 🪙 Magnum Coins: ${(userBalance.totalEarned?.coins || 0)}\n` +
-            `└ ⭐ Stars: ${(userBalance.totalEarned?.stars || 0)}\n\n` +
+            `📈 **Майнеры заработали:**\n` +
+            `├ 🪙 Magnum Coins: ${totalMinersEarned.coins.toFixed(2)}\n` +
+            `└ ⭐ Stars: ${totalMinersEarned.stars.toFixed(2)}\n\n` +
             `⛏️ **Ваши майнеры:**\n` +
             `├ 📊 Всего майнеров: ${userMiners.length}\n` +
             `├ ⚡ Общий доход: ${totalIncome.coins} 🪙/мин\n` +
