@@ -703,8 +703,13 @@ class DataManager {
         }
     }
     
-    async setupReferral(userId, referrerId = null) {
+    async setupReferral(userId, referrerId = null, userData = null) {
         try {
+            // Обновляем профиль пользователя если переданы данные
+            if (userData) {
+                await this.updateUserProfile(userId, userData);
+            }
+            
             // Проверяем, не пытается ли пользователь использовать свою собственную реферальную ссылку
             if (referrerId && Number(referrerId) === userId) {
                 logger.warn('Попытка использовать собственную реферальную ссылку заблокирована', { userId, referrerId });
@@ -860,6 +865,44 @@ class DataManager {
         } catch (error) {
             logger.error('Ошибка настройки реферальной системы', error, { userId, referrerId });
             throw error;
+        }
+    }
+
+    // Обновление профиля пользователя (имя, username)
+    async updateUserProfile(userId, userData) {
+        try {
+            logger.info('Обновление профиля пользователя', { userId, userData });
+            
+            const updateData = {};
+            
+            // Обновляем firstName если он передан и не пустой
+            if (userData.firstName && userData.firstName.trim()) {
+                updateData.firstName = userData.firstName.trim();
+            }
+            
+            // Обновляем username если он передан и не пустой
+            if (userData.username && userData.username.trim()) {
+                updateData.username = userData.username.trim();
+            }
+            
+            // Обновляем lastName если он передан и не пустой
+            if (userData.lastName && userData.lastName.trim()) {
+                updateData.lastName = userData.lastName.trim();
+            }
+            
+            // Обновляем telegramUsername если username передан
+            if (userData.username && userData.username.trim()) {
+                updateData.telegramUsername = userData.username.trim();
+            }
+            
+            // Если есть данные для обновления, обновляем пользователя
+            if (Object.keys(updateData).length > 0) {
+                await this.updateUser(userId, updateData);
+                logger.info('Профиль пользователя обновлен', { userId, updateData });
+            }
+            
+        } catch (error) {
+            logger.error('Ошибка обновления профиля пользователя', error, { userId, userData });
         }
     }
 
@@ -2521,85 +2564,7 @@ class DataManager {
         }
     }
 
-    // Настройка реферальной системы для пользователя
-    async setupReferral(userId, referrerId = null) {
-        try {
-            logger.info('Настройка реферальной системы', { userId, referrerId });
 
-            // Получаем или создаем пользователя
-            let user = await this.getUser(userId);
-            let referrer = null;
-
-            // Если указан ID реферера, проверяем его существование
-            if (referrerId) {
-                referrer = await this.getUser(referrerId);
-                if (!referrer) {
-                    logger.warn('Реферер не найден, создаем пользователя без реферера', { userId, referrerId });
-                    referrerId = null;
-                }
-            }
-
-            // Инициализируем реферальные данные (если их нет)
-            if (!user.referral) {
-                const referralCode = userId.toString(); // Просто userId
-
-                // Инициализируем реферальные данные
-                user.referral = {
-                    code: referralCode,
-                    referrerId: referrerId,
-                    referrals: [],
-                    totalEarned: { stars: 0, coins: 0 },
-                    level: 1,
-                    createdAt: new Date()
-                };
-
-                // Сохраняем обновленные данные пользователя
-                await this.db.collection('users').updateOne(
-                    { userId: Number(userId) },
-                    {
-                        $set: {
-                            referral: user.referral,
-                            lastActivity: new Date()
-                        }
-                    }
-                );
-
-                logger.info('Реферальная система настроена для пользователя', {
-                    userId,
-                    referralCode,
-                    referrerId
-                });
-            }
-
-            // Если есть реферер, добавляем пользователя в его список рефералов
-            if (referrerId && referrer) {
-                // Добавляем пользователя в список рефералов реферера
-                await this.db.collection('users').updateOne(
-                    { userId: Number(referrerId) },
-                    {
-                        $addToSet: { 'referral.referrals': Number(userId) },
-                        $set: { lastActivity: new Date() }
-                    }
-                );
-
-                logger.info('Пользователь добавлен в список рефералов', {
-                    userId,
-                    referrerId
-                });
-            }
-
-            return {
-                userId: Number(userId),
-                referrerId: referrerId ? Number(referrerId) : null,
-                referralCode: user.referral.code,
-                success: true
-            };
-
-        } catch (error) {
-            logger.error('Ошибка настройки реферальной системы', error, { userId, referrerId });
-            throw error;
-        }
-    }
 
     // Генерация реферального кода (используем просто userId)
     generateReferralCode(userId) {

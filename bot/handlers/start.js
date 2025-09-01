@@ -81,14 +81,22 @@ async function startHandler(ctx) {
                     lastBotMessages.set(userId, ownReferralMsg.message_id);
                     
                     // Создаем пользователя без реферера
-                    await dataManager.setupReferral(userId);
+                    await dataManager.setupReferral(userId, null, {
+                        firstName: ctx.from.first_name,
+                        username: ctx.from.username,
+                        lastName: ctx.from.last_name
+                    });
                     logger.info('Пользователь создан без реферера (собственная ссылка заблокирована)', { userId });
                     
                     return; // Прерываем выполнение, показываем только сообщение о блокировке
                 }
                 
                 // Если есть ID реферера, настраиваем реферальную систему
-                const referralData = await dataManager.setupReferral(userId, startPayload);
+                const referralData = await dataManager.setupReferral(userId, startPayload, {
+                    firstName: ctx.from.first_name,
+                    username: ctx.from.username,
+                    lastName: ctx.from.last_name
+                });
                 logger.info('Реферальная система настроена для нового пользователя', { userId, referrerId: startPayload });
                 
                 // Начисляем награды и добавляем уведомление
@@ -140,7 +148,11 @@ async function startHandler(ctx) {
                 }
             } else {
                 // Если нет ID реферера, создаем пользователя без реферера
-                await dataManager.setupReferral(userId);
+                await dataManager.setupReferral(userId, null, {
+                    firstName: ctx.from.first_name,
+                    username: ctx.from.username,
+                    lastName: ctx.from.last_name
+                });
                 logger.info('Пользователь создан без реферера', { userId });
             }
         } catch (error) {
