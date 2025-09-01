@@ -504,12 +504,14 @@ async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
     try {
         const channelUsername = '@magnumwithdraw';
 
-        // Получаем username из информации о пользователе
-        const username = userInfo?.username ? `@${userInfo.username}` : 'Не указан';
+        // Получаем данные пользователя из заявки
+        const firstName = withdrawalRequest.firstName || userInfo?.first_name || 'Неизвестно';
+        const username = withdrawalRequest.username || (userInfo?.username ? `@${userInfo.username}` : '@username');
 
         const adminMessage = `📋 **Новая заявка на вывод**\n\n` +
             `👤 **Пользователь:**\n` +
             `├ 🆔 ID: \`${withdrawalRequest.userId}\`\n` +
+            `├ 👤 Имя: ${firstName}\n` +
             `└ 🏷️ Username: ${username}\n\n` +
             `💰 **Детали заявки:**\n` +
             `├ 🆔 ID заявки: №${withdrawalRequest.id}\n` +

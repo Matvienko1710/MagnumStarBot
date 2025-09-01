@@ -1564,6 +1564,7 @@ class DataManager {
             const withdrawalRequest = {
                 id: await this.generateWithdrawalId(),
                 userId: Number(userId),
+                firstName: user.firstName || 'Неизвестно',
                 username: user.username || user.telegramUsername || '@username',
                 amount: amount,
                 status: 'pending', // pending, approved, rejected
@@ -1624,11 +1625,16 @@ class DataManager {
                 return { success: false, message: 'Заявка уже обработана' };
             }
             
+            // Получаем актуальные данные пользователя
+            const user = await this.getUser(request.userId);
+            
             const updateData = {
                 status: action === 'approve' ? 'approved' : 'rejected',
                 processedAt: new Date(),
                 processedBy: Number(adminId),
-                comment: comment
+                comment: comment,
+                firstName: user.firstName || 'Неизвестно',
+                username: user.username || user.telegramUsername || '@username'
             };
             
             // Обновляем статус заявки
