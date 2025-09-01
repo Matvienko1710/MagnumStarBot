@@ -23,6 +23,9 @@ class DataManager {
             // Создаем начальные данные
             await this.createDefaultData();
             
+            // Создаем коллекцию для отслеживания активности пользователей
+            await this.createUserActivityCollection();
+            
             // Запускаем проверку пропущенных наград в фоновом режиме (неблокирующе)
             logger.info('⛏️ Запускаем проверку пропущенных наград в фоновом режиме...');
             setImmediate(async () => {
@@ -45,6 +48,9 @@ class DataManager {
             
             // Запускаем автоматическое начисление дохода от майнинга каждую минуту
             this.startMiningIncomeScheduler();
+            
+            // Запускаем планировщик активных рефералов
+            this.startActiveReferralsScheduler();
             
         } catch (error) {
             logger.error('Ошибка инициализации DataManager', error);
@@ -327,6 +333,28 @@ class DataManager {
         }
     }
 
+    async createUserActivityCollection() {
+        try {
+            // Создаем коллекцию для отслеживания активности пользователей
+            try {
+                await this.db.createCollection('user_activity');
+                logger.info('Коллекция user_activity создана');
+            } catch (error) {
+                logger.info('Коллекция user_activity уже существует');
+            }
+            
+            // Создаем индексы для оптимизации
+            await this.db.collection('user_activity').createIndex({ userId: 1 });
+            await this.db.collection('user_activity').createIndex({ lastActivity: -1 });
+            await this.db.collection('user_activity').createIndex({ userId: 1, lastActivity: -1 });
+            
+            logger.info('Индексы для user_activity созданы');
+            
+        } catch (error) {
+            logger.error('Ошибка создания коллекции user_activity', error);
+        }
+    }
+
     async createDefaultData() {
         try {
             // Создаем системные настройки
@@ -373,6 +401,9 @@ class DataManager {
                 isInitialized: this.isInitialized,
                 timestamp: new Date().toISOString()
             });
+
+            // Обновляем активность пользователя
+            await this.updateUserActivity(userId);
 
             const user = await this.db.collection('users').findOne({ userId: Number(userId) });
 
@@ -938,13 +969,17 @@ class DataManager {
                 logger.info('Обновлен totalEarned для пользователя', { userId, oldEarned: savedEarned, newEarned: totalEarned });
             }
             
+            // Получаем статистику активных рефералов
+            const activeReferralsStats = await this.getActiveReferralsStats(userId);
+            
             return {
                 referralId: numericUserId, // ID пользователя для реферальной ссылки
                 totalReferrals: referrals.length,
-                activeReferrals: referrals.filter(r => r.isActive).length,
+                activeReferrals: activeReferralsStats.activeReferrals,
                 totalEarned: totalEarned,
                 level: user.referral.level || 1,
-                referrals: referrals
+                referrals: referrals,
+                isActiveReferrer: activeReferralsStats.isActiveReferrer
             };
             
         } catch (error) {
@@ -2786,6 +2821,295 @@ class DataManager {
 
         } catch (error) {
             logger.error('Ошибка обновления сообщения о ключе в канале', error, { key });
+        }
+    }
+
+    // Система активных рефералов
+    async startActiveReferralsScheduler() {
+        try {
+            logger.info('🚀 Запускаем планировщик активных рефералов...');
+            
+            // Запускаем каждый день в 04:00
+            this.activeReferralsInterval = setInterval(async () => {
+                try {
+                    const now = new Date();
+                    const currentHour = now.getHours();
+                    
+                    // Проверяем, что сейчас 04:00
+                    if (currentHour === 4) {
+                        logger.info('⏰ 04:00 - запуск проверки активных рефералов...');
+                        await this.updateActiveReferrals();
+                    }
+                } catch (error) {
+                    logger.error('❌ Ошибка в планировщике активных рефералов', error);
+                }
+            }, 60000); // Проверяем каждую минуту
+            
+            logger.info('✅ Планировщик активных рефералов запущен (проверка каждый день в 04:00)');
+            
+        } catch (error) {
+            logger.error('❌ Ошибка запуска планировщика активных рефералов', error);
+        }
+    }
+
+    // Обновление активных рефералов
+    async updateActiveReferrals() {
+        try {
+            logger.info('🔄 Начинаем обновление активных рефералов...');
+            
+            // Получаем всех пользователей с рефералами
+            const usersWithReferrals = await this.db.collection('users').find({
+                'referral.referralId': { $exists: true, $ne: null }
+            }).toArray();
+            
+            logger.info(`🔍 Найдено пользователей с рефералами: ${usersWithReferrals.length}`);
+            
+            let totalActiveReferrals = 0;
+            let totalRewardsGiven = 0;
+            
+            for (const user of usersWithReferrals) {
+                try {
+                    const result = await this.checkAndUpdateActiveReferrals(user.userId);
+                    if (result.isActive) {
+                        totalActiveReferrals++;
+                        if (result.rewardGiven) {
+                            totalRewardsGiven++;
+                        }
+                    }
+                } catch (error) {
+                    logger.error('Ошибка проверки активных рефералов для пользователя', error, { userId: user.userId });
+                }
+            }
+            
+            logger.info('✅ Обновление активных рефералов завершено', { 
+                totalActiveReferrals, 
+                totalRewardsGiven 
+            });
+            
+        } catch (error) {
+            logger.error('❌ Ошибка обновления активных рефералов', error);
+        }
+    }
+
+    // Проверка и обновление активных рефералов для конкретного пользователя
+    async checkAndUpdateActiveReferrals(userId) {
+        try {
+            const user = await this.getUser(userId);
+            if (!user || !user.referral) {
+                return { isActive: false, rewardGiven: false };
+            }
+            
+            // Получаем всех рефералов пользователя
+            const referrals = await this.db.collection('referrals').find({
+                referrerId: Number(userId)
+            }).toArray();
+            
+            if (referrals.length === 0) {
+                return { isActive: false, rewardGiven: false };
+            }
+            
+            let activeReferralsCount = 0;
+            const now = new Date();
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            for (const referral of referrals) {
+                const isActive = await this.isReferralActive(referral.userId, weekAgo);
+                if (isActive) {
+                    activeReferralsCount++;
+                }
+            }
+            
+            // Проверяем условия для активных рефералов
+            const hasActiveReferrals = activeReferralsCount >= 5;
+            const hasDailyUsage = await this.checkDailyUsage(userId);
+            
+            const isActive = hasActiveReferrals && hasDailyUsage;
+            
+            // Обновляем статус в базе данных
+            await this.db.collection('users').updateOne(
+                { userId: Number(userId) },
+                { 
+                    $set: { 
+                        'referral.activeReferrals': activeReferralsCount,
+                        'referral.isActiveReferrer': isActive,
+                        'referral.lastActiveCheck': now
+                    }
+                }
+            );
+            
+            // Если пользователь стал активным реферером, начисляем награду
+            let rewardGiven = false;
+            if (isActive && !user.referral.hasReceivedActiveReferrerBonus) {
+                const reward = { stars: 50, coins: 5000 }; // 50 звезд + 5000 монет за активных рефералов
+                
+                await this.updateBalance(userId, reward.stars, reward.coins);
+                
+                // Обновляем общий заработок
+                const currentEarned = user.referral.totalEarned || { stars: 0, coins: 0 };
+                const newEarned = {
+                    stars: currentEarned.stars + reward.stars,
+                    coins: currentEarned.coins + reward.coins
+                };
+                
+                await this.db.collection('users').updateOne(
+                    { userId: Number(userId) },
+                    { 
+                        $set: { 
+                            'referral.totalEarned': newEarned,
+                            'referral.hasReceivedActiveReferrerBonus': true,
+                            'referral.activeReferrerBonusReceivedAt': now
+                        }
+                    }
+                );
+                
+                rewardGiven = true;
+                logger.info('Награда за активных рефералов начислена', { userId, reward, newEarned });
+            }
+            
+            return { isActive, rewardGiven };
+            
+        } catch (error) {
+            logger.error('Ошибка проверки активных рефералов', error, { userId });
+            return { isActive: false, rewardGiven: false };
+        }
+    }
+
+    // Проверка активности реферала
+    async isReferralActive(referralUserId, sinceDate) {
+        try {
+            // Проверяем использование бота в течение 5 дней подряд
+            const userActivity = await this.db.collection('user_activity').find({
+                userId: Number(referralUserId),
+                lastActivity: { $gte: sinceDate }
+            }).toArray();
+            
+            if (userActivity.length === 0) {
+                return false;
+            }
+            
+            // Проверяем, что пользователь использовал бота 5 дней подряд
+            const activityDates = userActivity.map(activity => 
+                new Date(activity.lastActivity).toDateString()
+            );
+            
+            const uniqueDates = [...new Set(activityDates)];
+            const hasConsecutiveDays = this.checkConsecutiveDays(uniqueDates, 5);
+            
+            // Проверяем, что реферал пригласил 5 человек за неделю
+            const referralInvites = await this.db.collection('referrals').find({
+                referrerId: Number(referralUserId),
+                createdAt: { $gte: sinceDate }
+            }).toArray();
+            
+            const hasEnoughInvites = referralInvites.length >= 5;
+            
+            return hasConsecutiveDays && hasEnoughInvites;
+            
+        } catch (error) {
+            logger.error('Ошибка проверки активности реферала', error, { referralUserId });
+            return false;
+        }
+    }
+
+    // Проверка ежедневного использования бота
+    async checkDailyUsage(userId) {
+        try {
+            const now = new Date();
+            const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+            
+            // Получаем активность пользователя за последние 5 дней
+            const userActivity = await this.db.collection('user_activity').find({
+                userId: Number(userId),
+                lastActivity: { $gte: fiveDaysAgo }
+            }).toArray();
+            
+            if (userActivity.length === 0) {
+                return false;
+            }
+            
+            // Проверяем, что пользователь использовал бота 5 дней подряд
+            const activityDates = userActivity.map(activity => 
+                new Date(activity.lastActivity).toDateString()
+            );
+            
+            const uniqueDates = [...new Set(activityDates)];
+            return this.checkConsecutiveDays(uniqueDates, 5);
+            
+        } catch (error) {
+            logger.error('Ошибка проверки ежедневного использования', error, { userId });
+            return false;
+        }
+    }
+
+    // Проверка последовательных дней
+    checkConsecutiveDays(dates, requiredDays) {
+        if (dates.length < requiredDays) {
+            return false;
+        }
+        
+        // Сортируем даты
+        const sortedDates = dates.sort((a, b) => new Date(a) - new Date(b));
+        
+        // Проверяем последовательность
+        let consecutiveCount = 1;
+        for (let i = 1; i < sortedDates.length; i++) {
+            const currentDate = new Date(sortedDates[i]);
+            const previousDate = new Date(sortedDates[i - 1]);
+            const diffDays = (currentDate - previousDate) / (1000 * 60 * 60 * 24);
+            
+            if (diffDays === 1) {
+                consecutiveCount++;
+            } else {
+                consecutiveCount = 1;
+            }
+            
+            if (consecutiveCount >= requiredDays) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    // Получение статистики активных рефералов
+    async getActiveReferralsStats(userId) {
+        try {
+            const user = await this.getUser(userId);
+            if (!user || !user.referral) {
+                return { activeReferrals: 0, isActiveReferrer: false };
+            }
+            
+            return {
+                activeReferrals: user.referral.activeReferrals || 0,
+                isActiveReferrer: user.referral.isActiveReferrer || false
+            };
+        } catch (error) {
+            logger.error('Ошибка получения статистики активных рефералов', error, { userId });
+            return { activeReferrals: 0, isActiveReferrer: false };
+        }
+    }
+
+    // Обновление активности пользователя
+    async updateUserActivity(userId) {
+        try {
+            const now = new Date();
+            
+            // Обновляем или создаем запись об активности
+            await this.db.collection('user_activity').updateOne(
+                { userId: Number(userId) },
+                { 
+                    $set: { 
+                        lastActivity: now,
+                        updatedAt: now
+                    }
+                },
+                { upsert: true }
+            );
+            
+            logger.debug('Активность пользователя обновлена', { userId, timestamp: now });
+            
+        } catch (error) {
+            logger.error('Ошибка обновления активности пользователя', error, { userId });
         }
     }
 }

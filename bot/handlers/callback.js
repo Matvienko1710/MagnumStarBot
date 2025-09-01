@@ -2726,6 +2726,7 @@ async function handleReferrals(ctx) {
             `3️⃣ Когда друг зарегистрируется, вы получите награду!`;
 
         const referralsKeyboard = Markup.inlineKeyboard([
+            [Markup.button.switchToChat('🔗 Скопировать реферальную ссылку', `https://t.me/MagnumStarBot?start=${referralCode}`)],
             [Markup.button.callback('🔗 Мой реферальный код', 'my_referral_code')],
             [Markup.button.callback('📊 Топ рефералов', 'top_referrers')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
