@@ -125,15 +125,6 @@ async function callbackHandler(ctx) {
                 // Уведомление для обычных пользователей
                 await ctx.answerCbQuery('🚀 WebApp скоро будет доступен! Следите за обновлениями.', true);
                 break;
-            case (action) => action.startsWith('approve_withdrawal_'):
-                logger.info('🔥 Вызываем handleApproveWithdrawal', { action, userId });
-                await handleApproveWithdrawal(ctx, action);
-                break;
-            case (action) => action.startsWith('reject_withdrawal_'):
-                logger.info('🔥 Вызываем handleRejectWithdrawal', { action, userId });
-                await handleRejectWithdrawal(ctx, action);
-                break;
-                
             case 'activate_key':
                 await handleActivateKey(ctx);
                 break;
@@ -221,7 +212,22 @@ async function callbackHandler(ctx) {
                 break;
                 
             default:
-                await ctx.reply('❌ Неизвестная команда');
+                // Обработка кнопок одобрения/отклонения заявок
+                if (callbackData.startsWith('approve_withdrawal_')) {
+                    logger.info('🔥 Вызываем handleApproveWithdrawal', { action: callbackData, userId });
+                    await handleApproveWithdrawal(ctx, callbackData);
+                    return;
+                }
+                
+                if (callbackData.startsWith('reject_withdrawal_')) {
+                    logger.info('🔥 Вызываем handleRejectWithdrawal', { action: callbackData, userId });
+                    await handleRejectWithdrawal(ctx, callbackData);
+                    return;
+                }
+                
+                // Если команда не найдена
+                logger.warn('Неизвестная команда', { userId, callbackData });
+                await ctx.answerCbQuery('❌ Неизвестная команда', true);
                 break;
         }
         
