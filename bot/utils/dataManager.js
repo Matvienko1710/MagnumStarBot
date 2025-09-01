@@ -1261,7 +1261,7 @@ class DataManager {
         }
     }
     
-    // Запуск майнинга (раз в 4 часа)
+    // Запуск майнинга (раз в 4 часа для novice, раз в 12 часов для limited)
     async startMining(userId) {
         try {
             logger.info('Попытка запуска майнинга', { userId });
@@ -1290,7 +1290,10 @@ class DataManager {
                 const timeSinceLastStart = now - new Date(miner.lastMiningStart);
                 const hoursSinceLastStart = timeSinceLastStart / (1000 * 60 * 60);
                 
-                if (hoursSinceLastStart >= 4) {
+                // Разные интервалы для разных типов майнеров
+                const requiredHours = miner.type === 'limited' ? 12 : 4;
+                
+                if (hoursSinceLastStart >= requiredHours) {
                     canStartMining = true;
                     break;
                 }
@@ -1300,7 +1303,10 @@ class DataManager {
             if (!canStartMining) {
                 const earliestNextStart = new Date(Math.min(...miners
                     .filter(m => m.isActive && m.lastMiningStart)
-                    .map(m => new Date(m.lastMiningStart).getTime() + (4 * 60 * 60 * 1000))
+                    .map(m => {
+                        const requiredHours = m.type === 'limited' ? 12 : 4;
+                        return new Date(m.lastMiningStart).getTime() + (requiredHours * 60 * 60 * 1000);
+                    })
                 ));
                 
                 const timeUntilNext = earliestNextStart - now;
@@ -1354,9 +1360,19 @@ class DataManager {
             
             logger.info('Майнинг успешно запущен', { userId, startTime: now, initialReward: { coins: totalCoins, stars: totalStars } });
             
+            // Формируем сообщение о доходе
+            let rewardMessage = 'Майнинг запущен! ';
+            if (totalCoins > 0) {
+                rewardMessage += `Получено ${totalCoins} 🪙 Coins за первую минуту. `;
+            }
+            if (totalStars > 0) {
+                rewardMessage += `Получено ${totalStars} ⭐ Stars за первую минуту. `;
+            }
+            rewardMessage += 'Доход будет начисляться каждую минуту автоматически.';
+            
             return { 
                 success: true, 
-                message: `Майнинг запущен! Получено ${totalCoins} 🪙 Coins за первую минуту. Доход будет начисляться каждую минуту автоматически.`,
+                message: rewardMessage,
                 startTime: now,
                 initialReward: { coins: totalCoins, stars: totalStars }
             };
@@ -1395,11 +1411,14 @@ class DataManager {
                     continue;
                 }
                 
-                // Проверяем, что майнинг был запущен менее 4 часов назад
+                // Проверяем, что майнинг был запущен менее требуемого времени назад
                 const timeSinceMiningStart = now - new Date(miner.lastMiningStart);
                 const hoursSinceStart = timeSinceMiningStart / (1000 * 60 * 60);
                 
-                if (hoursSinceStart < 4) {
+                // Разные интервалы для разных типов майнеров
+                const requiredHours = miner.type === 'limited' ? 12 : 4;
+                
+                if (hoursSinceStart < requiredHours) {
                     // Начисляем доход за последнюю минуту (скорость уже в минуту)
                     const coinsEarned = miner.speed.coins; // Доход в минуту (1 Coin)
                     const starsEarned = miner.speed.stars; // Доход в минуту
@@ -1416,10 +1435,11 @@ class DataManager {
                         hoursSinceStart: Math.round(hoursSinceStart * 100) / 100
                     });
                 } else {
-                    logger.debug('Майнинг майнера истек (более 4 часов)', { 
+                    logger.debug(`Майнинг майнера истек (более ${requiredHours} часов)`, { 
                         userId, 
                         minerId: miner.id, 
-                        hoursSinceStart: Math.round(hoursSinceStart * 100) / 100
+                        hoursSinceStart: Math.round(hoursSinceStart * 100) / 100,
+                        requiredHours
                     });
                 }
             }
@@ -1607,6 +1627,15 @@ class DataManager {
                 rarity: 'Обычный',
                 maxPerUser: 10, // Максимум 10 майнеров на пользователя
                 globalLimit: 100 // Общий лимит на сервере
+            },
+            'limited': {
+                id: 'limited',
+                name: 'Лимитированная версия',
+                price: { coins: 0, stars: 100 },
+                speed: { coins: 0, stars: 0.001999 }, // 0.001999 Stars в минуту
+                rarity: 'Редкий',
+                maxPerUser: 5, // Максимум 5 майнеров на пользователя
+                globalLimit: 10 // Общий лимит на сервере (всего 10 майнеров)
             }
         };
         
