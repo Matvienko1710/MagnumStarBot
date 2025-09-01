@@ -2,148 +2,214 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('MagnumStarBot WebApp загружен');
 
-    // Получаем userId из URL параметров или localStorage
-    const urlParams = new URLSearchParams(window.location.search);
-    let userId = urlParams.get('userId') || localStorage.getItem('magnumBot_userId');
+    // Упрощенная логика получения userId
+    let userId = getUserId();
 
-    // Конвертируем userId в число, если это возможно
-    if (userId && typeof userId === 'string') {
-        const numericUserId = parseInt(userId);
-        if (!isNaN(numericUserId)) {
-            userId = numericUserId;
-            console.log('🔄 Конвертировал userId из строки в число:', {
-                original: urlParams.get('userId') || localStorage.getItem('magnumBot_userId'),
-                converted: userId,
-                type: typeof userId
-            });
-        }
-    }
-
-    console.log('🔍 Получение userId:', {
-        fromURL: urlParams.get('userId'),
-        fromLocalStorage: localStorage.getItem('magnumBot_userId'),
-        currentUserId: userId,
-        userIdType: typeof userId
-    });
-
-    // Проверяем Telegram WebApp API для автоматического получения userId
-    console.log('🔍 Проверка Telegram WebApp:', {
-        windowTelegram: !!window.Telegram,
-        webApp: !!(window.Telegram && window.Telegram.WebApp),
-        userAgent: navigator.userAgent.substring(0, 100) + '...',
-        referrer: document.referrer,
-        location: window.location.href
-    });
-
-    if (window.Telegram && window.Telegram.WebApp) {
-        try {
-            // Инициализируем WebApp
-            window.Telegram.WebApp.ready();
-
-            // Ждем небольшую задержку для инициализации
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
-            const initData = window.Telegram.WebApp.initData;
-            const platform = window.Telegram.WebApp.platform;
-
-            console.log('🔍 Подробные данные Telegram WebApp:', {
-                webAppAvailable: true,
-                platform: platform,
-                initDataLength: initData ? initData.length : 0,
-                initDataUnsafe: !!window.Telegram.WebApp.initDataUnsafe,
-                initDataUnsafeKeys: window.Telegram.WebApp.initDataUnsafe ? Object.keys(window.Telegram.WebApp.initDataUnsafe) : [],
-                user: telegramUser ? {
-                    id: telegramUser.id,
-                    username: telegramUser.username,
-                    first_name: telegramUser.first_name,
-                    last_name: telegramUser.last_name
-                } : null,
-                isExpanded: window.Telegram.WebApp.isExpanded,
-                viewportHeight: window.Telegram.WebApp.viewportHeight,
-                viewportStableHeight: window.Telegram.WebApp.viewportStableHeight
-            });
-
-            // Проверяем различные способы получения userId
-            if (telegramUser && telegramUser.id) {
-                userId = telegramUser.id;
-                localStorage.setItem('magnumBot_userId', userId.toString());
-                console.log('✅ User ID получен через Telegram WebApp:', {
-                    userId: userId,
-                    source: 'Telegram.WebApp.initDataUnsafe.user'
-                });
-            } else if (initData && initData.includes('user=')) {
-                // Пытаемся извлечь userId из initData
-                try {
-                    const urlParams = new URLSearchParams(initData);
-                    const userParam = urlParams.get('user');
-                    if (userParam) {
-                        const userData = JSON.parse(decodeURIComponent(userParam));
-                        if (userData && userData.id) {
-                            userId = userData.id;
-                            localStorage.setItem('magnumBot_userId', userId.toString());
-                            console.log('✅ User ID получен из initData:', {
-                                userId: userId,
-                                source: 'initData parsing'
-                            });
-                        }
-                    }
-                } catch (parseError) {
-                    console.log('⚠️ Не удалось распарсить user из initData:', parseError.message);
-                }
-            }
-
-            if (!userId) {
-                console.log('⚠️ Telegram WebApp доступен, но userId не найден');
-                // Показываем кнопку для открытия в Telegram
-                showTelegramPrompt();
-                return;
-            }
-
-        } catch (webAppError) {
-            console.error('❌ Ошибка при работе с Telegram WebApp:', webAppError);
-            showTelegramPrompt();
-            return;
-        }
-
+    if (userId) {
+        // Если userId найден, загружаем приложение
+        initializeApp(userId);
     } else {
-        console.log('❌ Telegram WebApp не доступен, показываем инструкцию');
-        showTelegramPrompt();
-        return;
+        // Если userId не найден, показываем простую форму ввода
+        showSimpleLoginForm();
     }
 
-    console.log('🎯 Финальный userId для использования:', userId);
+    // Упрощенная функция получения userId
+    function getUserId() {
+        // 1. Проверяем URL параметры
+        const urlParams = new URLSearchParams(window.location.search);
+        let userId = urlParams.get('userId');
+        
+        if (userId) {
+            const numericUserId = parseInt(userId);
+            if (!isNaN(numericUserId)) {
+                console.log('✅ User ID получен из URL:', numericUserId);
+                return numericUserId;
+            }
+        }
 
-    if (!userId) {
-        // Если userId не найден, показываем демо режим
-        console.log('🎮 UserId не найден, запускаем демо режим');
-        showDemoMode();
-        return;
+        // 2. Проверяем localStorage
+        userId = localStorage.getItem('magnumBot_userId');
+        if (userId) {
+            const numericUserId = parseInt(userId);
+            if (!isNaN(numericUserId)) {
+                console.log('✅ User ID получен из localStorage:', numericUserId);
+                return numericUserId;
+            }
+        }
+
+        // 3. Пытаемся получить из Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            try {
+                window.Telegram.WebApp.ready();
+                const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+                
+                if (telegramUser && telegramUser.id) {
+                    console.log('✅ User ID получен из Telegram WebApp:', telegramUser.id);
+                    return telegramUser.id;
+                }
+            } catch (error) {
+                console.log('⚠️ Ошибка получения userId из Telegram WebApp:', error.message);
+            }
+        }
+
+        console.log('❌ User ID не найден');
+        return null;
     }
 
-    // Сохраняем userId в localStorage для будущих посещений
-    localStorage.setItem('magnumBot_userId', userId);
-    console.log('💾 Сохранен userId в localStorage:', {
-        userId: userId,
-        userIdType: typeof userId
-    });
+    // Инициализация приложения
+    function initializeApp(userId) {
+        // Сохраняем userId в localStorage
+        localStorage.setItem('magnumBot_userId', userId.toString());
+        
+        // Добавляем кнопку сброса данных
+        addResetButton();
+        
+        // Загружаем данные пользователя
+        loadUserData(userId);
+        
+        // Анимация появления панели баланса
+        animateBalancePanel();
+    }
 
-    // Добавляем кнопку сброса данных для авторизованного пользователя
-    addResetButton();
+    // Простая форма входа
+    function showSimpleLoginForm() {
+        const loginForm = document.createElement('div');
+        loginForm.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 110, 46, 0.95);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            ">
+                <div style="
+                    background: white;
+                    padding: 40px;
+                    border-radius: 20px;
+                    text-align: center;
+                    max-width: 400px;
+                    width: 90%;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                ">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🚀</div>
+                    <h2 style="margin-bottom: 20px; color: #006e2e; font-size: 1.8rem;">Добро пожаловать!</h2>
+                    <p style="margin-bottom: 30px; color: #666; line-height: 1.5;">
+                        Введите ваш User ID для входа в веб-приложение MagnumStarBot
+                    </p>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" id="userIdInput" placeholder="Например: 123456789" 
+                               style="width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; text-align: center; box-sizing: border-box;">
+                    </div>
+                    
+                    <button id="loginBtn" style="
+                        background: #006e2e;
+                        color: white;
+                        border: none;
+                        padding: 15px 30px;
+                        border-radius: 25px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        width: 100%;
+                        margin-bottom: 15px;
+                        transition: all 0.3s ease;
+                    ">Войти</button>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; text-align: left;">
+                        <p style="margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 14px;">💡 Как получить User ID:</p>
+                        <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 13px; line-height: 1.4;">
+                            <li>Напишите боту <strong>@userinfobot</strong></li>
+                            <li>Или используйте команду <code>/start</code> в @MagnumStarBot</li>
+                            <li>Скопируйте ваш ID (число)</li>
+                        </ol>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button onclick="window.open('https://t.me/MagnumStarBot', '_blank')" style="
+                            background: #0088cc;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 20px;
+                            font-size: 14px;
+                            cursor: pointer;
+                            margin-right: 10px;
+                        ">Открыть бота</button>
+                        
+                        <button onclick="window.open('https://t.me/userinfobot', '_blank')" style="
+                            background: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 20px;
+                            font-size: 14px;
+                            cursor: pointer;
+                        ">Получить ID</button>
+                    </div>
+                </div>
+            </div>
+        `;
 
-    // Загружаем данные пользователя
-    loadUserData(userId);
+        document.body.appendChild(loginForm);
 
-    // Анимация появления панели баланса
-    const balanceNavbar = document.querySelector('.balance-navbar');
-    balanceNavbar.style.transform = 'translateY(-100%)';
-    balanceNavbar.style.opacity = '0';
+        // Обработчики событий
+        const userIdInput = document.getElementById('userIdInput');
+        const loginBtn = document.getElementById('loginBtn');
 
-    setTimeout(() => {
-        balanceNavbar.style.transition = 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        balanceNavbar.style.transform = 'translateY(0)';
-        balanceNavbar.style.opacity = '1';
-    }, 300);
+        // Автофокус на поле ввода
+        userIdInput.focus();
+
+        // Обработчик кнопки входа
+        loginBtn.addEventListener('click', function() {
+            const inputValue = userIdInput.value.trim();
+            const numericUserId = parseInt(inputValue);
+            
+            if (!isNaN(numericUserId) && numericUserId > 0) {
+                loginForm.remove();
+                initializeApp(numericUserId);
+            } else {
+                // Показываем ошибку
+                userIdInput.style.borderColor = '#ff4444';
+                userIdInput.placeholder = 'Введите корректный User ID (число)';
+                userIdInput.value = '';
+                
+                setTimeout(() => {
+                    userIdInput.style.borderColor = '#e0e0e0';
+                    userIdInput.placeholder = 'Например: 123456789';
+                }, 3000);
+            }
+        });
+
+        // Обработчик клавиши Enter
+        userIdInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loginBtn.click();
+            }
+        });
+
+        // Обработчик изменения поля ввода
+        userIdInput.addEventListener('input', function() {
+            this.style.borderColor = '#e0e0e0';
+        });
+    }
+
+    // Анимация панели баланса
+    function animateBalancePanel() {
+        const balanceNavbar = document.querySelector('.balance-navbar');
+        balanceNavbar.style.transform = 'translateY(-100%)';
+        balanceNavbar.style.opacity = '0';
+
+        setTimeout(() => {
+            balanceNavbar.style.transition = 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            balanceNavbar.style.transform = 'translateY(0)';
+            balanceNavbar.style.opacity = '1';
+        }, 300);
+    }
 
     // Функция загрузки данных пользователя
     async function loadUserData(userId) {
@@ -272,41 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Функция показа демо режима
-    function showDemoMode() {
-        console.log('🎮 Запуск демо режима...');
 
-        // Устанавливаем демо данные
-        updateBalanceDisplay('stars', 1250);
-        updateBalanceDisplay('magnum', 5678);
-
-        // В демо режиме просто показываем приветствие
-        const headerTitle = document.querySelector('.header h1');
-        if (headerTitle) {
-            headerTitle.textContent = 'MagnumStarBot (Демо)';
-        }
-
-
-
-        // Показываем кнопку для ввода User ID
-        const enterUserIdBtn = document.getElementById('enter-user-id-btn');
-        if (enterUserIdBtn) {
-            enterUserIdBtn.style.display = 'block';
-            enterUserIdBtn.textContent = 'Ввести User ID';
-            enterUserIdBtn.addEventListener('click', showUserIdPrompt);
-        }
-
-        // Добавляем кнопку для сброса данных
-        addResetButton();
-
-        // Показываем уведомление о демо режиме
-        setTimeout(() => {
-            showError('🎮 Это демо режим. Нажмите "Ввести User ID" для просмотра вашего реального баланса.');
-        }, 2000);
-
-        // Запускаем пульсирующий эффект для привлечения внимания
-        setTimeout(addPulseEffect, 1000);
-    }
 
     // Функция добавления кнопки сброса данных
     function addResetButton() {
@@ -344,9 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         resetBtn.addEventListener('click', function() {
-            const confirmMessage = userId
-                ? 'Вы уверены, что хотите сбросить данные и ввести новый User ID?'
-                : 'Вы уверены, что хотите сбросить все сохраненные данные?';
+            const confirmMessage = 'Вы уверены, что хотите сбросить данные и ввести новый User ID?';
 
             if (confirm(confirmMessage)) {
                 localStorage.removeItem('magnumBot_userId');
@@ -357,209 +387,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.appendChild(resetBtn);
     }
 
-    // Функция показа инструкции по открытию в Telegram
-    function showTelegramPrompt() {
-        console.log('📱 Показываем инструкцию по открытию в Telegram');
 
-        const promptDiv = document.createElement('div');
-        promptDiv.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.9);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10000;
-            ">
-                <div style="
-                    background: white;
-                    padding: 30px;
-                    border-radius: 20px;
-                    text-align: center;
-                    max-width: 450px;
-                    width: 90%;
-                ">
-                    <h2 style="margin-bottom: 20px; color: #0088cc;">🔗 Синхронизация с Telegram</h2>
-                    <p style="margin-bottom: 20px; color: #666; line-height: 1.5;">
-                        Вебапп не смог автоматически определить ваш аккаунт Telegram.
-                        Для синхронизации баланса откройте приложение через бота.
-                    </p>
-
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                        <p style="color: #333; font-weight: bold; margin-bottom: 10px;">🚀 Правильный способ открытия:</p>
-                        <ol style="text-align: left; color: #666; padding-left: 20px; margin: 0;">
-                            <li style="margin-bottom: 5px;">Откройте Telegram</li>
-                            <li style="margin-bottom: 5px;">Найдите бота <strong>@MagnumStarBot</strong></li>
-                            <li style="margin-bottom: 5px;">Отправьте команду <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">/start</code></li>
-                            <li>Нажмите кнопку вебаппа в меню бота</li>
-                        </ol>
-                    </div>
-
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                        <button onclick="window.open('https://t.me/MagnumStarBot', '_blank')" style="
-                            background: #0088cc;
-                            color: white;
-                            border: none;
-                            padding: 12px 25px;
-                            border-radius: 25px;
-                            font-size: 16px;
-                            cursor: pointer;
-                            flex: 1;
-                            min-width: 150px;
-                        ">🔗 Открыть бота</button>
-
-                        <button onclick="this.parentElement.parentElement.parentElement.remove(); showUserIdPrompt();" style="
-                            background: #28a745;
-                            color: white;
-                            border: none;
-                            padding: 12px 25px;
-                            border-radius: 25px;
-                            font-size: 16px;
-                            cursor: pointer;
-                            flex: 1;
-                            min-width: 150px;
-                        ">🔢 Ввести User ID</button>
-
-                        <button onclick="
-                            console.log('🔄 Повторная попытка инициализации WebApp...');
-                            if (window.Telegram && window.Telegram.WebApp) {
-                                window.Telegram.WebApp.ready();
-                                setTimeout(() => location.reload(), 500);
-                            } else {
-                                alert('Telegram WebApp не доступен в этом браузере');
-                            }
-                        " style="
-                            background: #ffc107;
-                            color: #000;
-                            border: none;
-                            padding: 12px 25px;
-                            border-radius: 25px;
-                            font-size: 14px;
-                            cursor: pointer;
-                            flex: 1;
-                            min-width: 150px;
-                        ">🔄 Повторить</button>
-
-                        <button onclick="this.parentElement.parentElement.parentElement.remove(); showDemoMode();" style="
-                            background: #6c757d;
-                            color: white;
-                            border: none;
-                            padding: 12px 25px;
-                            border-radius: 25px;
-                            font-size: 14px;
-                            cursor: pointer;
-                            width: 100%;
-                        ">📱 Демо режим</button>
-                    </div>
-
-                    <p style="margin-top: 15px; color: #888; font-size: 12px;">
-                        💡 User ID можно найти через @userinfobot или в настройках Telegram
-                    </p>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(promptDiv);
-    }
-
-    // Функция показа формы для ввода userId (теперь вызывается только при необходимости)
-    function showUserIdPrompt() {
-        const promptDiv = document.createElement('div');
-        promptDiv.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.8);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10000;
-            ">
-                <div style="
-                    background: white;
-                    padding: 30px;
-                    border-radius: 20px;
-                    text-align: center;
-                    max-width: 400px;
-                    width: 90%;
-                ">
-                    <h2 style="margin-bottom: 20px; color: #006e2e;">Введите ваш User ID</h2>
-                    <p style="margin-bottom: 20px; color: #666;">
-                        User ID можно найти в Telegram боте или получить через @userinfobot
-                    </p>
-                    <input type="text" id="userIdInput" placeholder="Например: 123456789"
-                           style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px;">
-                    <button id="submitUserId" style="
-                        background: #006e2e;
-                        color: white;
-                        border: none;
-                        padding: 12px 30px;
-                        border-radius: 25px;
-                        font-size: 16px;
-                        cursor: pointer;
-                        width: 100%;
-                    ">Войти</button>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(promptDiv);
-
-        // Обработчик кнопки
-        document.getElementById('submitUserId').addEventListener('click', function() {
-            const userIdInput = document.getElementById('userIdInput').value.trim();
-            console.log('👤 Пользователь ввел User ID:', {
-                input: userIdInput,
-                inputType: typeof userIdInput
-            });
-
-            // Конвертируем в число при необходимости
-            let userId = userIdInput;
-            const numericUserId = parseInt(userIdInput);
-            if (!isNaN(numericUserId)) {
-                userId = numericUserId;
-                console.log('🔄 Конвертировал введенный userId из строки в число:', {
-                    original: userIdInput,
-                    converted: userId,
-                    type: typeof userId
-                });
-            }
-
-            if (userId) {
-                localStorage.setItem('magnumBot_userId', userId);
-                promptDiv.remove();
-
-                // Убираем кнопку сброса, если она была
-                const resetBtn = document.getElementById('reset-user-id-btn');
-                if (resetBtn) {
-                    resetBtn.remove();
-                }
-
-                loadUserData(userId);
-            } else {
-                alert('Пожалуйста, введите User ID');
-            }
-        });
-
-        // Обработчик клавиши Enter
-        document.getElementById('userIdInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('submitUserId').click();
-            }
-        });
-
-        // Добавляем логирование при фокусе на поле ввода
-        document.getElementById('userIdInput').addEventListener('focus', function() {
-            console.log('🎯 Поле ввода userId получило фокус');
-        });
-    }
 
     // Функция показа ошибок
     function showError(message) {
@@ -634,8 +462,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Запускаем пульсирующий эффект через 2 секунды
     setTimeout(addPulseEffect, 2000);
 
-    // Запускаем автоматическое обновление баланса каждые 30 секунд
-    setInterval(() => loadUserBalance(userId), 30000);
+    // Запускаем автоматическое обновление баланса каждые 30 секунд (только для авторизованных пользователей)
+    let balanceUpdateInterval;
+    if (userId) {
+        balanceUpdateInterval = setInterval(() => {
+            if (userId) {
+                loadUserBalance(userId);
+            }
+        }, 30000);
+    }
 
 
 
