@@ -296,7 +296,7 @@ class DataManager {
     async createIndexes() {
         try {
             // Создаем коллекции, если их нет
-            const collections = ['users', 'transactions', 'settings'];
+            const collections = ['users', 'transactions', 'settings', 'support_tickets', 'withdrawals', 'referrals', 'message_deletions', 'titles', 'miners', 'key_activations'];
             for (const collectionName of collections) {
                 try {
                     await this.db.createCollection(collectionName);
@@ -330,6 +330,78 @@ class DataManager {
                 await this.db.collection('keys').createIndex({ isActive: 1 });
             } catch (error) {
                 logger.info('Коллекция keys уже существует');
+            }
+            
+            // Индексы для тикетов поддержки
+            try {
+                await this.db.collection('support_tickets').createIndex({ id: 1 }, { unique: true });
+                await this.db.collection('support_tickets').createIndex({ userId: 1 });
+                await this.db.collection('support_tickets').createIndex({ status: 1 });
+                await this.db.collection('support_tickets').createIndex({ createdAt: -1 });
+                logger.info('Индексы для support_tickets созданы');
+            } catch (error) {
+                logger.info('Индексы для support_tickets уже существуют');
+            }
+            
+            // Индексы для заявок на вывод
+            try {
+                await this.db.collection('withdrawals').createIndex({ id: 1 }, { unique: true });
+                await this.db.collection('withdrawals').createIndex({ userId: 1 });
+                await this.db.collection('withdrawals').createIndex({ status: 1 });
+                await this.db.collection('withdrawals').createIndex({ createdAt: -1 });
+                logger.info('Индексы для withdrawals созданы');
+            } catch (error) {
+                logger.info('Индексы для withdrawals уже существуют');
+            }
+            
+            // Индексы для рефералов
+            try {
+                await this.db.collection('referrals').createIndex({ userId: 1, referrerId: 1 }, { unique: true });
+                await this.db.collection('referrals').createIndex({ referrerId: 1 });
+                await this.db.collection('referrals').createIndex({ createdAt: -1 });
+                logger.info('Индексы для referrals созданы');
+            } catch (error) {
+                logger.info('Индексы для referrals уже существуют');
+            }
+            
+            // Индексы для автоматического удаления сообщений
+            try {
+                await this.db.collection('message_deletions').createIndex({ deleteAt: 1 });
+                await this.db.collection('message_deletions').createIndex({ messageId: 1 });
+                await this.db.collection('message_deletions').createIndex({ isDeleted: 1 });
+                logger.info('Индексы для message_deletions созданы');
+            } catch (error) {
+                logger.info('Индексы для message_deletions уже существуют');
+            }
+            
+            // Индексы для титулов
+            try {
+                await this.db.collection('titles').createIndex({ id: 1 }, { unique: true });
+                await this.db.collection('titles').createIndex({ rarity: 1 });
+                await this.db.collection('titles').createIndex({ isActive: 1 });
+                logger.info('Индексы для titles созданы');
+            } catch (error) {
+                logger.info('Индексы для titles уже существуют');
+            }
+            
+            // Индексы для майнеров
+            try {
+                await this.db.collection('miners').createIndex({ id: 1 }, { unique: true });
+                await this.db.collection('miners').createIndex({ type: 1 });
+                await this.db.collection('miners').createIndex({ isActive: 1 });
+                logger.info('Индексы для miners созданы');
+            } catch (error) {
+                logger.info('Индексы для miners уже существуют');
+            }
+            
+            // Индексы для активаций ключей
+            try {
+                await this.db.collection('key_activations').createIndex({ key: 1 });
+                await this.db.collection('key_activations').createIndex({ userId: 1 });
+                await this.db.collection('key_activations').createIndex({ activatedAt: 1 });
+                logger.info('Индексы для key_activations созданы');
+            } catch (error) {
+                logger.info('Индексы для key_activations уже существуют');
             }
             
             logger.info('Индексы созданы');
