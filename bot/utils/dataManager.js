@@ -2173,6 +2173,9 @@ class DataManager {
                 { $inc: { currentUses: 1 } }
             );
             
+            // Обновляем сообщение в канале
+            await this.updateKeyChannelMessage(key);
+            
             // Записываем активацию ключа
             await this.db.collection('key_activations').insertOne({
                 key: key,
@@ -2621,6 +2624,67 @@ class DataManager {
 
         } catch (error) {
             logger.error('Ошибка отправки уведомления о регистрации', error, { userId, referrerId, reward });
+        }
+    }
+
+    // Функция для обновления сообщения о ключе в канале
+    async updateKeyChannelMessage(key) {
+        try {
+            // Получаем экземпляр бота из bot/index.js
+            const { bot } = require('../index');
+            if (!bot) {
+                logger.warn('Бот не инициализирован, не можем обновить сообщение', { key });
+                return;
+            }
+
+            // Получаем актуальные данные ключа
+            const keyDoc = await this.db.collection('keys').findOne({ key: key });
+            if (!keyDoc) {
+                logger.warn('Ключ не найден для обновления сообщения', { key });
+                return;
+            }
+
+            // Определяем тип награды и количество
+            let rewardTypeText = '';
+            let rewardAmount = 0;
+            
+            if (keyDoc.type === 'stars') {
+                rewardTypeText = '⭐ Stars';
+                rewardAmount = keyDoc.reward.stars;
+            } else if (keyDoc.type === 'coins') {
+                rewardTypeText = '🪙 Magnum Coins';
+                rewardAmount = keyDoc.reward.coins;
+            } else if (keyDoc.type === 'miner') {
+                const minerInfo = MINER_TYPES[keyDoc.minerType.toUpperCase()];
+                rewardTypeText = `⛏️ ${minerInfo?.name || 'Майнер'}`;
+                rewardAmount = 1;
+            }
+
+            // Определяем статус ключа
+            const remainingUses = keyDoc.maxUses - keyDoc.currentUses;
+            const isActive = remainingUses > 0;
+            const statusEmoji = isActive ? '🟢' : '🔴';
+            const statusText = isActive ? 'Активен' : 'Исчерпан лимит активаций';
+
+            // Формируем обновленное сообщение
+            const updatedMessage = `🎉 **Новый ключ доступен!**\n\n` +
+                `🔑 **Код:** \`${keyDoc.key}\`\n` +
+                `💰 **Награда:** ${rewardAmount} ${rewardTypeText}\n` +
+                `🔄 **Доступно:** ${remainingUses} активаций\n` +
+                `${statusEmoji} **Статус:** ${statusText}\n\n` +
+                `⚡ Успей активировать ключ в боте и забери бонус первым!`;
+
+            // Здесь нужно найти и обновить сообщение в канале
+            // Пока что просто логируем обновление
+            logger.info('Обновление сообщения о ключе в канале', { 
+                key, 
+                remainingUses, 
+                isActive, 
+                statusText 
+            });
+
+        } catch (error) {
+            logger.error('Ошибка обновления сообщения о ключе в канале', error, { key });
         }
     }
 }

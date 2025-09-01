@@ -2361,14 +2361,11 @@ async function handleMinerKeyCreation(ctx, text) {
                     const chatRewardSymbol = userState.data.minerType === 'novice' ? '🪙' : '⭐';
                     const incomeRate = userState.data.minerType === 'novice' ? '1' : '0.01';
 
-                    const chatMessage = `🎉 **Новый ключ майнера создан!**\n\n` +
-                        `🔑 Ключ: \`${key}\`\n` +
-                        `⛏️ Майнер: ${chatMinerName}\n` +
-                        `💰 Цена: 100 ${chatPriceSymbol}\n` +
-                        `⚡ Доход: ${incomeRate} ${chatRewardSymbol}/мин\n` +
-                        `🔄 Максимум активаций: ${maxUses}\n` +
-                        `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
-                        `💡 Пользователи могут активировать этот ключ в боте!`;
+                    const chatMessage = `🎉 **Новый ключ доступен!**\n\n` +
+                        `🔑 **Код:** \`${key}\`\n` +
+                        `💰 **Награда:** ⛏️ ${chatMinerName} (100 ${chatPriceSymbol})\n` +
+                        `🔄 **Доступно:** ${maxUses} активаций\n\n` +
+                        `⚡ Успей активировать ключ в боте и забери бонус первым!`;
 
                     const { sendChannelNotification } = require('../middleware/chatFilter');
                     await sendChannelNotification(ctx, chatMessage);

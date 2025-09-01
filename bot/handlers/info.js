@@ -289,13 +289,11 @@ async function handleKeyMaxUses(ctx, text) {
     });
 
     // Отправляем уведомление в чат
-    const chatMessage = `🎉 **Новый ключ создан!**\n\n` +
-        `🔑 Ключ: \`${keyData.key}\`\n` +
-        `🎯 Тип награды: ${rewardTypeText}\n` +
-        `💰 Размер награды: ${rewardAmount} ${rewardTypeText}\n` +
-        `🔄 Максимум активаций: ${numMaxUses}\n` +
-        `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
-        `💡 Пользователи могут активировать этот ключ в боте!`;
+    const chatMessage = `🎉 **Новый ключ доступен!**\n\n` +
+        `🔑 **Код:** \`${keyData.key}\`\n` +
+        `💰 **Награда:** ${rewardAmount} ${rewardTypeText}\n` +
+        `🔄 **Доступно:** ${numMaxUses} активаций\n\n` +
+        `⚡ Успей активировать ключ в боте и забери бонус первым!`;
 
     const { sendChannelNotification } = require('../middleware/chatFilter');
     await sendChannelNotification(ctx, chatMessage);
@@ -371,17 +369,11 @@ async function handleTitleKeyCreation(ctx, text) {
                 );
 
                 // Отправляем уведомление в чат
-                const chatMessage = `🎉 **Новый ключ титула создан!**\n\n` +
-                    `🔑 Ключ: \`${newKey}\`\n` +
-                    `👑 Титул: ${userState.data.titleId}\n` +
-                    `📝 Описание: ${userState.data.description}\n` +
-                    `🎁 Награда:\n` +
-                    `├ ⭐ Stars: ${userState.data.stars}\n` +
-                    `├ 🪙 Magnum Coins: ${userState.data.coins}\n` +
-                    `└ 👑 Титул: ${userState.data.titleId}\n` +
-                    `🔄 Максимум активаций: ${userState.data.maxUses}\n` +
-                    `👤 Создал: @${ctx.from.username || 'админ'}\n\n` +
-                    `💡 Пользователи могут активировать этот ключ в боте!`;
+                const chatMessage = `🎉 **Новый ключ доступен!**\n\n` +
+                    `🔑 **Код:** \`${newKey}\`\n` +
+                    `💰 **Награда:** ${userState.data.stars} ⭐ Stars + ${userState.data.coins} 🪙 Magnum Coins + 👑 ${userState.data.titleId}\n` +
+                    `🔄 **Доступно:** ${userState.data.maxUses} активаций\n\n` +
+                    `⚡ Успей активировать ключ в боте и забери бонус первым!`;
 
                 const { sendChannelNotification } = require('../middleware/chatFilter');
                 await sendChannelNotification(ctx, chatMessage);
