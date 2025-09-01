@@ -2948,21 +2948,36 @@ async function handleCancelScreenshot(ctx, action) {
             `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
             `🎯 **Действия:**`;
         
-        const originalKeyboard = Markup.inlineKeyboard([
-            [
-                Markup.button.callback('✅ Одобрить', `approve_withdrawal_${withdrawalRequest.id}`),
-                Markup.button.callback('❌ Отклонить', `reject_withdrawal_${withdrawalRequest.id}`)
-            ],
-            [
-                Markup.button.callback('📸 Прикрепить скрин выплаты', `attach_payment_screenshot_${withdrawalRequest.id}`)
+        // Создаем клавиатуру, видимую только админам
+        const originalKeyboard = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '✅ Одобрить',
+                        callback_data: `approve_withdrawal_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    },
+                    {
+                        text: '❌ Отклонить',
+                        callback_data: `reject_withdrawal_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    }
+                ],
+                [
+                    {
+                        text: '📸 Прикрепить скрин выплаты',
+                        callback_data: `attach_payment_screenshot_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    }
+                ]
             ]
-        ]);
+        };
         
         // Обновляем сообщение в канале
         try {
             await ctx.editMessageText(originalMessage, {
                 parse_mode: 'Markdown',
-                reply_markup: originalKeyboard.reply_markup
+                reply_markup: originalKeyboard
             });
         } catch (editError) {
             logger.error('Ошибка восстановления исходного сообщения', editError, { userId, requestId });
@@ -3309,15 +3324,30 @@ async function handleTakeTicket(ctx, action) {
             `👤 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
             `💬 **Теперь вы можете отвечать на тикет**`;
         
-        const updatedKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('💬 Ответить на тикет', `reply_ticket_${ticketId}`)],
-            [Markup.button.callback('✅ Закрыть тикет', `close_ticket_${ticketId}`)]
-        ]);
+        // Создаем клавиатуру, видимую только админам
+        const updatedKeyboard = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '💬 Ответить на тикет',
+                        callback_data: `reply_ticket_${ticketId}`,
+                        web_app: undefined
+                    }
+                ],
+                [
+                    {
+                        text: '✅ Закрыть тикет',
+                        callback_data: `close_ticket_${ticketId}`,
+                        web_app: undefined
+                    }
+                ]
+            ]
+        };
         
         try {
             await ctx.editMessageText(updatedMessage, {
                 parse_mode: 'Markdown',
-                reply_markup: updatedKeyboard.reply_markup
+                reply_markup: updatedKeyboard
             });
         } catch (editError) {
             logger.error('Ошибка обновления сообщения в канале', editError, { userId, ticketId });
@@ -3534,16 +3564,31 @@ async function handleCancelReply(ctx, action) {
             `👤 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
             `💬 **Теперь вы можете отвечать на тикет**`;
         
-        const originalKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('💬 Ответить на тикет', `reply_ticket_${ticket.id}`)],
-            [Markup.button.callback('✅ Закрыть тикет', `close_ticket_${ticket.id}`)]
-        ]);
+        // Создаем клавиатуру, видимую только админам
+        const originalKeyboard = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '💬 Ответить на тикет',
+                        callback_data: `reply_ticket_${ticket.id}`,
+                        web_app: undefined
+                    }
+                ],
+                [
+                    {
+                        text: '✅ Закрыть тикет',
+                        callback_data: `close_ticket_${ticket.id}`,
+                        web_app: undefined
+                    }
+                ]
+            ]
+        };
         
         // Обновляем сообщение в канале
         try {
             await ctx.editMessageText(originalMessage, {
                 parse_mode: 'Markdown',
-                reply_markup: originalKeyboard.reply_markup
+                reply_markup: originalKeyboard
             });
         } catch (editError) {
             logger.error('Ошибка восстановления исходного сообщения', editError, { userId, ticketId });

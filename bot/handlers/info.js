@@ -537,20 +537,36 @@ async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
             `└ ⏰ Время: ${new Date(withdrawalRequest.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
             `🎯 **Действия:**`;
         
-        const adminKeyboard = Markup.inlineKeyboard([
-            [
-                Markup.button.callback('✅ Одобрить', `approve_withdrawal_${withdrawalRequest.id}`),
-                Markup.button.callback('❌ Отклонить', `reject_withdrawal_${withdrawalRequest.id}`)
-            ],
-            [
-                Markup.button.callback('📸 Прикрепить скрин выплаты', `attach_payment_screenshot_${withdrawalRequest.id}`)
+        // Создаем клавиатуру, видимую только админам
+        const adminKeyboard = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '✅ Одобрить',
+                        callback_data: `approve_withdrawal_${withdrawalRequest.id}`,
+                        // Кнопка видна только админам
+                        web_app: undefined
+                    },
+                    {
+                        text: '❌ Отклонить',
+                        callback_data: `reject_withdrawal_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    }
+                ],
+                [
+                    {
+                        text: '📸 Прикрепить скрин выплаты',
+                        callback_data: `attach_payment_screenshot_${withdrawalRequest.id}`,
+                        web_app: undefined
+                    }
+                ]
             ]
-        ]);
+        };
         
         // Отправляем в канал
         await ctx.telegram.sendMessage(channelUsername, adminMessage, {
             parse_mode: 'Markdown',
-            reply_markup: adminKeyboard.reply_markup
+            reply_markup: adminKeyboard
         });
         
         logger.info('Заявка на вывод отправлена в канал', { 
@@ -675,14 +691,23 @@ async function sendSupportTicketToChannel(ctx, ticketData) {
             `└ ⏰ Время: ${new Date(ticketData.createdAt).toLocaleTimeString('ru-RU')}\n\n` +
             `🎯 **Действия:**`;
         
-        const adminKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('👨‍💼 Взять в работу', `take_ticket_${ticketData.id}`)]
-        ]);
+        // Создаем клавиатуру, видимую только админам
+        const adminKeyboard = {
+            inline_keyboard: [
+                [
+                    {
+                        text: '👨‍💼 Взять в работу',
+                        callback_data: `take_ticket_${ticketData.id}`,
+                        web_app: undefined
+                    }
+                ]
+            ]
+        };
         
         // Отправляем в канал поддержки
         await ctx.telegram.sendMessage(channelUsername, adminMessage, {
             parse_mode: 'Markdown',
-            reply_markup: adminKeyboard.reply_markup
+            reply_markup: adminKeyboard
         });
         
         logger.info('Тикет поддержки отправлен в канал', { 

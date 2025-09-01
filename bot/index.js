@@ -140,13 +140,22 @@ function initializeBot() {
                         `└ 👨‍💼 Админ: ${ctx.from.first_name || 'Не указано'}\n\n` +
                         `💡 **Заявка полностью обработана**`;
                     
-                    const updatedKeyboard = Markup.inlineKeyboard([
-                        [Markup.button.callback('✅ Заявка завершена', `complete_withdrawal_${requestId}`)]
-                    ]);
+                    // Создаем клавиатуру, видимую только админам
+                    const updatedKeyboard = {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '✅ Заявка завершена',
+                                    callback_data: `complete_withdrawal_${requestId}`,
+                                    web_app: undefined
+                                }
+                            ]
+                        ]
+                    };
                     
                     await ctx.reply(updatedMessage, {
                         parse_mode: 'Markdown',
-                        reply_markup: updatedKeyboard.reply_markup
+                        reply_markup: updatedKeyboard
                     });
                     
                     // Уведомляем пользователя
@@ -322,14 +331,23 @@ function initializeBot() {
                     `👤 **Админ:** ${ctx.from.first_name || 'Не указано'}\n\n` +
                     `💬 **Ответ отправлен пользователю**`;
                 
-                const updatedKeyboard = Markup.inlineKeyboard([
-                    [Markup.button.callback('✅ Закрыть тикет', `close_ticket_${ticketId}`)]
-                ]);
+                // Создаем клавиатуру, видимую только админам
+                const updatedKeyboard = {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '✅ Закрыть тикет',
+                                callback_data: `close_ticket_${ticketId}`,
+                                web_app: undefined
+                            }
+                        ]
+                    ]
+                };
                 
                 try {
                     await ctx.editMessageText(updatedMessage, {
                         parse_mode: 'Markdown',
-                        reply_markup: updatedKeyboard.reply_markup
+                        reply_markup: updatedKeyboard
                     });
                 } catch (editError) {
                     logger.error('Ошибка обновления сообщения в канале поддержки', editError, { userId, ticketId });
