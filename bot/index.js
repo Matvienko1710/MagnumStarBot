@@ -123,6 +123,17 @@ function initializeBot() {
                         }
                     );
                     
+                    // Получаем информацию о канале из состояния пользователя
+                    const { userStates } = require('./handlers/callback');
+                    const userState = userStates.get(userId);
+                    let channelMessageId = null;
+                    let channelChatId = null;
+                    
+                    if (userState && userState.data) {
+                        channelMessageId = userState.data.channelMessageId;
+                        channelChatId = userState.data.channelChatId;
+                    }
+                    
                     // Обновляем сообщение в канале
                     const updatedMessage = `📋 **Заявка на вывод - ВЫПЛАТА ПОДТВЕРЖДЕНА** ✅\n\n` +
                         `👤 **Пользователь:**\n` +
@@ -152,10 +163,46 @@ function initializeBot() {
                         ]
                     };
                     
-                    await ctx.reply(updatedMessage, {
-                        parse_mode: 'Markdown',
-                        reply_markup: updatedKeyboard
-                    });
+                    // Если есть информация о канале, редактируем сообщение там
+                    if (channelMessageId && channelChatId) {
+                        try {
+                            await ctx.telegram.editMessageText(
+                                channelChatId,
+                                channelMessageId,
+                                null, // inline_message_id (не используется)
+                                updatedMessage,
+                                {
+                                    parse_mode: 'Markdown',
+                                    reply_markup: updatedKeyboard
+                                }
+                            );
+                            logger.info('Сообщение в канале успешно обновлено', { 
+                                userId, 
+                                requestId, 
+                                channelMessageId, 
+                                channelChatId 
+                            });
+                        } catch (editError) {
+                            logger.error('Ошибка обновления сообщения в канале', editError, {
+                                userId,
+                                requestId,
+                                channelMessageId,
+                                channelChatId
+                            });
+                            
+                            // Если не удалось отредактировать, отправляем новое сообщение
+                            await ctx.telegram.sendMessage('@magnumwithdraw', updatedMessage, {
+                                parse_mode: 'Markdown',
+                                reply_markup: updatedKeyboard
+                            });
+                        }
+                    } else {
+                        // Если нет информации о канале, отправляем новое сообщение
+                        await ctx.telegram.sendMessage('@magnumwithdraw', updatedMessage, {
+                            parse_mode: 'Markdown',
+                            reply_markup: updatedKeyboard
+                        });
+                    }
                     
                     // Уведомляем пользователя
                     await ctx.telegram.sendMessage(withdrawalRequest.userId, 
@@ -168,6 +215,12 @@ function initializeBot() {
                         `⏰ **Дата подтверждения:** ${new Date().toLocaleDateString('ru-RU')}\n\n` +
                         `💡 **Выплата успешно завершена!**`
                     );
+                    
+                    // Очищаем состояние пользователя
+                    if (userState) {
+                        userStates.delete(userId);
+                        logger.info('Состояние пользователя очищено', { userId, requestId });
+                    }
                     
                     logger.info('Скриншот выплаты успешно обработан', { userId, requestId, fileId });
                     

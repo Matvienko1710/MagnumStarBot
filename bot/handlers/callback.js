@@ -2862,28 +2862,32 @@ async function handleAttachPaymentScreenshot(ctx, action) {
             return;
         }
         
-        // Показываем инструкцию для прикрепления скриншота
-        const screenshotMessage = `📸 **Прикрепление скриншота выплаты**\n\n` +
+        // Перебрасываем админа в бота для прикрепления скриншота
+        const botUsername = ctx.botInfo?.username || 'MagnumStarBot';
+        const botLink = `https://t.me/${botUsername}`;
+        
+        const redirectMessage = `📸 **Прикрепление скриншота выплаты**\n\n` +
             `📋 **Детали заявки:**\n` +
             `├ 🆔 ID: \`${withdrawalRequest.id}\`\n` +
             `├ 👤 Пользователь: ${withdrawalRequest.firstName}\n` +
             `├ 💰 Сумма: ${withdrawalRequest.amount} ⭐ Stars\n` +
             `└ 📅 Дата: ${new Date(withdrawalRequest.createdAt).toLocaleDateString('ru-RU')}\n\n` +
-            `📸 **Инструкция:**\n` +
-            `1️⃣ Сделайте скриншот подтверждения выплаты\n` +
-            `2️⃣ Отправьте его в этот чат\n` +
+            `📸 **Для прикрепления скриншота:**\n` +
+            `1️⃣ Перейдите в бота: ${botLink}\n` +
+            `2️⃣ Отправьте скриншот подтверждения выплаты\n` +
             `3️⃣ Скриншот будет прикреплен к заявке\n\n` +
             `💡 **Важно:** Отправляйте только скриншоты подтверждений выплат!`;
         
-        const screenshotKeyboard = Markup.inlineKeyboard([
+        const redirectKeyboard = Markup.inlineKeyboard([
+            [Markup.button.url('🤖 Перейти в бота', botLink)],
             [Markup.button.callback('❌ Отмена', `cancel_screenshot_${requestId}`)]
         ]);
         
-        // Обновляем сообщение в канале
+        // Обновляем сообщение в канале с инструкцией перехода в бота
         try {
-            await ctx.editMessageText(screenshotMessage, {
+            await ctx.editMessageText(redirectMessage, {
                 parse_mode: 'Markdown',
-                reply_markup: screenshotKeyboard.reply_markup
+                reply_markup: redirectKeyboard.reply_markup
             });
             
             // Устанавливаем состояние ожидания скриншота для админа
@@ -2893,7 +2897,9 @@ async function handleAttachPaymentScreenshot(ctx, action) {
                 currentStep: 'waiting_screenshot',
                 data: {
                     requestId: requestId,
-                    withdrawalRequest: withdrawalRequest
+                    withdrawalRequest: withdrawalRequest,
+                    channelMessageId: messageId, // Сохраняем ID сообщения в канале
+                    channelChatId: chatId // Сохраняем ID чата канала
                 },
                 timestamp: Date.now()
             });
@@ -2901,7 +2907,9 @@ async function handleAttachPaymentScreenshot(ctx, action) {
             logger.info('Админ переведен в состояние ожидания скриншота выплаты', { 
                 userId, 
                 requestId, 
-                state: 'waiting_for_payment_screenshot' 
+                state: 'waiting_for_payment_screenshot',
+                channelMessageId: messageId,
+                channelChatId: chatId
             });
             
         } catch (editError) {
@@ -2913,9 +2921,9 @@ async function handleAttachPaymentScreenshot(ctx, action) {
             });
             
             // Отправляем новое сообщение если не удалось обновить
-            await ctx.reply(screenshotMessage, {
+            await ctx.reply(redirectMessage, {
                 parse_mode: 'Markdown',
-                reply_markup: screenshotKeyboard.reply_markup
+                reply_markup: redirectKeyboard.reply_markup
             });
         }
         
