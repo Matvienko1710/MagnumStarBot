@@ -133,6 +133,9 @@ async function callbackHandler(ctx) {
                 await handleReferrals(ctx);
                 break;
                 
+            case 'my_referral_code':
+                await handleMyReferralCode(ctx);
+                break;
 
                 
             case 'main_menu':
@@ -1022,8 +1025,8 @@ async function handleReferrals(ctx) {
             `└ 💡 Просто поделитесь ссылкой выше!`;
         
         const referralsKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('📊 Детальная статистика', 'referral_stats')],
-            [Markup.button.callback('🏆 Топ рефералов', 'top_referrers')],
+            [Markup.button.callback('🔗 Мой реферальный код', 'my_referral_code')],
+            [Markup.button.callback('📊 Топ рефералов', 'top_referrers')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
         
@@ -2656,7 +2659,7 @@ async function handleReferrals(ctx) {
             `3️⃣ Когда друг зарегистрируется, вы получите награду!`;
 
         const referralsKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔗 Поделиться кодом', 'share_referral_code')],
+            [Markup.button.callback('🔗 Мой реферальный код', 'my_referral_code')],
             [Markup.button.callback('📊 Топ рефералов', 'top_referrers')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
@@ -2678,6 +2681,59 @@ async function handleReferrals(ctx) {
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
 
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
+}
+
+// Обработка показа реферального кода
+async function handleMyReferralCode(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('Показан реферальный код пользователя', { userId });
+    
+    try {
+        // Получаем реферальную статистику
+        const referralStats = await getReferralStats(userId);
+        
+        // Создаем реферальную ссылку
+        const referralLink = `https://t.me/MagnumStarBot?start=${userId}`;
+        
+        const referralCodeMessage = `🔗 **Ваш реферальный код**\n\n` +
+            `📱 **Реферальная ссылка:**\n` +
+            `\`${referralLink}\`\n\n` +
+            `📊 **Статистика:**\n` +
+            `├ 👥 Всего рефералов: ${referralStats.totalReferrals}\n` +
+            `├ ⭐ Заработано: ${referralStats.totalEarned.stars} ⭐\n` +
+            `├ 🪙 Заработано: ${referralStats.totalEarned.coins} 🪙\n` +
+            `└ 🎯 Уровень: ${referralStats.level}\n\n` +
+            `💡 **Поделитесь ссылкой с друзьями и получайте награды!**`;
+        
+        const referralCodeKeyboard = Markup.inlineKeyboard([
+            [Markup.button.switchToChat('📤 Поделиться ссылкой', referralLink)],
+            [Markup.button.callback('📊 Мои рефералы', 'referrals')],
+            [Markup.button.callback('🔙 Назад', 'referrals')]
+        ]);
+        
+        await ctx.editMessageText(referralCodeMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: referralCodeKeyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка показа реферального кода', error, { userId });
+        
+        const errorMessage = `❌ **Ошибка загрузки реферального кода**\n\n` +
+            `🚫 Не удалось загрузить данные\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+        
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'my_referral_code')],
+            [Markup.button.callback('🔙 Назад', 'referrals')]
+        ]);
+        
         await ctx.editMessageText(errorMessage, {
             parse_mode: 'Markdown',
             reply_markup: errorKeyboard.reply_markup

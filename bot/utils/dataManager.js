@@ -674,6 +674,34 @@ class DataManager {
     
     async setupReferral(userId, referrerId = null) {
         try {
+            // Проверяем, не пытается ли пользователь использовать свою собственную реферальную ссылку
+            if (referrerId && Number(referrerId) === userId) {
+                logger.warn('Попытка использовать собственную реферальную ссылку заблокирована', { userId, referrerId });
+                
+                // Создаем пользователя без реферера
+                const user = await this.getUser(userId);
+                
+                // Если у пользователя уже есть referralId, значит система настроена
+                if (user.referral && user.referral.referralId) {
+                    logger.info('Реферальная система уже настроена', { userId, existingReferralId: user.referral.referralId });
+                    return user.referral;
+                }
+                
+                // Возвращаем данные без реферера
+                const referralData = {
+                    referralId: userId,
+                    referrerId: null,
+                    totalEarned: { stars: 0, coins: 0 },
+                    level: 1,
+                    hasReceivedReferralBonus: true
+                };
+                
+                await this.updateUser(userId, { referral: referralData });
+                
+                logger.info('Пользователь создан без реферера (собственная ссылка заблокирована)', { userId });
+                return referralData;
+            }
+            
             // Сначала получаем или создаем пользователя
             const user = await this.getUser(userId);
             
@@ -1643,7 +1671,14 @@ class DataManager {
                 { $set: updateData }
             );
             
-            if (action === 'reject') {
+            if (action === 'approve') {
+                // Обновляем статистику бота при одобрении заявки
+                await this.updateBotStats('totalStarsWithdrawn', request.amount);
+                logger.info('Обновлена статистика выведенных звезд', { 
+                    amount: request.amount,
+                    totalWithdrawn: request.amount
+                });
+            } else if (action === 'reject') {
                 // Возвращаем звезды пользователю при отклонении
                 await this.updateBalance(request.userId, 'stars', request.amount, 'withdrawal_rejected');
                 logger.info('Звезды возвращены пользователю при отклонении заявки', { 
