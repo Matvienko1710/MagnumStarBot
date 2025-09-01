@@ -3475,19 +3475,43 @@ async function handleProcessWithdrawal(ctx, action) {
         await ctx.answerCbQuery('🔧 Заявка взята в обработку', false);
 
         // Проверяем, является ли пользователь админом
-        if (!isAdmin(userId)) {
+        const isUserAdmin = isAdmin(userId);
+        logger.info('Проверка прав админа', { userId, isUserAdmin });
+
+        if (!isUserAdmin) {
+            logger.warn('Пользователь не является админом', { userId });
+            await ctx.answerCbQuery('❌ У вас нет прав для обработки заявок', true);
             return;
         }
-        
+
         // Импортируем dataManager
         const { dataManager } = require('../utils/dataManager');
-        
-        // Получаем информацию о заявке
-        const withdrawalRequest = await dataManager.db.collection('withdrawals').findOne({ id: requestId });
-        
-        if (!withdrawalRequest) {
+
+        // Проверяем инициализацию dataManager
+        if (!dataManager.isInitialized) {
+            logger.error('dataManager не инициализирован', { userId, requestId });
+            await ctx.answerCbQuery('❌ Система временно недоступна', true);
             return;
         }
+
+        const db = dataManager.getDb();
+        if (!db) {
+            logger.error('База данных недоступна', { userId, requestId });
+            await ctx.answerCbQuery('❌ База данных недоступна', true);
+            return;
+        }
+
+        // Получаем информацию о заявке
+        logger.info('Ищем заявку в базе данных', { requestId });
+        const withdrawalRequest = await db.collection('withdrawals').findOne({ id: requestId });
+
+        if (!withdrawalRequest) {
+            logger.warn('Заявка не найдена', { requestId });
+            await ctx.answerCbQuery('❌ Заявка не найдена', true);
+            return;
+        }
+
+        logger.info('Заявка найдена', { requestId, userId: withdrawalRequest.userId });
         
         // Обновляем сообщение в канале с кнопками одобрения/отклонения
         const updatedMessage = `📋 **Заявка на вывод - В ОБРАБОТКЕ** 🔧\n\n` +
@@ -3521,19 +3545,41 @@ async function handleProcessWithdrawal(ctx, action) {
         };
         
         // Обновляем сообщение в канале
+        logger.info('Пытаемся обновить сообщение в канале', {
+            userId,
+            requestId,
+            chatId: ctx.chat?.id,
+            messageId: ctx.callbackQuery?.message?.message_id
+        });
+
         try {
             await ctx.editMessageText(updatedMessage, {
                 parse_mode: 'Markdown',
                 reply_markup: updatedKeyboard
             });
-            
-            logger.info('Заявка взята в обработку, показаны кнопки одобрения/отклонения', { 
-                userId, 
-                requestId 
+
+            logger.info('✅ Заявка взята в обработку, показаны кнопки одобрения/отклонения', {
+                userId,
+                requestId,
+                chatId: ctx.chat?.id,
+                messageId: ctx.callbackQuery?.message?.message_id
             });
-            
+
         } catch (editError) {
-            logger.error('Ошибка обновления сообщения в канале', editError, { userId, requestId });
+            logger.error('❌ Ошибка обновления сообщения в канале', editError, {
+                userId,
+                requestId,
+                chatId: ctx.chat?.id,
+                messageId: ctx.callbackQuery?.message?.message_id,
+                errorMessage: editError.message
+            });
+
+            // Попробуем отправить уведомление об ошибке
+            try {
+                await ctx.answerCbQuery(`❌ Ошибка обновления: ${editError.message}`, true);
+            } catch (answerError) {
+                logger.error('Не удалось отправить уведомление об ошибке', answerError);
+            }
         }
         
     } catch (error) {
