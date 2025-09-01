@@ -8,9 +8,19 @@ const { getUserBalance } = require('../bot/utils/currency');
 router.get('/balance/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
+        
+        // Конвертируем userId в число, так как в базе данных он хранится как число
+        const numericUserId = parseInt(userId);
+        if (isNaN(numericUserId)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат User ID',
+                message: 'User ID должен быть числом'
+            });
+        }
 
         // Получаем реальный баланс из базы данных
-        const balance = await getUserBalance(userId);
+        const balance = await getUserBalance(numericUserId);
 
         // Форматируем ответ
         const responseData = {
@@ -20,7 +30,7 @@ router.get('/balance/:userId', async (req, res) => {
             lastUpdate: new Date().toISOString()
         };
 
-        console.log(`📊 Получен баланс для пользователя ${userId}:`, responseData);
+        console.log(`📊 Получен баланс для пользователя ${numericUserId}:`, responseData);
 
         res.json({
             success: true,
@@ -120,10 +130,21 @@ router.get('/leaderboard', async (req, res) => {
 router.get('/profile/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
+        
+        // Конвертируем userId в число, так как в базе данных он хранится как число
+        const numericUserId = parseInt(userId);
+        if (isNaN(numericUserId)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат User ID',
+                message: 'User ID должен быть числом'
+            });
+        }
+        
         const dataManager = require('../bot/utils/dataManager');
 
         // Получаем пользователя из базы данных
-        const user = await dataManager.getUser(userId);
+        const user = await dataManager.getUser(numericUserId);
 
         if (!user) {
             return res.status(404).json({
