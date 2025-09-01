@@ -727,12 +727,18 @@ class DataManager {
                 await this.updateBalance(actualReferrerId, 'coins', 1000, 'referral_reward');
                 logger.info('Начислена награда за реферала', { referrerId: actualReferrerId, newUserId: userId, stars: 5, coins: 1000 });
                 
+                // Отправляем уведомление рефереру
+                await this.sendReferralRewardNotification(actualReferrerId, userId, { stars: 5, coins: 1000 });
+                
                 // Также начисляем награду новому пользователю за регистрацию по реферальному коду
                 logger.info('Начисляем бонус новому пользователю', { userId, reward: 1000, currency: 'coins' });
                 await this.updateBalance(userId, 'coins', 1000, 'referral_registration_bonus');
                 
                 // Устанавливаем флаг, что пользователь получил награду
                 await this.updateUser(userId, { 'referral.hasReceivedReferralBonus': true });
+                
+                // Отправляем уведомление новому пользователю
+                await this.sendReferralRegistrationNotification(userId, actualReferrerId, { coins: 1000 });
                 
                 logger.info('Начислен бонус за регистрацию по реферальному коду', { userId, reward: 1000, currency: 'coins' });
             } else if (referrerId) {
@@ -743,6 +749,9 @@ class DataManager {
                 
                 // Устанавливаем флаг, что пользователь получил награду
                 await this.updateUser(userId, { 'referral.hasReceivedReferralBonus': true });
+                
+                // Отправляем уведомление новому пользователю (без реферера)
+                await this.sendReferralRegistrationNotification(userId, null, { coins: 1000 });
                 
                 logger.info('Начислен бонус за регистрацию по реферальному коду (реферер не найден)', { userId, reward: 1000, currency: 'coins', referrerId });
             }
@@ -2551,6 +2560,61 @@ class DataManager {
         } catch (error) {
             logger.error('Ошибка обновления баланса пользователя', error, { userId, currency, amount, reason });
             throw error;
+        }
+    }
+
+    // Функция для отправки уведомления о реферальной награде
+    async sendReferralRewardNotification(referrerId, newUserId, reward) {
+        try {
+            // Получаем экземпляр бота из bot/index.js
+            const { bot } = require('../index');
+            if (!bot) {
+                logger.warn('Бот не инициализирован, не можем отправить уведомление', { referrerId, newUserId, reward });
+                return;
+            }
+
+            const message = `🎉 **Поздравляем!**\n\n` +
+                `👥 У вас новый реферал!\n` +
+                `🆔 ID реферала: \`${newUserId}\`\n\n` +
+                `💰 **Награда:**\n` +
+                `├ ⭐ Stars: +${reward.stars}\n` +
+                `└ 🪙 Magnum Coins: +${reward.coins}\n\n` +
+                `🎯 Продолжайте приглашать друзей для получения еще больше наград!`;
+
+            await bot.telegram.sendMessage(referrerId, message, { parse_mode: 'Markdown' });
+            logger.info('Уведомление о реферальной награде отправлено', { referrerId, newUserId, reward });
+
+        } catch (error) {
+            logger.error('Ошибка отправки уведомления о реферальной награде', error, { referrerId, newUserId, reward });
+        }
+    }
+
+    // Функция для отправки уведомления о регистрации по реферальному коду
+    async sendReferralRegistrationNotification(userId, referrerId, reward) {
+        try {
+            // Получаем экземпляр бота из bot/index.js
+            const { bot } = require('../index');
+            if (!bot) {
+                logger.warn('Бот не инициализирован, не можем отправить уведомление', { userId, referrerId, reward });
+                return;
+            }
+
+            let message = `🎉 **Добро пожаловать в MagnumStarBot!**\n\n`;
+            
+            if (referrerId) {
+                message += `👥 Вы зарегистрировались по реферальной ссылке!\n` +
+                    `🆔 Ваш реферер: \`${referrerId}\`\n\n`;
+            }
+            
+            message += `💰 **Бонус за регистрацию:**\n` +
+                `└ 🪙 Magnum Coins: +${reward.coins}\n\n` +
+                `🚀 Начните зарабатывать Stars и Magnum Coins прямо сейчас!`;
+
+            await bot.telegram.sendMessage(userId, message, { parse_mode: 'Markdown' });
+            logger.info('Уведомление о регистрации по реферальному коду отправлено', { userId, referrerId, reward });
+
+        } catch (error) {
+            logger.error('Ошибка отправки уведомления о регистрации', error, { userId, referrerId, reward });
         }
     }
 }
