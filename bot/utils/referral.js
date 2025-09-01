@@ -48,17 +48,9 @@ const getUserReferrals = async (userId) => {
 // Получение статистики рефералов
 const getReferralStats = async (userId) => {
   try {
-    const data = await getUserReferralData(userId);
-    const referralsList = await getUserReferrals(userId);
-    
-    return {
-      referralCode: data.code,
-      totalReferrals: referralsList.length,
-      activeReferrals: referralsList.length, // Пока упрощенно
-      totalEarned: data.totalEarned,
-      level: data.level,
-      referrals: referralsList
-    };
+    // Используем dataManager для получения актуальной статистики
+    const dataManager = require('./dataManager');
+    return await dataManager.getReferralStats(userId);
   } catch (error) {
     logger.error('Ошибка получения реферальной статистики', error, { userId });
     return {

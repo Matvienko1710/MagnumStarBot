@@ -811,11 +811,33 @@ class DataManager {
             // Убеждаемся, что userId - это число
             const numericUserId = Number(userId);
             
+            // Рассчитываем актуальный общий доход на основе количества рефералов
+            const baseReward = 5; // 5 звезд за каждого реферала
+            const calculatedEarned = {
+                stars: referrals.length * baseReward,
+                coins: 0
+            };
+            
+            // Используем рассчитанное значение или сохраненное (берем большее)
+            const savedEarned = user.referral.totalEarned || { stars: 0, coins: 0 };
+            const totalEarned = {
+                stars: Math.max(calculatedEarned.stars, savedEarned.stars),
+                coins: Math.max(calculatedEarned.coins, savedEarned.coins)
+            };
+            
+            // Обновляем сохраненное значение, если рассчитанное больше
+            if (totalEarned.stars > savedEarned.stars || totalEarned.coins > savedEarned.coins) {
+                await this.updateUser(userId, {
+                    'referral.totalEarned': totalEarned
+                });
+                logger.info('Обновлен totalEarned для пользователя', { userId, oldEarned: savedEarned, newEarned: totalEarned });
+            }
+            
             return {
                 referralId: numericUserId, // ID пользователя для реферальной ссылки
                 totalReferrals: referrals.length,
                 activeReferrals: referrals.filter(r => r.isActive).length,
-                totalEarned: user.referral.totalEarned || { stars: 0, coins: 0 },
+                totalEarned: totalEarned,
                 level: user.referral.level || 1,
                 referrals: referrals
             };
