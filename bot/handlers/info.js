@@ -555,13 +555,6 @@ async function sendWithdrawalToChannel(ctx, withdrawalRequest, userInfo) {
                         callback_data: `reject_withdrawal_${withdrawalRequest.id}`,
                         web_app: undefined
                     }
-                ],
-                [
-                    {
-                        text: '📸 Прикрепить скрин выплаты',
-                        callback_data: `attach_payment_screenshot_${withdrawalRequest.id}`,
-                        web_app: undefined
-                    }
                 ]
             ]
         };
