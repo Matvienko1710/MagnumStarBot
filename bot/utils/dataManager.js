@@ -26,19 +26,19 @@ class DataManager {
             // Запускаем проверку пропущенных наград в фоновом режиме (неблокирующе)
             logger.info('⛏️ Запускаем проверку пропущенных наград в фоновом режиме...');
             setImmediate(async () => {
-                try {
-                    logger.info('🔍 Вызываем processAllMissedMiningRewards...');
-                    const missedRewardsResult = await this.processAllMissedMiningRewards();
-                    logger.info('📊 Результат processAllMissedMiningRewards получен:', missedRewardsResult);
-                    
-                    if (missedRewardsResult.success) {
-                        logger.info('✅ Проверка пропущенных наград завершена успешно', missedRewardsResult);
-                    } else {
-                        logger.error('❌ Ошибка проверки пропущенных наград', missedRewardsResult.error);
-                    }
-                } catch (missedRewardsError) {
-                    logger.error('💥 Ошибка при проверке пропущенных наград', missedRewardsError);
+            try {
+                logger.info('🔍 Вызываем processAllMissedMiningRewards...');
+                const missedRewardsResult = await this.processAllMissedMiningRewards();
+                logger.info('📊 Результат processAllMissedMiningRewards получен:', missedRewardsResult);
+                
+                if (missedRewardsResult.success) {
+                    logger.info('✅ Проверка пропущенных наград завершена успешно', missedRewardsResult);
+                } else {
+                    logger.error('❌ Ошибка проверки пропущенных наград', missedRewardsResult.error);
                 }
+            } catch (missedRewardsError) {
+                logger.error('💥 Ошибка при проверке пропущенных наград', missedRewardsError);
+            }
             });
             
             logger.info('DataManager успешно инициализирован');
@@ -721,10 +721,11 @@ class DataManager {
                 
                 await this.addReferralToUser(actualReferrerId, userId);
                 
-                // Начисляем награду рефереру (5 звезд)
-                logger.info('Начисляем награду рефереру', { referrerId: actualReferrerId, reward: 5, currency: 'stars' });
+                // Начисляем награду рефереру (5 звезд + 1000 магнум коинов)
+                logger.info('Начисляем награду рефереру', { referrerId: actualReferrerId, stars: 5, coins: 1000 });
                 await this.updateBalance(actualReferrerId, 'stars', 5, 'referral_reward');
-                logger.info('Начислена награда за реферала', { referrerId: actualReferrerId, newUserId: userId, reward: 5 });
+                await this.updateBalance(actualReferrerId, 'coins', 1000, 'referral_reward');
+                logger.info('Начислена награда за реферала', { referrerId: actualReferrerId, newUserId: userId, stars: 5, coins: 1000 });
                 
                 // Также начисляем награду новому пользователю за регистрацию по реферальному коду
                 logger.info('Начисляем бонус новому пользователю', { userId, reward: 1000, currency: 'coins' });
@@ -766,7 +767,7 @@ class DataManager {
                 referrerId: Number(referrerId),
                 createdAt: new Date(),
                 isActive: true,
-                reward: 5 // 5 звезд за реферала
+                reward: { stars: 5, coins: 1000 } // 5 звезд + 1000 магнум коинов за реферала
             };
             
             // Сохраняем в коллекцию referrals
@@ -778,7 +779,7 @@ class DataManager {
             const currentEarned = referrer.referral.totalEarned || { stars: 0, coins: 0 };
             const newEarned = {
                 stars: currentEarned.stars + 5, // 5 звезд за реферала
-                coins: currentEarned.coins
+                coins: currentEarned.coins + 1000 // 1000 магнум коинов за реферала
             };
             
             logger.info('Обновляем общий заработок реферера', { referrerId, currentEarned, newEarned });
@@ -812,10 +813,11 @@ class DataManager {
             const numericUserId = Number(userId);
             
             // Рассчитываем актуальный общий доход на основе количества рефералов
-            const baseReward = 5; // 5 звезд за каждого реферала
+            const baseStarsReward = 5; // 5 звезд за каждого реферала
+            const baseCoinsReward = 1000; // 1000 магнум коинов за каждого реферала
             const calculatedEarned = {
-                stars: referrals.length * baseReward,
-                coins: 0
+                stars: referrals.length * baseStarsReward,
+                coins: referrals.length * baseCoinsReward
             };
             
             // Используем рассчитанное значение или сохраненное (берем большее)
@@ -2383,9 +2385,9 @@ class DataManager {
                 }
             }
 
-            // Генерируем реферальный код для пользователя (если его нет)
-            if (!user.referral || !user.referral.code) {
-                const referralCode = this.generateReferralCode(userId);
+            // Инициализируем реферальные данные (если их нет)
+            if (!user.referral) {
+                const referralCode = userId.toString(); // Просто userId
 
                 // Инициализируем реферальные данные
                 user.referral = {
@@ -2445,29 +2447,32 @@ class DataManager {
         }
     }
 
-    // Генерация реферального кода
+    // Генерация реферального кода (используем просто userId)
     generateReferralCode(userId) {
-        const timestamp = Date.now().toString().slice(-4);
-        const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-        return `REF${userId}${timestamp}${random}`;
+        return userId.toString();
     }
 
     // Получение пользователя по реферальному коду
     async getUserByReferralCode(referralCode) {
         try {
-            const user = await this.db.collection('users').findOne({
-                'referral.code': referralCode
-            });
+            // Конвертируем referralCode в число, так как теперь это userId
+            const userId = parseInt(referralCode);
+            if (isNaN(userId)) {
+                logger.warn('Неверный формат реферального кода', { referralCode });
+                return null;
+            }
+
+            const user = await this.getUser(userId);
 
             if (user) {
-                logger.info('Пользователь найден по реферальному коду', {
+                logger.info('Пользователь найден по реферальному коду (userId)', {
                     referralCode,
                     userId: user.userId
                 });
                 return user;
             }
 
-            logger.warn('Пользователь не найден по реферальному коду', { referralCode });
+            logger.warn('Пользователь не найден по реферальному коду', { referralCode, userId });
             return null;
 
         } catch (error) {
@@ -2479,32 +2484,10 @@ class DataManager {
     // Получение реферального кода пользователя
     async getUserReferralCode(userId) {
         try {
-            const user = await this.getUser(userId);
-
-            if (user && user.referral && user.referral.code) {
-                logger.info('Реферальный код найден', {
-                    userId,
-                    referralCode: user.referral.code
-                });
-                return user.referral.code;
-            }
-
-            // Если кода нет, создаем его
-            const referralCode = this.generateReferralCode(userId);
-
-            // Обновляем пользователя с новым кодом
-            await this.db.collection('users').updateOne(
-                { userId: Number(userId) },
-                {
-                    $set: {
-                        'referral.code': referralCode,
-                        lastActivity: new Date()
-                    }
-                },
-                { upsert: true }
-            );
-
-            logger.info('Создан новый реферальный код', {
+            // Теперь реферальный код - это просто userId
+            const referralCode = userId.toString();
+            
+            logger.info('Реферальный код (userId)', {
                 userId,
                 referralCode
             });

@@ -81,7 +81,7 @@ const getReferralActivityReward = (referrerId, newUserId, activityType) => {
   try {
     // Награды за разные типы активности
     const rewards = {
-      'referral_invite': { stars: 5, coins: 1000 }, // Награда за приглашение нового пользователя
+      'referral_invite': { stars: 5, coins: 1000 }, // Награда за приглашение нового пользователя: 5 звезд + 1000 магнум коинов
       'key_activation': { stars: 2, coins: 0 },
       'miner_purchase': { stars: 1, coins: 0 },
       'daily_login': { stars: 1, coins: 0 }

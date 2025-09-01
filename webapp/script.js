@@ -16,12 +16,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Упрощенная функция получения userId
     function getUserId() {
         // 1. Проверяем URL параметры
-        const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
         let userId = urlParams.get('userId');
-        
+
         if (userId) {
-            const numericUserId = parseInt(userId);
-            if (!isNaN(numericUserId)) {
+        const numericUserId = parseInt(userId);
+        if (!isNaN(numericUserId)) {
                 console.log('✅ User ID получен из URL:', numericUserId);
                 return numericUserId;
             }
@@ -38,12 +38,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // 3. Пытаемся получить из Telegram WebApp
-        if (window.Telegram && window.Telegram.WebApp) {
-            try {
-                window.Telegram.WebApp.ready();
-                const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+    if (window.Telegram && window.Telegram.WebApp) {
+        try {
+            window.Telegram.WebApp.ready();
+            const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
                 
-                if (telegramUser && telegramUser.id) {
+            if (telegramUser && telegramUser.id) {
                     console.log('✅ User ID получен из Telegram WebApp:', telegramUser.id);
                     return telegramUser.id;
                 }
@@ -62,12 +62,12 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('magnumBot_userId', userId.toString());
         
         // Добавляем кнопку сброса данных
-        addResetButton();
-        
-        // Загружаем данные пользователя
-        loadUserData(userId);
-        
-        // Анимация появления панели баланса
+    addResetButton();
+
+    // Загружаем данные пользователя
+    loadUserData(userId);
+
+    // Анимация появления панели баланса
         animateBalancePanel();
     }
 
@@ -200,15 +200,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Анимация панели баланса
     function animateBalancePanel() {
-        const balanceNavbar = document.querySelector('.balance-navbar');
-        balanceNavbar.style.transform = 'translateY(-100%)';
-        balanceNavbar.style.opacity = '0';
+    const balanceNavbar = document.querySelector('.balance-navbar');
+    balanceNavbar.style.transform = 'translateY(-100%)';
+    balanceNavbar.style.opacity = '0';
 
-        setTimeout(() => {
-            balanceNavbar.style.transition = 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            balanceNavbar.style.transform = 'translateY(0)';
-            balanceNavbar.style.opacity = '1';
-        }, 300);
+    setTimeout(() => {
+        balanceNavbar.style.transition = 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        balanceNavbar.style.transform = 'translateY(0)';
+        balanceNavbar.style.opacity = '1';
+    }, 300);
     }
 
     // Функция загрузки данных пользователя
