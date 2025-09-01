@@ -1402,46 +1402,19 @@ class DataManager {
             // Обновляем майнеры пользователя
             await this.updateUser(userId, { miners: miners });
             
-            // Сразу начисляем первую награду за запуск майнинга
-            let totalCoins = 0;
-            let totalStars = 0;
+            logger.info('Майнинг успешно запущен', { userId, startTime: now });
             
-            for (const miner of miners) {
-                if (miner.isActive) {
-                    totalCoins += miner.speed.coins;
-                    totalStars += miner.speed.stars;
-                }
-            }
-            
-            // Начисляем доход за первую минуту
-            if (totalCoins > 0) {
-                await this.updateBalance(userId, 'coins', totalCoins, 'mining_income_start');
-                logger.info('Начислена награда за запуск майнинга (Coins)', { userId, totalCoins });
-            }
-            if (totalStars > 0) {
-                await this.updateBalance(userId, 'stars', totalStars, 'mining_income_start');
-                logger.info('Начислена награда за запуск майнинга (Stars)', { userId, totalStars });
-            }
-            
-            logger.info('Майнинг успешно запущен', { userId, startTime: now, initialReward: { coins: totalCoins, stars: totalStars } });
-            
-            // Формируем сообщение о доходе
+            // Формируем сообщение о запуске майнинга
             let rewardMessage = '🚀 **Майнинг запущен на 12 часов!**\n\n';
-            if (totalCoins > 0) {
-                rewardMessage += `💰 Получено ${totalCoins} 🪙 Coins за первую минуту\n`;
-            }
-            if (totalStars > 0) {
-                rewardMessage += `⭐ Получено ${totalStars} ⭐ Stars за первую минуту\n`;
-            }
-            rewardMessage += '\n⏰ **Все майнеры работают одновременно**\n';
+            rewardMessage += '⏰ **Все майнеры работают одновременно**\n';
             rewardMessage += '🔄 Следующий запуск возможен через 12 часов\n';
-            rewardMessage += '💎 Доход начисляется каждую минуту автоматически';
+            rewardMessage += '💎 Доход начисляется каждую минуту автоматически\n';
+            rewardMessage += '⏳ Первый доход будет начислен через 1 минуту';
             
             return { 
                 success: true, 
                 message: rewardMessage,
-                startTime: now,
-                initialReward: { coins: totalCoins, stars: totalStars }
+                startTime: now
             };
             
         } catch (error) {
