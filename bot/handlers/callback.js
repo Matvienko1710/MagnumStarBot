@@ -479,7 +479,6 @@ async function handleMiners(ctx) {
     const minersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
-            [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
@@ -718,10 +717,8 @@ async function handleMyMiners(ctx) {
             `├ 🌐 Активные майнеры на сервере: ${minerAvailability.activeCount}/${minerAvailability.globalLimit}\n` +
             `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
-        
+
         const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
-            [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
@@ -906,10 +903,8 @@ async function showMiningReady(ctx, userId) {
             `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
             `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
             `🎯 **Выберите действие:**`;
-        
+
         const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
-            [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
@@ -959,10 +954,9 @@ async function showMiningInProgress(ctx, userId, startTime) {
             `⏰ **Майнинг в процессе...**\n` +
             `🔄 **Следующий запуск в:** ${nextMiningTimeString}\n\n` +
             `💡 Доход начисляется автоматически каждую минуту!`;
-        
+
         const myMinersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback(`⏰ Майнинг в процессе (${nextMiningTimeString})`, 'mining_active')],
-            [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
@@ -1011,7 +1005,6 @@ async function showMiningTimer(ctx, userId, nextMiningTime) {
         
         const myMinersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback(`⏰ Майнинг активен (${nextMiningTimeString})`, 'mining_active')],
-            [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
         ]);
@@ -1081,11 +1074,9 @@ async function handleBuyMiner(ctx, minerType) {
             `├ 🎯 Редкость: ${minerInfo.rarity}\n` +
             `└ 📅 Дата покупки: ${new Date().toLocaleDateString('ru-RU')}\n\n` +
             `🎉 Теперь вы можете запустить майнинг и получать доход автоматически!`;
-        
+
         const successKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🚀 Запустить майнинг', 'start_mining')],
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
-            [Markup.button.callback('🛒 Купить еще майнер', 'miners_shop')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
         ]);
         
