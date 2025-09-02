@@ -613,89 +613,7 @@ async function showMiningTimer(ctx, userId, nextMiningTime) {
     }
 }
 
-// Функция handleBuyMiner удалена - функционал перенесен в вебапп
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка покупки майнера', { userId, minerType });
-    
-    try {
-        // Получаем баланс пользователя
-        const userBalance = await getUserBalance(userId);
-        
-        // Получаем информацию о майнере
-        const minerInfo = dataManager.getMinerInfo(minerType);
-        
-        if (!minerInfo) {
-            await ctx.reply('❌ Майнер не найден');
-            return;
-        }
-        
-        // Проверяем, хватает ли средств
-        const canAfford = (userBalance.coins >= minerInfo.price.coins) && 
-                         (userBalance.stars >= minerInfo.price.stars);
-        
-        if (!canAfford) {
-            const insufficientFundsMessage = `❌ **Недостаточно средств**\n\n` +
-                `💰 **Цена майнера:**\n` +
-                `├ 🪙 Magnum Coins: ${minerInfo.price.coins}\n` +
-                `└ ⭐ Stars: ${minerInfo.price.stars}\n\n` +
-                `💳 **Ваш баланс:**\n` +
-                `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
-                `└ ⭐ Stars: ${userBalance.stars}\n\n` +
-                `💡 Пополните баланс или выберите другой майнер`;
-            
-            const insufficientFundsKeyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
-                [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
-            ]);
-            
-            await ctx.editMessageText(insufficientFundsMessage, {
-                parse_mode: 'Markdown',
-                reply_markup: insufficientFundsKeyboard.reply_markup
-            });
-            return;
-        }
-        
-        // Выполняем реальную покупку майнера
-        const purchasedMiner = await dataManager.buyMiner(userId, minerType);
-        
-        const successMessage = `✅ **Майнер успешно куплен!**\n\n` +
-            `⛏️ **${minerInfo.name}**\n` +
-            `├ 🆔 ID: ${purchasedMiner.id}\n` +
-            `├ 💰 Цена: ${minerInfo.price.coins > 0 ? minerInfo.price.coins + ' 🪙' : minerInfo.price.stars + ' ⭐'}\n` +
-            `├ ⚡ Скорость: ${minerInfo.speed.coins > 0 ? minerInfo.speed.coins + ' 🪙/мин' : minerInfo.speed.stars + ' ⭐/мин'}\n` +
-            `├ 🎯 Редкость: ${minerInfo.rarity}\n` +
-            `└ 📅 Дата покупки: ${new Date().toLocaleDateString('ru-RU')}\n\n` +
-            `🎉 Теперь вы можете запустить майнинг и получать доход автоматически!`;
-        
-        const successKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
-        ]);
-        
-        await ctx.editMessageText(successMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: successKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка покупки майнера', error, { userId, minerType });
-        
-        const errorMessage = `❌ **Ошибка покупки майнера**\n\n` +
-            `🚫 Не удалось купить майнер\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'miners_shop')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
+// Функции майнеров удалены - функционал перенесен в вебапп
 
 
 
@@ -1821,48 +1739,6 @@ async function handleManageTitles(ctx) {
     await ctx.answerCbQuery('🔄 Функционал титулов убран из бота', false);
     return;
 }
-        if (!isAdmin(userId)) {
-            await ctx.answerCbQuery('❌ У вас нет прав для управления титулами');
-            return;
-        }
-        
-        const manageTitlesMessage = `👑 **Управление титулами**\n\n` +
-            `🎯 **Доступные действия:**\n` +
-            `├ 👑 Выдать титул пользователю\n` +
-            `├ ❌ Забрать титул у пользователя\n` +
-            `└ 📊 Просмотр титулов пользователя\n\n` +
-            `💡 **Выберите действие:**`;
-        
-        const manageTitlesKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('👑 Выдать титул', 'grant_title')],
-            [Markup.button.callback('❌ Забрать титул', 'revoke_title')],
-            [Markup.button.callback('📊 Просмотр титулов', 'view_user_titles')],
-            [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
-        ]);
-        
-        await ctx.editMessageText(manageTitlesMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: manageTitlesKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка управления титулами', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка загрузки управления титулами**\n\n` +
-            `🚫 Не удалось загрузить интерфейс управления\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'manage_titles')],
-            [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
 
 // Обработка проверки пропущенных наград за майнинг
 async function handleCheckMissedRewards(ctx) {
@@ -2164,246 +2040,16 @@ async function handleMinerKeyCreation(ctx, text) {
     }
 }
 
-// Обработка выдачи титула пользователю (только админы)
-// Функция handleGrantTitle удалена - функционал убран из бота
-// async function handleGrantTitle(ctx) {
-    const userId = ctx.from.id;
 
-    logger.info('Обработка выдачи титула', { userId });
 
-    // Проверяем, является ли пользователь админом
-    if (!isAdmin(userId)) {
-        await ctx.answerCbQuery('❌ У вас нет прав для выдачи титулов');
-        return;
-    }
-
-    // Устанавливаем состояние ожидания ID пользователя
-    userStates.set(userId, {
-        state: 'granting_title',
-        currentStep: 'waiting_user_id',
-        timestamp: Date.now()
-    });
-
-    const grantTitleMessage = `👑 **Выдача титула**\n\n` +
-        `🎯 **Шаг 1: Укажите ID пользователя**\n\n` +
-        `💡 Пример: 123456789\n\n` +
-        `📝 **Отправьте ID пользователя в чат:**`;
-
-    const grantTitleKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 Отмена', 'titles')]
-    ]);
-
-    await ctx.editMessageText(grantTitleMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: grantTitleKeyboard.reply_markup
-    });
-}
-
-// Обработка забора титула у пользователя (только админы)
-// Функция handleRevokeTitle удалена - функционал убран из бота
-// async function handleRevokeTitle(ctx) {
-    const userId = ctx.from.id;
-
-    logger.info('Обработка забора титула', { userId });
-
-    // Проверяем, является ли пользователь админом
-    if (!isAdmin(userId)) {
-        await ctx.answerCbQuery('❌ У вас нет прав для забора титулов');
-        return;
-    }
-
-    // Устанавливаем состояние ожидания ID пользователя
-    userStates.set(userId, {
-        state: 'revoking_title',
-        currentStep: 'waiting_user_id',
-        timestamp: Date.now()
-    });
-
-    const revokeTitleMessage = `❌ **Забор титула**\n\n` +
-        `🎯 **Шаг 1: Укажите ID пользователя**\n\n` +
-        `💡 Пример: 123456789\n\n` +
-        `📝 **Отправьте ID пользователя в чат:**`;
-
-    const revokeTitleKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 Отмена', 'titles')]
-    ]);
-
-    await ctx.editMessageText(revokeTitleMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: revokeTitleKeyboard.reply_markup
-    });
-}
-
-// Обработка просмотра титулов пользователя (только админы)
-// Функция handleViewUserTitles удалена - функционал убран из бота
-// async function handleViewUserTitles(ctx) {
-    const userId = ctx.from.id;
-
-    logger.info('Обработка просмотра титулов пользователя', { userId });
-
-    // Проверяем, является ли пользователь админом
-    if (!isAdmin(userId)) {
-        await ctx.answerCbQuery('❌ У вас нет прав для просмотра титулов пользователей');
-        return;
-    }
-
-    // Устанавливаем состояние ожидания ID пользователя
-    userStates.set(userId, {
-        state: 'viewing_user_titles',
-        currentStep: 'waiting_user_id',
-        timestamp: Date.now()
-    });
-
-    const viewTitlesMessage = `📊 **Просмотр титулов пользователя**\n\n` +
-        `🎯 **Укажите ID пользователя**\n\n` +
-        `💡 Пример: 123456789\n\n` +
-        `📝 **Отправьте ID пользователя в чат:**`;
-
-    const viewTitlesKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 Отмена', 'titles')]
-    ]);
-
-    await ctx.editMessageText(viewTitlesMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: viewTitlesKeyboard.reply_markup
-    });
-}
 
 // Обработка статистики титулов (только админы)
 // Функция handleTitlesStats удалена - функционал убран из бота
-// async function handleTitlesStats(ctx) {
-    const userId = ctx.from.id;
 
-    logger.info('Обработка статистики титулов', { userId });
-
-    // Проверяем, является ли пользователь админом
-    if (!isAdmin(userId)) {
-        await ctx.answerCbQuery('❌ У вас нет прав для просмотра статистики титулов');
-        return;
-    }
-
-    try {
-        // Получаем статистику титулов (заглушка, пока функционал не реализован)
-        const statsMessage = `📈 **Статистика титулов**\n\n` +
-            `🔧 **Функционал в разработке**\n\n` +
-            `📊 **Будущая статистика:**\n` +
-            `├ 👑 Всего титулов выдано: -\n` +
-            `├ 👤 Пользователей с титулами: -\n` +
-            `├ 🏆 Популярные титулы: -\n` +
-            `└ 📅 Титулы за месяц: -\n\n` +
-            `🚀 **Скоро будет доступно!**`;
-
-        const statsKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Обновить', 'titles_stats')],
-            [Markup.button.callback('🔙 Назад к титулам', 'titles')]
-        ]);
-
-        await ctx.editMessageText(statsMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: statsKeyboard.reply_markup
-        });
-
-    } catch (error) {
-        logger.error('Ошибка получения статистики титулов', error, { userId });
-
-        const errorMessage = `❌ **Ошибка загрузки статистики**\n\n` +
-            `🚫 Не удалось загрузить статистику титулов\n` +
-            `🔧 Попробуйте позже`;
-
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'titles_stats')],
-            [Markup.button.callback('🔙 Назад к титулам', 'titles')]
-        ]);
-
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
 
 // Обработка раздела титулов
 // Функция handleTitles (дубликат) удалена - функционал убран из бота
-// async function handleTitles(ctx) {
-    const userId = ctx.from.id;
 
-    logger.info('Обработка раздела титулов', { userId });
-
-    try {
-        // Проверяем, является ли пользователь админом
-        if (!isAdmin(userId)) {
-            // Для обычных пользователей показываем уведомление "в разработке"
-            const comingSoonMessage = `👑 **Титулы - в разработке!**\n\n` +
-                `🔧 **Функционал титулов находится в разработке**\n\n` +
-                `🎯 **Что такое титулы?**\n` +
-                `├ 👑 Специальные звания для активных пользователей\n` +
-                `├ 🏆 Показывают уровень и достижения в игре\n` +
-                `├ 💎 Дают дополнительные бонусы и привилегии\n` +
-                `└ 🎨 Уникальные значки и статусы\n\n` +
-                `🚀 **Скоро будет доступно!**\n` +
-                `Следите за обновлениями в нашем канале @magnumtap`;
-
-            const comingSoonKeyboard = Markup.inlineKeyboard([
-                [Markup.button.url('📢 Подписаться на новости', 'https://t.me/magnumtap')],
-                [Markup.button.callback('👤 Профиль', 'profile')],
-                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-            ]);
-
-            await ctx.editMessageText(comingSoonMessage, {
-                parse_mode: 'Markdown',
-                reply_markup: comingSoonKeyboard.reply_markup
-            });
-
-            logger.info('Показан экран "Титулы в разработке" для обычного пользователя', { userId });
-            return;
-        }
-
-        // Для админов показываем функционал управления титулами
-        const titlesMessage = `👑 **Управление титулами**\n\n` +
-            `🎯 **Админ функции титулов:**\n\n` +
-            `🔧 **Доступные действия:**\n` +
-            `├ 👑 Выдать титул пользователю\n` +
-            `├ ❌ Забрать титул у пользователя\n` +
-            `├ 📊 Просмотр титулов пользователя\n` +
-            `├ 🔑 Создать ключ титула\n` +
-            `└ 📈 Статистика титулов\n\n` +
-            `💡 **Выберите действие:**`;
-
-        const titlesKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('👑 Выдать титул', 'grant_title')],
-            [Markup.button.callback('❌ Забрать титул', 'revoke_title')],
-            [Markup.button.callback('📊 Просмотр титулов', 'view_user_titles')],
-            [Markup.button.callback('🔑 Создать ключ титула', 'create_title_key')],
-            [Markup.button.callback('📈 Статистика', 'titles_stats')],
-            [Markup.button.callback('🔙 Профиль', 'profile')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-
-        await ctx.editMessageText(titlesMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: titlesKeyboard.reply_markup
-        });
-
-        logger.info('Показан админ интерфейс титулов', { userId });
-
-    } catch (error) {
-        logger.error('Ошибка обработки раздела титулов', error, { userId });
-
-        const errorMessage = `❌ **Ошибка загрузки титулов**\n\n` +
-            `🚫 Не удалось загрузить данные титулов\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'titles')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
 
 // Обработка раздела рефералов
 async function handleReferrals(ctx) {
@@ -2445,6 +2091,23 @@ async function handleReferrals(ctx) {
             reply_markup: referralsKeyboard.reply_markup
         });
 
+    } catch (error) {
+        logger.error('Ошибка обработки раздела рефералов', error, { userId });
+
+        const errorMessage = `❌ **Ошибка загрузки рефералов**\n\n` +
+            `🚫 Не удалось загрузить данные рефералов\n` +
+            `🔧 Попробуйте позже или обратитесь к администратору`;
+
+        const errorKeyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Попробовать снова', 'referrals')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+
+        await ctx.editMessageText(errorMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: errorKeyboard.reply_markup
+        });
+    }
 }
 
 
@@ -3289,13 +2952,7 @@ module.exports = {
     updateLastBotMessage,
     getLastBotMessage,
     handleKeyCreation,
-    handleTitleKeyCreation,
-    handleMinerKeyCreation,
-    handleTitles,
-    handleGrantTitle,
-    handleRevokeTitle,
-    handleViewUserTitles,
-    handleTitlesStats,
+
     handleReferrals,
     handleApproveWithdrawal,
     handleRejectWithdrawal,
