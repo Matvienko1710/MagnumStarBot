@@ -522,11 +522,11 @@ function initializeBot() {
         // Функция запуска бота
         const launchBot = async () => {
             try {
-                logger.info('Запуск бота...');
+                logger.info('Запуск бота в polling режиме...');
                 await bot.launch();
-                logger.info('Бот успешно запущен');
+                logger.info('✅ Бот успешно запущен в polling режиме');
             } catch (error) {
-                logger.error('Ошибка запуска бота', error);
+                logger.error('❌ Ошибка запуска бота', error);
                 throw error;
             }
         };
@@ -558,8 +558,11 @@ function initializeBot() {
 // Создаем и инициализируем бота
 const { bot, launchBot } = initializeBot();
 
-// Бот будет запущен через webhook в server.js, здесь не запускаем автоматически
-logger.info('Бот инициализирован, запуск будет выполнен через server.js');
+// Автоматически запускаем бота в polling режиме
+launchBot().catch(error => {
+    logger.error('Критическая ошибка при запуске бота', error);
+    process.exit(1);
+});
 
 // Экспортируем бота и функцию запуска
 module.exports = { bot, launchBot };
