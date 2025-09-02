@@ -771,7 +771,7 @@ async function handleMainMenu(ctx) {
 
         // Создаем основное меню
         const mainMenuButtons = [
-            [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
+            [Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), webAppButton],
             [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
         ];
@@ -1312,7 +1312,7 @@ async function handleCreateWithdrawal(ctx) {
                 `💡 Заработайте больше звезд, чтобы создать заявку на вывод`;
             
             const insufficientKeyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('💰 Майнеры', 'miners')],
+                [Markup.button.callback('🏠 В главное меню', 'main_menu')],
                 [Markup.button.callback('🔙 Назад к выводу', 'withdraw')]
             ]);
             
@@ -1675,7 +1675,7 @@ async function handleCheckSubscription(ctx) {
 
             // Создаем основное меню
             const mainMenuButtons = [
-                [Markup.button.callback('💰 Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
+                [Markup.button.callback('👤 Профиль', 'profile')],
                 [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), webAppButton],
                 [Markup.button.callback('⭐ Вывести звезды', 'withdraw')]
             ];

@@ -197,7 +197,7 @@ async function startHandler(ctx) {
 
         // Создаем основное меню
         const mainMenuButtons = [
-            [Markup.button.callback('⚒️ Майнеры', 'miners'), Markup.button.callback('👤 Профиль', 'profile')],
+            [Markup.button.callback('👤 Профиль', 'profile')],
             [Markup.button.callback('🔑 Активировать ключ', 'activate_key'), webAppButton],
             [Markup.button.callback('🌟 Вывести звезды', 'withdraw')]
         ];
