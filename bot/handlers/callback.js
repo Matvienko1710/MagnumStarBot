@@ -2445,23 +2445,6 @@ async function handleReferrals(ctx) {
             reply_markup: referralsKeyboard.reply_markup
         });
 
-    } catch (error) {
-        logger.error('Ошибка обработки раздела рефералов', error, { userId });
-
-        const errorMessage = `❌ **Ошибка загрузки рефералов**\n\n` +
-            `🚫 Не удалось загрузить данные рефералов\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'referrals')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
 }
 
 
