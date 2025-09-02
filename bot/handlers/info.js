@@ -711,7 +711,7 @@ async function handleSupportTicketCreation(ctx, text) {
         }
         
         // Создаем тикет в базе данных
-        const { dataManager } = require('../utils/dataManager');
+        const dataManager = require('../utils/dataManager');
         const ticketData = {
             id: Date.now().toString(), // Простой ID на основе времени
             userId: Number(userId),
@@ -879,7 +879,7 @@ async function handleSupportAttachment(ctx) {
     
     try {
         // Проверяем, есть ли у пользователя активный тикет
-        const { dataManager } = require('../utils/dataManager');
+        const dataManager = require('../utils/dataManager');
         const activeTicket = await dataManager.db.collection('support_tickets')
             .findOne({ 
                 userId: Number(userId), 

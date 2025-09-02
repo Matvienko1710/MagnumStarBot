@@ -159,7 +159,7 @@ function initializeBot() {
                     const fileId = photo.file_id;
                     
                     // Сохраняем ответ админа в базе данных
-                    const { dataManager } = require('./utils/dataManager');
+                    const dataManager = require('./utils/dataManager');
                     await dataManager.db.collection('support_tickets').updateOne(
                         { id: ticketId },
                         { 
@@ -191,7 +191,7 @@ function initializeBot() {
                     
                 } else if (messageType === 'text') {
                     // Текстовый ответ
-                    const { dataManager } = require('./utils/dataManager');
+                    const dataManager = require('./utils/dataManager');
                     await dataManager.db.collection('support_tickets').updateOne(
                         { id: ticketId },
                         { 

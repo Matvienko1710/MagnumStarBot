@@ -2903,7 +2903,7 @@ async function handleSupport(ctx) {
 
     try {
         // Импортируем dataManager
-        const { dataManager } = require('../utils/dataManager');
+        const dataManager = require('../utils/dataManager');
 
         // Проверяем, инициализирован ли dataManager и подключена ли база данных
         if (!dataManager.isInitialized) {
@@ -3011,8 +3011,8 @@ async function handleMyTickets(ctx) {
     
     try {
         // Импортируем dataManager
-        const { dataManager } = require('../utils/dataManager');
-        
+        const dataManager = require('../utils/dataManager');
+
         const tickets = await dataManager.db.collection('support_tickets')
             .find({ userId: Number(userId) })
             .sort({ createdAt: -1 })
@@ -3232,9 +3232,9 @@ async function handleCloseTicket(ctx, action) {
         if (!isAdmin(userId)) {
             return;
         }
-        
+
         // Получаем информацию о тикете
-        const { dataManager } = require('../utils/dataManager');
+        const dataManager = require('../utils/dataManager');
         const ticket = await dataManager.db.collection('support_tickets').updateOne(
             { id: ticketId },
             { 
@@ -3301,9 +3301,9 @@ async function handleReplyTicket(ctx, action) {
         if (!isAdmin(userId)) {
             return;
         }
-        
+
         // Получаем информацию о тикете
-        const { dataManager } = require('../utils/dataManager');
+        const dataManager = require('../utils/dataManager');
         const ticket = await dataManager.db.collection('support_tickets').findOne({ id: ticketId });
         
         if (!ticket) {
@@ -3386,9 +3386,9 @@ async function handleCancelReply(ctx, action) {
         if (!isAdmin(userId)) {
             return;
         }
-        
+
         // Получаем информацию о тикете
-        const { dataManager } = require('../utils/dataManager');
+        const dataManager = require('../utils/dataManager');
         const ticket = await dataManager.db.collection('support_tickets').findOne({ id: ticketId });
         
         if (!ticket) {
@@ -3477,7 +3477,7 @@ async function handleProcessWithdrawal(ctx, action) {
         }
 
         // Импортируем dataManager
-        const { dataManager } = require('../utils/dataManager');
+        const dataManager = require('../utils/dataManager');
 
         // Проверяем инициализацию dataManager
         if (!dataManager.isInitialized) {
