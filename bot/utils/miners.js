@@ -64,16 +64,18 @@ const getAvailableRewards = (userId) => {
   let totalRewardCoins = 0;
   
   userData.miners.forEach(miner => {
-    const minerType = MINER_TYPES[miner.type];
-    const reward = Math.min(
-      minerType.rewardPerMinute * minutesDiff,
-      minerType.maxReward - miner.totalEarned
-    );
-    
-    if (minerType.rewardType === 'stars') {
-      totalRewardStars += reward;
-    } else if (minerType.rewardType === 'coins') {
-      totalRewardCoins += reward;
+    const minerType = MINER_TYPES[miner.type.toUpperCase()] || MINER_TYPES[miner.type];
+    if (minerType) {
+      const reward = Math.min(
+        minerType.rewardPerMinute * minutesDiff,
+        minerType.maxReward - miner.totalEarned
+      );
+
+      if (minerType.rewardType === 'stars') {
+        totalRewardStars += reward;
+      } else if (minerType.rewardType === 'coins') {
+        totalRewardCoins += reward;
+      }
     }
   });
   
@@ -182,12 +184,14 @@ const collectRewards = (userId) => {
   const minutesDiff = timeDiff / (1000 * 60);
   
   userData.miners.forEach(miner => {
-    const minerType = MINER_TYPES[miner.type];
-    const reward = Math.min(
-      minerType.rewardPerMinute * minutesDiff,
-      minerType.maxReward - miner.totalEarned
-    );
-    miner.totalEarned += reward;
+    const minerType = MINER_TYPES[miner.type.toUpperCase()] || MINER_TYPES[miner.type];
+    if (minerType) {
+      const reward = Math.min(
+        minerType.rewardPerMinute * minutesDiff,
+        minerType.maxReward - miner.totalEarned
+      );
+      miner.totalEarned += reward;
+    }
   });
   
   // Обновляем общую статистику

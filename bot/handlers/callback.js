@@ -435,7 +435,7 @@ async function handleMiners(ctx) {
                 // Общее заработанное майнером
                 if (miner.totalEarned !== undefined && miner.totalEarned > 0) {
                     // Определяем тип валюты майнера
-                    const minerType = MINER_TYPES[miner.type.toUpperCase()];
+                    const minerType = MINER_TYPES[miner.type.toUpperCase()] || MINER_TYPES[miner.type];
                     if (minerType) {
                         if (minerType.rewardType === 'coins') {
                             totalMinersEarnedCoins += miner.totalEarned;
