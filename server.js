@@ -33,19 +33,25 @@ app.get('/', (req, res) => {
 // Webhook для Telegram бота
 app.post('/webhook', (req, res) => {
     try {
-        logger.info('Получен webhook от Telegram', {
+        logger.info('🌐 Получен webhook от Telegram', {
             updateId: req.body.update_id,
-            messageType: req.body.message ? 'message' : 'callback',
+            messageType: req.body.message ? 'message' : req.body.callback_query ? 'callback' : 'other',
             chatId: req.body.message?.chat?.id || req.body.callback_query?.message?.chat?.id,
-            userId: req.body.message?.from?.id || req.body.callback_query?.from?.id
+            userId: req.body.message?.from?.id || req.body.callback_query?.from?.id,
+            text: req.body.message?.text || req.body.callback_query?.data?.substring(0, 50),
+            timestamp: new Date().toISOString()
         });
 
         const bot = require('./bot');
         bot.handleUpdate(req.body);
 
+        logger.info('✅ Webhook обработан успешно');
         res.status(200).send('OK');
     } catch (error) {
-        logger.error('Ошибка обработки webhook', error);
+        logger.error('❌ Ошибка обработки webhook', error, {
+            updateId: req.body?.update_id,
+            body: req.body
+        });
         res.status(500).send('Error');
     }
 });
@@ -79,12 +85,30 @@ async function launchBot() {
     try {
         logger.info('Запуск бота...');
 
+        // Логируем все важные переменные окружения
+        logger.info('Переменные окружения при запуске бота', {
+            NODE_ENV: process.env.NODE_ENV,
+            WEBHOOK_URL: process.env.WEBHOOK_URL,
+            BOT_TOKEN: process.env.BOT_TOKEN ? 'Установлен' : 'НЕ установлен',
+            RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL,
+            RENDER_SERVICE_NAME: process.env.RENDER_SERVICE_NAME,
+            PORT: process.env.PORT
+        });
+
         // Инициализируем бота
         const bot = require('./bot');
 
         // Настройка webhook для production
         const webhookUrl = process.env.WEBHOOK_URL;
         const botToken = process.env.BOT_TOKEN;
+
+        // Логируем переменные окружения для диагностики
+        logger.info('Переменные окружения для webhook', {
+            webhookUrl: webhookUrl ? 'Установлена' : 'НЕ установлена',
+            botToken: botToken ? 'Установлен' : 'НЕ установлен',
+            nodeEnv: process.env.NODE_ENV || 'не установлена',
+            isProduction: process.env.NODE_ENV === 'production'
+        });
 
         if (webhookUrl && botToken) {
             const fullWebhookUrl = `${webhookUrl}/webhook`;
@@ -94,28 +118,72 @@ async function launchBot() {
                 botToken: botToken.substring(0, 10) + '...'
             });
 
-            // Устанавливаем webhook
-            await bot.telegram.setWebhook(fullWebhookUrl);
-            logger.info('✅ Webhook успешно настроен');
+            try {
+                // Устанавливаем webhook
+                await bot.telegram.setWebhook(fullWebhookUrl);
+                logger.info('✅ Webhook успешно настроен');
 
-            // Проверяем статус webhook
-            const webhookInfo = await bot.telegram.getWebhookInfo();
-            logger.info('Статус webhook', {
-                url: webhookInfo.url,
-                hasCustomCertificate: webhookInfo.has_custom_certificate,
-                pendingUpdateCount: webhookInfo.pending_update_count,
-                lastErrorDate: webhookInfo.last_error_date,
-                lastErrorMessage: webhookInfo.last_error_message
-            });
+                // Проверяем статус webhook
+                const webhookInfo = await bot.telegram.getWebhookInfo();
+                logger.info('Статус webhook', {
+                    url: webhookInfo.url,
+                    hasCustomCertificate: webhookInfo.has_custom_certificate,
+                    pendingUpdateCount: webhookInfo.pending_update_count,
+                    lastErrorDate: webhookInfo.last_error_date,
+                    lastErrorMessage: webhookInfo.last_error_message
+                });
+            } catch (webhookError) {
+                logger.error('Ошибка настройки webhook', webhookError);
+                throw webhookError;
+            }
 
         } else {
-            logger.warn('WEBHOOK_URL или BOT_TOKEN не установлены, запускаем в режиме polling');
-            // Для development используем polling
-            if (process.env.NODE_ENV !== 'production') {
+            logger.warn('WEBHOOK_URL или BOT_TOKEN не установлены', {
+                webhookUrl: !!webhookUrl,
+                botToken: !!botToken,
+                nodeEnv: process.env.NODE_ENV
+            });
+
+            // В production режиме пытаемся использовать webhook без URL (для случаев когда Render сам предоставляет URL)
+            if (process.env.NODE_ENV === 'production') {
+                logger.info('Production режим без WEBHOOK_URL - пытаемся настроить webhook автоматически');
+
+                // Пытаемся получить URL из Render
+                const renderUrl = process.env.RENDER_EXTERNAL_URL || `https://${process.env.RENDER_SERVICE_NAME}.onrender.com`;
+                if (renderUrl && renderUrl !== 'https://undefined.onrender.com') {
+                    const fullWebhookUrl = `${renderUrl}/webhook`;
+
+                    logger.info('Используем Render URL для webhook', {
+                        renderUrl,
+                        fullWebhookUrl: fullWebhookUrl
+                    });
+
+                    try {
+                        await bot.telegram.setWebhook(fullWebhookUrl);
+                        logger.info('✅ Webhook настроен с Render URL');
+
+                        const webhookInfo = await bot.telegram.getWebhookInfo();
+                        logger.info('Статус webhook с Render URL', {
+                            url: webhookInfo.url,
+                            hasCustomCertificate: webhookInfo.has_custom_certificate,
+                            pendingUpdateCount: webhookInfo.pending_update_count
+                        });
+                    } catch (renderWebhookError) {
+                        logger.error('Ошибка настройки webhook с Render URL', renderWebhookError);
+                        // В крайнем случае запускаем в polling режиме
+                        logger.warn('Запускаем в режиме polling как fallback');
+                        await bot.launch();
+                        logger.info('✅ Бот запущен в режиме polling (fallback)');
+                    }
+                } else {
+                    logger.warn('Render URL недоступен, запускаем в режиме polling');
+                    await bot.launch();
+                    logger.info('✅ Бот запущен в режиме polling (fallback)');
+                }
+            } else {
+                // Development режим
                 await bot.launch();
                 logger.info('✅ Бот запущен в режиме polling (development)');
-            } else {
-                throw new Error('WEBHOOK_URL и BOT_TOKEN обязательны для production');
             }
         }
 
@@ -128,7 +196,13 @@ async function launchBot() {
         return bot;
 
     } catch (error) {
-        logger.error('Ошибка запуска бота', error);
+        logger.error('Ошибка запуска бота', error, {
+            errorMessage: error.message,
+            errorStack: error.stack,
+            nodeEnv: process.env.NODE_ENV,
+            webhookUrl: process.env.WEBHOOK_URL,
+            botToken: process.env.BOT_TOKEN ? 'Установлен' : 'НЕ установлен'
+        });
         throw error;
     }
 }
