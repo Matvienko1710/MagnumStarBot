@@ -322,109 +322,6 @@ async function handleProfile(ctx) {
 }
 
 // Функции майнеров удалены - функционал перенесен в вебапп
-// async function handleMiners(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка майнеров - главное меню', { userId });
-    
-    try {
-        // Получаем баланс пользователя
-        const userBalance = await getUserBalance(userId);
-        
-        // Получаем информацию о майнерах пользователя
-        const userMiners = await dataManager.getUserMiners(userId);
-
-        // Импортируем типы майнеров для определения валюты
-        const { MINER_TYPES } = require('../utils/miners');
-
-        // Рассчитываем общий доход в минуту и общее заработанное
-        let totalCoinsPerMin = 0;
-        let totalStarsPerMin = 0;
-        let totalMinersEarnedCoins = 0;
-        let totalMinersEarnedStars = 0;
-
-        userMiners.forEach(miner => {
-            if (miner.isActive) {
-                // Скорость майнинга (доход в минуту)
-                if (miner.speed) {
-                    totalCoinsPerMin += miner.speed.coins || 0;
-                    totalStarsPerMin += miner.speed.stars || 0;
-                }
-
-                // Общее заработанное майнером
-                if (miner.totalEarned !== undefined && miner.totalEarned > 0) {
-                    // Определяем тип валюты майнера
-                    const minerType = MINER_TYPES[miner.type.toUpperCase()] || MINER_TYPES[miner.type];
-                    if (minerType) {
-                        if (minerType.rewardType === 'coins') {
-                            totalMinersEarnedCoins += miner.totalEarned;
-                        } else if (minerType.rewardType === 'stars') {
-                            totalMinersEarnedStars += miner.totalEarned;
-                        }
-                    }
-                }
-            }
-        });
-
-        const totalIncome = { coins: totalCoinsPerMin, stars: totalStarsPerMin };
-        const totalMinersEarned = { coins: totalMinersEarnedCoins, stars: totalMinersEarnedStars };
-        
-        // Получаем информацию о лимитах майнеров
-        const noviceAvailability = await dataManager.getMinerAvailability('novice');
-        const limitedAvailability = await dataManager.getMinerAvailability('limited');
-        const epicAvailability = await dataManager.getMinerAvailability('epic');
-        const userNoviceCount = await dataManager.getUserMinerCount(userId, 'novice');
-        const userLimitedCount = await dataManager.getUserMinerCount(userId, 'limited');
-        const userEpicCount = await dataManager.getUserMinerCount(userId, 'epic');
-        
-        const minersMessage = `⛏️ **Главное меню майнеров**\n\n` +
-            `💰 **Ваш баланс:**\n` +
-            `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
-            `└ ⭐ Stars: ${userBalance.stars}\n\n` +
-            `📈 **Майнеры заработали:**\n` +
-            `├ 🪙 Magnum Coins: ${totalMinersEarned.coins.toFixed(2)}\n` +
-            `└ ⭐ Stars: ${totalMinersEarned.stars.toFixed(2)}\n\n` +
-            `⛏️ **Ваши майнеры:**\n` +
-            `├ 📊 Всего майнеров: ${userMiners.length}\n` +
-            `├ ⚡ Общий доход: ${totalIncome.coins} 🪙/мин\n` +
-            `└ 💎 Доход в Stars: ${totalIncome.stars} ⭐/мин\n\n` +
-            `📊 **Лимиты майнеров:**\n` +
-            `├ 🆕 Новичок: ${userNoviceCount}/${noviceAvailability.maxPerUser} (${noviceAvailability.globalCount}/${noviceAvailability.globalLimit})\n` +
-            `├ 💎 Лимитированная: ${userLimitedCount}/${limitedAvailability.maxPerUser} (${limitedAvailability.globalCount}/${limitedAvailability.globalLimit})\n` +
-            `├ 🟣 Епический: ${userEpicCount}/${epicAvailability.maxPerUser} (${epicAvailability.globalCount}/${epicAvailability.globalLimit})\n` +
-            `└ 🆕 Можно купить еще: ${Math.max(0, noviceAvailability.maxPerUser - userNoviceCount)} + ${Math.max(0, limitedAvailability.maxPerUser - userLimitedCount)} + ${Math.max(0, epicAvailability.maxPerUser - userEpicCount)} майнеров\n\n` +
-            `🎯 **Выберите действие:**`;
-    
-    const minersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
-            [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
-            [Markup.button.callback('🚀 Запустить майнер', 'start_mining')],
-        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-    ]);
-    
-    await ctx.editMessageText(minersMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: minersKeyboard.reply_markup
-    });
-        
-    } catch (error) {
-        logger.error('Ошибка обработки главного меню майнеров', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка загрузки майнеров**\n\n` +
-            `🚫 Не удалось загрузить данные майнеров\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'miners')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
 
 
 
@@ -434,206 +331,14 @@ async function handleMinersShop(ctx, currentMinerIndex = 0) {
     await ctx.answerCbQuery('🔄 Функционал майнеров перенесен в веб-приложение', false);
     return;
 }
-        
-        // Проверяем, что индекс в допустимых пределах
-        if (currentMinerIndex >= availableMiners.length) {
-            currentMinerIndex = 0;
-        }
-        
-        const currentMiner = availableMiners[currentMinerIndex];
-        
-        // Получаем информацию о доступности майнера
-        const minerAvailability = await dataManager.getMinerAvailability(currentMiner.id);
-        const userMinerCount = await dataManager.getUserMinerCount(userId, currentMiner.id);
-        
-        // Формируем сообщение о текущем майнере
-        const priceText = currentMiner.price.coins > 0 
-            ? `${currentMiner.price.coins} 🪙 Magnum Coins`
-            : `${currentMiner.price.stars} ⭐ Stars`;
-            
-        const speedText = currentMiner.speed.coins > 0
-            ? `${currentMiner.speed.coins} 🪙/мин`
-            : `${currentMiner.speed.stars} ⭐/мин`;
-        
-        const shopMessage = `🛒 **Магазин майнеров**\n\n` +
-            `💰 **Ваш баланс:**\n` +
-            `├ 🪙 Magnum Coins: ${userBalance.coins}\n` +
-            `└ ⭐ Stars: ${userBalance.stars}\n\n` +
-            `🎯 **${currentMiner.name}**\n` +
-            `├ 💰 Цена: ${priceText}\n` +
-            `├ ⚡ Скорость: ${speedText}\n` +
-            `├ 🎯 Редкость: ${currentMiner.rarity}\n` +
-            `├ 📝 Описание: ${currentMiner.description}\n\n` +
-            `📊 **Лимиты сервера:**\n` +
-            `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
-            `├ 🌐 На сервере: ${minerAvailability.globalCount}/${minerAvailability.globalLimit} майнеров\n` +
-            `└ 🆕 Доступно для покупки: ${minerAvailability.available} майнеров\n\n` +
-            `🎯 **Выберите действие:**`;
-        
-        // Проверяем, можно ли купить майнер
-        const hasEnoughCoins = userBalance.coins >= currentMiner.price.coins;
-        const hasEnoughStars = userBalance.stars >= currentMiner.price.stars;
-        const canBuy = minerAvailability.isAvailable && 
-                      userMinerCount < minerAvailability.maxPerUser &&
-                      hasEnoughCoins && hasEnoughStars;
-        
-        // Создаем клавиатуру с кнопками
-        const shopKeyboard = [];
-        
-        // Кнопка покупки (активна только если можно купить)
-        if (canBuy) {
-            shopKeyboard.push([Markup.button.callback(
-                `🛒 Купить ${currentMiner.name}`, 
-                `buy_miner_${currentMiner.id}`
-            )]);
-        } else {
-            // Показываем причину недоступности
-            let reason = '';
-            if (!minerAvailability.isAvailable) {
-                reason = '❌ Достигнут общий лимит на сервере';
-            } else if (userMinerCount >= minerAvailability.maxPerUser) {
-                reason = '❌ Достигнут лимит на пользователя';
-            } else if (!hasEnoughCoins || !hasEnoughStars) {
-                if (currentMiner.price.coins > 0 && !hasEnoughCoins) {
-                    reason = `❌ Недостаточно Coins (нужно ${currentMiner.price.coins})`;
-                } else if (currentMiner.price.stars > 0 && !hasEnoughStars) {
-                    reason = `❌ Недостаточно Stars (нужно ${currentMiner.price.stars})`;
-                }
-            }
-            
-            shopKeyboard.push([Markup.button.callback(
-                reason, 
-                'miners_shop'
-            )]);
-        }
-        
-        // Навигационные кнопки между майнерами (если их больше одного)
-        if (availableMiners.length > 1) {
-            const navButtons = [];
-            if (currentMinerIndex > 0) {
-                navButtons.push(Markup.button.callback('⬅️ Предыдущий', `miners_shop_${currentMinerIndex - 1}`));
-            }
-            if (currentMinerIndex < availableMiners.length - 1) {
-                navButtons.push(Markup.button.callback('Следующий ➡️', `miners_shop_${currentMinerIndex + 1}`));
-            }
-            if (navButtons.length > 0) {
-                shopKeyboard.push(navButtons);
-            }
-        }
-        
-        // Навигационные кнопки
-        shopKeyboard.push([
-            Markup.button.callback('🔙 Назад к майнерам', 'miners'),
-            Markup.button.callback('🏠 Главное меню', 'main_menu')
-        ]);
-        
-        await ctx.editMessageText(shopMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: Markup.inlineKeyboard(shopKeyboard).reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка обработки магазина майнеров', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка загрузки магазина**\n\n` +
-            `🚫 Не удалось загрузить данные магазина\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'miners_shop')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
-}
 
 
 
 // Обработка "Мои майнеры"
 async function handleMyMiners(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка "Мои майнеры"', { userId });
-    
-    try {
-        // Получаем майнеры пользователя
-        const userMiners = await dataManager.getUserMiners(userId);
-        
-        if (userMiners.length === 0) {
-            const noMinersMessage = `📊 **Мои майнеры**\n\n` +
-                `❌ У вас пока нет майнеров\n\n` +
-                `💡 Купите свой первый майнер в магазине, чтобы начать зарабатывать!`;
-            
-            const noMinersKeyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
-                [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
-                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-            ]);
-            
-            await ctx.editMessageText(noMinersMessage, {
-                parse_mode: 'Markdown',
-                reply_markup: noMinersKeyboard.reply_markup
-            });
-            return;
-        }
-        
-        // Рассчитываем общий доход
-        let totalCoinsPerMin = 0;
-        let totalStarsPerMin = 0;
-        
-        userMiners.forEach(miner => {
-            if (miner.isActive) {
-                totalCoinsPerMin += miner.speed.coins;
-                totalStarsPerMin += miner.speed.stars;
-            }
-        });
-        
-        // Получаем информацию о лимитах майнеров
-        const minerAvailability = await dataManager.getMinerAvailability('novice');
-        const userMinerCount = await dataManager.getUserMinerCount(userId, 'novice');
-        
-        const myMinersMessage = `📊 **Мои майнеры**\n\n` +
-            `⛏️ **Всего майнеров:** ${userMiners.length}\n\n` +
-            `💰 **Общий доход:**\n` +
-            `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
-            `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
-            `📊 **Лимиты:**\n` +
-            `├ 👤 У вас: ${userMinerCount}/${minerAvailability.maxPerUser} майнеров\n` +
-            `├ 🌐 Активные майнеры на сервере: ${minerAvailability.activeCount}/${minerAvailability.globalLimit}\n` +
-            `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
-            `🎯 **Выберите действие:**`;
-        
-        const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(myMinersMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: myMinersKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка обработки "Мои майнеры"', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка загрузки майнеров**\n\n` +
-            `🚫 Не удалось загрузить данные майнеров\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'my_miners')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
+    // Функционал перенесен в вебапп
+    await ctx.answerCbQuery('🔄 Функционал майнеров перенесен в веб-приложение', false);
+    return;
 }
 
 // Обработка вывода звезд
@@ -1459,32 +1164,10 @@ async function handleCacheStats(ctx) {
 // Функции титулов удалены - функционал убран из бота
 
 // Функция handleMyTitles удалена - функционал убран из бота
-// async function handleMyTitles(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка моих титулов', { userId });
-    
-    const myTitlesMessage = `👑 **Мои титулы**\n\n` +
-        `🎯 Текущий активный титул:\n\n` +
-        `🆕 **Новичок**\n` +
-        `├ 📝 Описание: Первый титул для новых пользователей\n` +
-        `├ 🎯 Требования: Уровень 1\n` +
-        `└ ✅ Статус: Активен\n\n` +
-        `📊 **Статистика титулов:**\n` +
-        `├ 🎯 Всего титулов: 1\n` +
-        `├ ✅ Разблокировано: 1\n` +
-        `└ 🔒 Заблокировано: 1`;
-    
-    const myTitlesKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('👑 Доступные титулы', 'titles')],
-        [Markup.button.callback('👤 Профиль', 'profile')],
-        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-    ]);
-    
-    await ctx.editMessageText(myTitlesMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: myTitlesKeyboard.reply_markup
-    });
+async function handleMyTitles(ctx) {
+    // Функционал перенесен в вебапп
+    await ctx.answerCbQuery('🔄 Функционал титулов убран из бота', false);
+    return;
 }
 
 
@@ -2133,13 +1816,11 @@ async function handleCheckSubscription(ctx) {
 
 // Обработка управления титулами
 // Функция handleManageTitles удалена - функционал убран из бота
-// async function handleManageTitles(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка управления титулами', { userId });
-    
-    try {
-        // Проверяем, является ли пользователь админом
+async function handleManageTitles(ctx) {
+    // Функционал убран из бота
+    await ctx.answerCbQuery('🔄 Функционал титулов убран из бота', false);
+    return;
+}
         if (!isAdmin(userId)) {
             await ctx.answerCbQuery('❌ У вас нет прав для управления титулами');
             return;
