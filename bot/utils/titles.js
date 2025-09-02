@@ -37,47 +37,25 @@ const initializeUserTitles = async (userId) => {
   }
 };
 
-// Получить текущий титул пользователя
+// Получить текущий титул пользователя (функционал отключен)
 const getUserCurrentTitle = async (userId) => {
-  try {
-    const currentTitleId = await dataManager.getCurrentTitle(userId);
-    return AVAILABLE_TITLES[currentTitleId.toUpperCase()] || AVAILABLE_TITLES.NOVICE;
-  } catch (error) {
-    logger.error('Ошибка получения текущего титула пользователя', error, { userId });
-    return AVAILABLE_TITLES.NOVICE;
-  }
+  logger.debug('⛔ Функционал титулов отключен', { userId });
+  // Возвращаем титул по умолчанию
+  return AVAILABLE_TITLES.NOVICE;
 };
 
-// Получить все разблокированные титулы пользователя
+// Получить все разблокированные титулы пользователя (функционал отключен)
 const getUserUnlockedTitles = async (userId) => {
-  try {
-    const user = await dataManager.getUser(userId);
-    return user.titles.unlocked.map(titleId => 
-      AVAILABLE_TITLES[titleId.toUpperCase()]
-    ).filter(Boolean);
-  } catch (error) {
-    logger.error('Ошибка получения разблокированных титулов', error, { userId });
-    return [AVAILABLE_TITLES.NOVICE];
-  }
+  logger.debug('⛔ Функционал титулов отключен', { userId });
+  // Возвращаем только титул по умолчанию
+  return [AVAILABLE_TITLES.NOVICE];
 };
 
-// Установить титул пользователю
+// Установить титул пользователю (функционал отключен)
 const setUserTitle = async (userId, titleId) => {
-  try {
-    const user = await dataManager.getUser(userId);
-    const titleKey = titleId.toUpperCase();
-    
-    if (!AVAILABLE_TITLES[titleKey]) {
-      throw new Error('Неверный титул');
-    }
-    
-    if (!user.titles.unlocked.includes(titleId)) {
-      throw new Error('У вас нет доступа к этому титулу');
-    }
-    
-    const oldTitle = user.titles.current;
-    
-    // Обновляем текущий титул
+  logger.debug('⛔ Функционал титулов отключен', { userId, titleId });
+  // Ничего не делаем, возвращаем успех
+  return { success: true, message: 'Титул установлен (функционал отключен)' };
     await dataManager.updateUser(userId, {
       'titles.current': titleId,
       'titles.history': [...user.titles.history, {
@@ -100,19 +78,11 @@ const setUserTitle = async (userId, titleId) => {
   }
 };
 
-// Разблокировать титул пользователю
+// Разблокировать титул пользователю (функционал отключен)
 const unlockTitle = async (userId, titleId) => {
-  try {
-    const unlockedTitles = await dataManager.unlockTitle(userId, titleId);
-    
-    logger.info('Титул разблокирован пользователю', { userId, titleId, unlockedTitles });
-    
-    return AVAILABLE_TITLES[titleId.toUpperCase()];
-    
-  } catch (error) {
-    logger.error('Ошибка разблокировки титула', error, { userId, titleId });
-    throw error;
-  }
+  logger.debug('⛔ Функционал титулов отключен', { userId, titleId });
+  // Возвращаем титул по умолчанию
+  return AVAILABLE_TITLES.NOVICE;
 };
 
 // Получить информацию о титуле
@@ -126,26 +96,18 @@ const getAllAvailableTitles = () => {
   return Object.values(AVAILABLE_TITLES);
 };
 
-// Проверить, разблокирован ли титул у пользователя
+// Проверить, разблокирован ли титул у пользователя (функционал отключен)
 const isTitleUnlocked = async (userId, titleId) => {
-  try {
-    const user = await dataManager.getUser(userId);
-    return user.titles.unlocked.includes(titleId);
-  } catch (error) {
-    logger.error('Ошибка проверки разблокировки титула', error, { userId, titleId });
-    return false;
-  }
+  logger.debug('⛔ Функционал титулов отключен', { userId, titleId });
+  // Возвращаем true только для титула по умолчанию
+  return titleId.toLowerCase() === 'novice';
 };
 
-// Получить историю титулов пользователя
+// Получить историю титулов пользователя (функционал отключен)
 const getUserTitleHistory = async (userId) => {
-  try {
-    const user = await dataManager.getUser(userId);
-    return user.titles.history;
-  } catch (error) {
-    logger.error('Ошибка получения истории титулов', error, { userId });
-    return [];
-  }
+  logger.debug('⛔ Функционал титулов отключен', { userId });
+  // Возвращаем пустую историю
+  return [];
 };
 
 module.exports = {

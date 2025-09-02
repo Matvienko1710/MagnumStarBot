@@ -223,6 +223,25 @@ async function callbackHandler(ctx) {
                     await handleCancelReply(ctx, callbackData);
                     return;
                 }
+
+                // Обработка отключенных функций майнеров и титулов
+                if (callbackData === 'titles') {
+                    logger.info('⛔ Обработка титулов отключена', { userId });
+                    await ctx.answerCbQuery('⛔ Функционал титулов отключен', false);
+                    return;
+                }
+
+                if (callbackData === 'manage_titles') {
+                    logger.info('⛔ Обработка управления титулами отключена', { userId });
+                    await ctx.answerCbQuery('⛔ Функционал титулов отключен', false);
+                    return;
+                }
+
+                if (callbackData === 'miners') {
+                    logger.info('⛔ Обработка майнеров отключена', { userId });
+                    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+                    return;
+                }
                 
                 // Если команда не найдена
                 logger.warn('Неизвестная команда', { userId, callbackData });
@@ -436,38 +455,12 @@ async function handleStartMining(ctx) {
     }
 }
 
-// Функция обновления таймера майнинга
+// Функция обновления таймера майнинга (функционал отключен)
 async function updateMiningTimer(ctx, userId, startTime) {
-    try {
-        // Получаем майнеры пользователя для определения интервала
-        const userMiners = await dataManager.getUserMiners(userId);
-        
-        // Определяем минимальный интервал (самый быстрый майнер определяет интервал)
-        let minCooldownTime = 4 * 60 * 60 * 1000; // По умолчанию 4 часа
-        
-        for (const miner of userMiners) {
-            if (miner.isActive && miner.lastMiningStart) {
-                let requiredHours = 4; // По умолчанию 4 часа
-                if (miner.type === 'limited') {
-                    requiredHours = 12;
-                } else if (miner.type === 'epic') {
-                    requiredHours = 8; // Епический майнер работает 8 часов
-                }
-                const cooldownTime = requiredHours * 60 * 60 * 1000;
-                if (cooldownTime < minCooldownTime) {
-                    minCooldownTime = cooldownTime;
-                }
-            }
-        }
-        
-        const nextMiningTime = new Date(startTime).getTime() + minCooldownTime;
-        const now = Date.now();
-        
-        if (now >= nextMiningTime) {
-            // Время истекло, показываем кнопку "Запустить майнинг"
-            await showMiningReady(ctx, userId);
-        } else {
-            // Показываем время следующего запуска (без обновления каждую секунду)
+    logger.info('⛔ Функционал майнеров отключен', { userId });
+    // Функционал майнеров отключен
+    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+    return;
             await showMiningTimer(ctx, userId, nextMiningTime);
         }
         
@@ -478,25 +471,10 @@ async function updateMiningTimer(ctx, userId, startTime) {
 
 // Показать готовность к майнингу
 async function showMiningReady(ctx, userId) {
-    try {
-        const userMiners = await dataManager.getUserMiners(userId);
-        
-        let totalCoinsPerMin = 0;
-        let totalStarsPerMin = 0;
-        
-        userMiners.forEach(miner => {
-            if (miner.isActive) {
-                totalCoinsPerMin += miner.speed.coins;
-                totalStarsPerMin += miner.speed.stars;
-            }
-        });
-        
-        const myMinersMessage = `📊 **Мои майнеры**\n\n` +
-            `⛏️ **Всего майнеров:** ${userMiners.length}\n\n` +
-            `💰 **Общий доход:**\n` +
-            `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
-            `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
-            `🎯 **Выберите действие:**`;
+    logger.info('⛔ Функционал майнеров отключен', { userId });
+    // Функционал майнеров отключен
+    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+    return;
         
         const myMinersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
@@ -513,24 +491,12 @@ async function showMiningReady(ctx, userId) {
     }
 }
 
-// Показать информацию о майнинге в процессе
+// Показать информацию о майнинге в процессе (функционал отключен)
 async function showMiningInProgress(ctx, userId, startTime) {
-    try {
-        const userMiners = await dataManager.getUserMiners(userId);
-        
-        let totalCoinsPerMin = 0;
-        let totalStarsPerMin = 0;
-        
-        userMiners.forEach(miner => {
-            if (miner.isActive) {
-                totalCoinsPerMin += miner.speed.coins;
-                totalStarsPerMin += miner.speed.stars;
-            }
-        });
-        
-        // Рассчитываем время следующего запуска (4 часа = 14400000 мс)
-        const cooldownTime = 4 * 60 * 60 * 1000; // 4 часа в миллисекундах
-        const nextMiningTime = new Date(startTime).getTime() + cooldownTime;
+    logger.info('⛔ Функционал майнеров отключен', { userId });
+    // Функционал майнеров отключен
+    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+    return;
         
         // Форматируем время следующего запуска
         const nextMiningDate = new Date(nextMiningTime);
@@ -567,41 +533,10 @@ async function showMiningInProgress(ctx, userId, startTime) {
 
 // Показать время следующего запуска майнинга
 async function showMiningTimer(ctx, userId, nextMiningTime) {
-    try {
-        const userMiners = await dataManager.getUserMiners(userId);
-        
-        let totalCoinsPerMin = 0;
-        let totalStarsPerMin = 0;
-        
-        userMiners.forEach(miner => {
-            if (miner.isActive) {
-                totalCoinsPerMin += miner.speed.coins;
-                totalStarsPerMin += miner.speed.stars;
-            }
-        });
-        
-        // Форматируем время следующего запуска
-        const nextMiningDate = new Date(nextMiningTime);
-        const nextMiningTimeString = nextMiningDate.toLocaleTimeString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-        
-        const myMinersMessage = `📊 **Мои майнеры**\n\n` +
-            `⛏️ **Всего майнеров:** ${userMiners.length}\n\n` +
-            `💰 **Общий доход:**\n` +
-            `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
-            `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
-            `⏰ **Майнинг активен**\n` +
-            `🔄 **Следующий запуск в:** ${nextMiningTimeString}\n\n` +
-            `💡 Доход начисляется автоматически каждую минуту!`;
-        
-        const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback(`⏰ Майнинг активен (${nextMiningTimeString})`, 'mining_active')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
+    logger.info('⛔ Функционал майнеров отключен', { userId });
+    // Функционал майнеров отключен
+    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+    return;
         
         await ctx.editMessageText(myMinersMessage, {
             parse_mode: 'Markdown',
@@ -967,8 +902,12 @@ async function handleCreateKey(ctx) {
 // Обработка создания ключа титула
 async function handleCreateTitleKey(ctx) {
     const userId = ctx.from.id;
-    
-    logger.info('Обработка создания ключа титула', { userId });
+
+    logger.info('⛔ Обработка создания ключа титула отключена', { userId });
+
+    // Функционал титулов отключен
+    await ctx.answerCbQuery('⛔ Функционал титулов отключен', false);
+    return;
     
     // Устанавливаем состояние создания ключа титула
     userStates.set(userId, {
@@ -1743,15 +1682,12 @@ async function handleManageTitles(ctx) {
 // Обработка проверки пропущенных наград за майнинг
 async function handleCheckMissedRewards(ctx) {
     const userId = ctx.from.id;
-    
-    logger.info('Обработка проверки пропущенных наград', { userId });
-    
-    try {
-        // Проверяем, является ли пользователь админом
-        if (!isAdmin(userId)) {
-            await ctx.answerCbQuery('❌ У вас нет прав для проверки пропущенных наград');
-            return;
-        }
+
+    logger.info('⛔ Обработка проверки пропущенных наград отключена', { userId });
+
+    // Функционал майнинга отключен
+    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+    return;
         
         // Показываем сообщение о начале проверки
         const startMessage = `⛏️ **Проверка пропущенных наград за майнинг**\n\n` +
@@ -1869,33 +1805,11 @@ async function handleCreatePost(ctx) {
 async function handleCreateMinerKey(ctx) {
     const userId = ctx.from.id;
 
-    logger.info('Обработка создания ключа майнера', { userId });
+    logger.info('⛔ Обработка создания ключа майнера отключена', { userId });
 
-    // Проверяем, является ли пользователь админом
-    if (!isAdmin(userId)) {
-        await ctx.reply('❌ У вас нет доступа к этой функции');
-        return;
-    }
-
-    const createMinerKeyMessage = `⛏️ **Создание ключа майнера**\n\n` +
-        `🎯 Выберите тип майнера для ключа:\n\n` +
-        `⛏️ **Новичок**\n` +
-        `├ 💰 Цена: 100 🪙 Magnum Coins\n` +
-        `├ ⚡ Доход: 1 🪙/мин\n` +
-        `└ 🎯 Редкость: Обычный\n\n` +
-        `⭐ **Путь к звездам**\n` +
-        `├ 💰 Цена: 100 ⭐ Stars\n` +
-        `├ ⚡ Доход: 0.01 ⭐/мин\n` +
-        `└ 🎯 Редкость: Редкий\n\n` +
-        `💡 **Выберите тип майнера:**`;
-
-    const createMinerKeyKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('⛏️ Новичок (100 🪙)', 'miner_key_novice')],
-        [Markup.button.callback('⭐ Путь к звездам (100 ⭐)', 'miner_key_star_path')],
-        [Markup.button.callback('🔙 Отмена', 'admin_panel')]
-    ]);
-
-    await ctx.editMessageText(createMinerKeyMessage, {
+    // Функционал майнинга отключен
+    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+    return;
         parse_mode: 'Markdown',
         reply_markup: createMinerKeyKeyboard.reply_markup
     });
@@ -1905,13 +1819,11 @@ async function handleCreateMinerKey(ctx) {
 async function handleMinerKeyType(ctx, minerType) {
     const userId = ctx.from.id;
 
-    logger.info('Выбор типа майнера для ключа', { userId, minerType });
+    logger.info('⛔ Обработка выбора типа майнера для ключа отключена', { userId, minerType });
 
-    // Проверяем, является ли пользователь админом
-    if (!isAdmin(userId)) {
-        await ctx.reply('❌ У вас нет доступа к этой функции');
-        return;
-    }
+    // Функционал майнинга отключен
+    await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
+    return;
 
     // Устанавливаем состояние создания ключа майнера
     userStates.set(userId, {
@@ -1951,10 +1863,10 @@ async function handleMinerKeyType(ctx, minerType) {
 async function handleMinerKeyCreation(ctx, text) {
     const userId = ctx.from.id;
 
-    logger.info('Обработка создания ключа майнера из текста', { userId, text });
+    logger.info('⛔ Обработка создания ключа майнера из текста отключена', { userId, text });
 
-    const userState = userStates.get(userId);
-    if (!userState || userState.state !== 'creating_miner_key') return;
+    // Функционал майнинга отключен
+    return;
 
     try {
         if (userState.currentStep === 'max_uses') {

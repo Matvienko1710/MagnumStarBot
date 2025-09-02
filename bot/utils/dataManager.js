@@ -58,79 +58,25 @@ class DataManager {
         }
     }
     
-    // Запуск планировщика автоматического дохода от майнинга
+    // Функционал майнинга отключен - планировщик не запускается
     startMiningIncomeScheduler() {
-        try {
-            logger.info('🚀 Запускаем планировщик автоматического дохода от майнинга...');
-            
-            // Запускаем каждую минуту (60000 мс) для начисления дохода от всех майнеров
-            this.miningIncomeInterval = setInterval(async () => {
-                try {
-                    await this.processAllUsersMiningIncome();
-                } catch (error) {
-                    logger.error('❌ Ошибка в планировщике автоматического дохода', error);
-                }
-            }, 60000); // 1 минута
-            
-            logger.info('✅ Планировщик автоматического дохода запущен (интервал: 1 минута)');
-            logger.info('💎 Все майнеры работают одновременно на 12 часов');
-            
-        } catch (error) {
-            logger.error('❌ Ошибка запуска планировщика автоматического дохода', error);
-        }
+        logger.info('⛔ Планировщик автоматического дохода от майнинга отключен');
+        // Планировщик майнинга отключен для полного удаления функционала
+        // this.miningIncomeInterval = setInterval(async () => {
+        //     try {
+        //         await this.processAllUsersMiningIncome();
+        //     } catch (error) {
+        //         logger.error('❌ Ошибка в планировщике автоматического дохода', error);
+        //     }
+        // }, 60000); // 1 минута
     }
     
-    // Обработка автоматического дохода для всех пользователей (все майнеры работают 12 часов)
+    // Функционал майнинга отключен - метод ничего не делает
     async processAllUsersMiningIncome() {
-        try {
-            logger.info('⏰ Запуск автоматического начисления дохода от майнинга...');
-            
-            // Получаем всех пользователей с майнерами
-            const usersWithMiners = await this.db.collection('users').find({
-                'miners.0': { $exists: true } // У пользователя есть хотя бы один майнер
-            }).toArray();
-            
-            logger.info(`🔍 Найдено пользователей с майнерами: ${usersWithMiners.length}`);
-            
-            let totalUsersProcessed = 0;
-            let totalCoinsAwarded = 0;
-            let totalStarsAwarded = 0;
-            
-            // Обрабатываем каждого пользователя
-            for (const user of usersWithMiners) {
-                try {
-                    const result = await this.processMiningIncome(user.userId);
-                    
-                    if (result.coins > 0 || result.stars > 0) {
-                        totalUsersProcessed++;
-                        totalCoinsAwarded += result.coins;
-                        totalStarsAwarded += result.stars;
-                        
-                        logger.info('Пользователь обработан (автоматический доход)', { 
-                            userId: user.userId, 
-                            coins: result.coins, 
-                            stars: result.stars,
-                            timestamp: new Date().toISOString()
-                        });
-                    }
-                } catch (userError) {
-                    logger.error('Ошибка обработки пользователя (автоматический доход)', userError, { userId: user.userId });
-                }
-            }
-            
-            if (totalCoinsAwarded > 0 || totalStarsAwarded > 0) {
-                logger.info('🎉 Автоматическое начисление дохода завершено', {
-                    totalUsersProcessed,
-                    totalCoinsAwarded,
-                    totalStarsAwarded
-                });
-            } else {
-                logger.debug('Автоматическое начисление дохода завершено (нет активных майнеров)');
-            }
-            
-        } catch (error) {
-            logger.error('❌ Ошибка автоматического начисления дохода для всех пользователей', error);
-        }
+        logger.info('⛔ Автоматическое начисление дохода от майнинга отключено');
+        // Функционал майнинга полностью отключен
+        // Метод оставлен для совместимости, но ничего не делает
+        return;
     }
 
     // Диагностика системы майнинга
@@ -1425,239 +1371,29 @@ class DataManager {
     
     // Автоматическое начисление дохода каждую минуту (все майнеры работают 12 часов)
     async processMiningIncome(userId) {
-        try {
-            const user = await this.getUser(userId);
-            const miners = user.miners || [];
-            
-            if (miners.length === 0) {
-                return { coins: 0, stars: 0 };
-            }
-            
-            let totalCoins = 0;
-            let totalStars = 0;
-            const now = new Date();
-            
-            logger.info('Обрабатываем автоматический доход от майнинга (12-часовой цикл)', { userId, minersCount: miners.length });
-            
-            // Рассчитываем доход для каждого майнера
-            for (const miner of miners) {
-                if (!miner.isActive || !miner.lastMiningStart) {
-                    logger.debug('Майнер неактивен или майнинг не запущен', { 
-                        userId, 
-                        minerId: miner.id, 
-                        isActive: miner.isActive, 
-                        lastMiningStart: miner.lastMiningStart 
-                    });
-                    continue;
-                }
-                
-                // Проверяем, что майнинг был запущен менее 12 часов назад
-                const timeSinceMiningStart = now - new Date(miner.lastMiningStart);
-                const hoursSinceStart = timeSinceMiningStart / (1000 * 60 * 60);
-                
-                // Все майнеры теперь работают 12 часов
-                const requiredHours = 12;
-                
-                if (hoursSinceStart < requiredHours) {
-                    // Начисляем доход за последнюю минуту (скорость уже в минуту)
-                    const coinsEarned = miner.speed.coins; // Доход в минуту (1 Coin)
-                    const starsEarned = miner.speed.stars; // Доход в минуту
-                    
-                    totalCoins += coinsEarned;
-                    totalStars += starsEarned;
-                    
-                    logger.debug('Майнер генерирует доход', { 
-                        userId, 
-                        minerId: miner.id, 
-                        minerType: miner.type,
-                        coinsEarned, 
-                        starsEarned,
-                        hoursSinceStart: Math.round(hoursSinceStart * 100) / 100
-                    });
-                } else {
-                    logger.debug(`Майнинг майнера истек (более ${requiredHours} часов)`, { 
-                        userId, 
-                        minerId: miner.id, 
-                        hoursSinceStart: Math.round(hoursSinceStart * 100) / 100,
-                        requiredHours
-                    });
-                }
-            }
-            
-            // Начисляем доход
-            if (totalCoins > 0) {
-                await this.updateBalance(userId, 'coins', totalCoins, 'mining_income_auto');
-                logger.info('✅ Автоматический доход от майнинга начислен (Coins)', { userId, totalCoins });
-            }
-            if (totalStars > 0) {
-                await this.updateBalance(userId, 'stars', totalStars, 'mining_income_auto');
-                logger.info('✅ Автоматический доход от майнинга начислен (Stars)', { userId, totalStars });
-            }
-            
-            if (totalCoins > 0 || totalStars > 0) {
-                logger.info('🎉 Автоматический доход от майнинга начислен', { userId, totalCoins, totalStars });
-            } else {
-                logger.debug('Автоматический доход не начислен (нет активных майнеров)', { userId });
-            }
-            
-            return { coins: totalCoins, stars: totalStars };
-            
-        } catch (error) {
-            logger.error('❌ Ошибка автоматического начисления дохода', error, { userId });
-            return { coins: 0, stars: 0 };
-        }
+        // Функционал майнинга отключен - всегда возвращаем 0
+        logger.debug('⛔ Обработка дохода от майнинга отключена', { userId });
+        return { coins: 0, stars: 0 };
     }
     
     // Проверка и начисление пропущенных наград за майнинг (после редеплоя)
     async processMissedMiningRewards(userId) {
-        try {
-            const user = await this.getUser(userId);
-            const miners = user.miners || [];
-            
-            if (miners.length === 0) {
-                return { coins: 0, stars: 0, minutesProcessed: 0 };
-            }
-            
-            let totalCoins = 0;
-            let totalStars = 0;
-            let totalMinutesProcessed = 0;
-            const now = new Date();
-            
-            logger.info('Проверяем пропущенные награды за майнинг', { userId, minersCount: miners.length });
-            
-            // Проверяем каждого майнера
-            for (const miner of miners) {
-                if (!miner.isActive || !miner.lastMiningStart) continue;
-                
-                const miningStartTime = new Date(miner.lastMiningStart);
-                const timeSinceStart = now - miningStartTime;
-                const hoursSinceStart = timeSinceStart / (1000 * 60 * 60);
-                
-                // Все майнеры теперь работают 12 часов
-                const requiredHours = 12;
-                
-                // Если майнинг был запущен менее 12 часов назад
-                if (hoursSinceStart < requiredHours) {
-                    // Рассчитываем количество пропущенных минут
-                    const minutesSinceStart = Math.floor(timeSinceStart / (1000 * 60));
-                    const maxMinutes = requiredHours * 60; // Максимум в минутах (12 * 60 = 720 минут)
-                    const minutesToProcess = Math.min(minutesSinceStart, maxMinutes);
-                    
-                    if (minutesToProcess > 0) {
-                        // Начисляем награды за пропущенные минуты
-                        const coinsEarned = miner.speed.coins * minutesToProcess;
-                        const starsEarned = miner.speed.stars * minutesToProcess;
-                        
-                        totalCoins += coinsEarned;
-                        totalStars += starsEarned;
-                        totalMinutesProcessed += minutesToProcess;
-                        
-                        logger.info('Начислены пропущенные награды за майнер', { 
-                            userId, 
-                            minerId: miner.id, 
-                            minerType: miner.type,
-                            minutesProcessed: minutesToProcess,
-                            coinsEarned,
-                            starsEarned
-                        });
-                    }
-                }
-            }
-            
-            // Начисляем общие пропущенные награды
-            if (totalCoins > 0 || totalStars > 0) {
-                if (totalCoins > 0) {
-                    await this.updateBalance(userId, 'coins', totalCoins, 'mining_income_missed');
-                    logger.info('Начислены пропущенные награды за майнинг (Coins)', { userId, totalCoins });
-                }
-                if (totalStars > 0) {
-                    await this.updateBalance(userId, 'stars', totalStars, 'mining_income_missed');
-                    logger.info('Начислены пропущенные награды за майнинг (Stars)', { userId, totalStars });
-                }
-                
-                logger.info('Пропущенные награды за майнинг успешно начислены', { 
-                    userId, 
-                    totalCoins, 
-                    totalStars, 
-                    totalMinutesProcessed 
-                });
-            }
-            
-            return { 
-                coins: totalCoins, 
-                stars: totalStars, 
-                minutesProcessed: totalMinutesProcessed 
-            };
-            
-        } catch (error) {
-            logger.error('Ошибка обработки пропущенных наград за майнинг', error, { userId });
-            return { coins: 0, stars: 0, minutesProcessed: 0 };
-        }
+        // Функционал майнинга отключен - пропущенные награды не начисляются
+        logger.debug('⛔ Обработка пропущенных наград за майнинг отключена', { userId });
+        return { coins: 0, stars: 0, minutesProcessed: 0 };
     }
     
     // Массовая проверка и начисление пропущенных наград для всех пользователей (12-часовой цикл)
     async processAllMissedMiningRewards() {
-        try {
-            logger.info('Начинаем массовую проверку пропущенных наград за майнинг (12-часовой цикл)');
-            
-            // Получаем только активных пользователей с майнерами (ограничиваем для быстрого старта)
-            const usersWithMiners = await this.db.collection('users').find({
-                'miners.0': { $exists: true }, // У пользователя есть хотя бы один майнер
-                'lastActivity': { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Активные за последние 7 дней
-            }).limit(100).toArray(); // Ограничиваем до 100 пользователей за раз
-            
-            let totalUsersProcessed = 0;
-            let totalCoinsAwarded = 0;
-            let totalStarsAwarded = 0;
-            let totalMinutesProcessed = 0;
-            
-            logger.info(`Найдено пользователей с майнерами: ${usersWithMiners.length}`);
-            
-            // Обрабатываем каждого пользователя
-            for (const user of usersWithMiners) {
-                try {
-                    const result = await this.processMissedMiningRewards(user.userId);
-                    
-                    if (result.minutesProcessed > 0) {
-                        totalUsersProcessed++;
-                        totalCoinsAwarded += result.coins;
-                        totalStarsAwarded += result.stars;
-                        totalMinutesProcessed += result.minutesProcessed;
-                        
-                        logger.info('Пользователь обработан', { 
-                            userId: user.userId, 
-                            coins: result.coins, 
-                            stars: result.stars, 
-                            minutes: result.minutesProcessed 
-                        });
-                    }
-                } catch (userError) {
-                    logger.error('Ошибка обработки пользователя', userError, { userId: user.userId });
-                }
-            }
-            
-            logger.info('Массовая проверка пропущенных наград завершена', {
-                totalUsersProcessed,
-                totalCoinsAwarded,
-                totalStarsAwarded,
-                totalMinutesProcessed
-            });
-            
-            return {
-                success: true,
-                totalUsersProcessed,
-                totalCoinsAwarded,
-                totalStarsAwarded,
-                totalMinutesProcessed
-            };
-            
-        } catch (error) {
-            logger.error('Ошибка массовой проверки пропущенных наград', error);
-            return {
-                success: false,
-                error: error.message
-            };
-        }
+        // Функционал майнинга отключен - массовая проверка пропущенных наград не выполняется
+        logger.info('⛔ Массовая проверка пропущенных наград за майнинг отключена');
+        return {
+            success: true,
+            totalUsersProcessed: 0,
+            totalCoinsAwarded: 0,
+            totalStarsAwarded: 0,
+            totalMinutesProcessed: 0
+        };
     }
     
     // Получение информации о майнере
