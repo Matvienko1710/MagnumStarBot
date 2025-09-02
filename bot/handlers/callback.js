@@ -76,9 +76,11 @@ async function callbackHandler(ctx) {
             case 'profile':
                 await handleProfile(ctx);
                 break;
-                
 
-                
+            case 'daily_bonus':
+                await handleDailyBonus(ctx);
+                break;
+
             case 'withdraw':
                 await handleWithdraw(ctx);
                 break;
@@ -1179,6 +1181,65 @@ async function handleMainMenu(ctx) {
             parse_mode: 'Markdown',
             reply_markup: errorKeyboard.reply_markup
         });
+    }
+}
+
+// Обработка ежедневного бонуса
+async function handleDailyBonus(ctx) {
+    const userId = ctx.from.id;
+
+    logger.info('Обработка ежедневного бонуса', { userId });
+
+    try {
+        // Получаем данные пользователя
+        const user = await dataManager.getUser(userId);
+
+        // Проверяем время последнего получения бонуса
+        const now = Date.now();
+        const lastBonusTime = user.lastDailyBonus || 0;
+        const cooldownMs = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
+        const timeSinceLastBonus = now - lastBonusTime;
+
+        if (timeSinceLastBonus < cooldownMs) {
+            // Кулдаун еще не прошел
+            const remainingMs = cooldownMs - timeSinceLastBonus;
+            const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+            const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+
+            const waitMessage = `⏰ **Подождите!**\n\n` +
+                `🎁 Следующий ежедневный бонус будет доступен через:\n` +
+                `├ ${remainingHours} часов ${remainingMinutes} минут\n\n` +
+                `💡 Возвращайтесь завтра за новыми звездами! ⭐`;
+
+            await ctx.answerCbQuery(waitMessage, true);
+            return;
+        }
+
+        // Начисляем бонус
+        const bonusAmount = 3.33;
+        await dataManager.updateUserBalance(userId, { stars: bonusAmount });
+
+        // Обновляем время последнего бонуса
+        await dataManager.updateUser(userId, { lastDailyBonus: now });
+
+        // Показываем уведомление об успешном получении бонуса
+        const successMessage = `🎉 **Бонус получен!**\n\n` +
+            `⭐ Вы получили: ${bonusAmount} звезд\n\n` +
+            `💰 Ваш баланс: ${(user.balance.stars + bonusAmount).toFixed(2)} ⭐\n\n` +
+            `⏰ Следующий бонус через 24 часа!`;
+
+        await ctx.answerCbQuery(successMessage, false);
+
+        logger.info('Ежедневный бонус успешно начислен', { userId, bonusAmount });
+
+    } catch (error) {
+        logger.error('Ошибка обработки ежедневного бонуса', error, { userId });
+
+        const errorMessage = `❌ **Ошибка получения бонуса**\n\n` +
+            `🚫 Не удалось получить ежедневный бонус\n` +
+            `🔧 Попробуйте позже`;
+
+        await ctx.answerCbQuery(errorMessage, true);
     }
 }
 
