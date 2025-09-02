@@ -30,6 +30,26 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/webapp/index.html');
 });
 
+// Webhook для Telegram бота
+app.post('/webhook', (req, res) => {
+    try {
+        logger.info('Получен webhook от Telegram', {
+            updateId: req.body.update_id,
+            messageType: req.body.message ? 'message' : 'callback',
+            chatId: req.body.message?.chat?.id || req.body.callback_query?.message?.chat?.id,
+            userId: req.body.message?.from?.id || req.body.callback_query?.from?.id
+        });
+
+        const bot = require('./bot');
+        bot.handleUpdate(req.body);
+
+        res.status(200).send('OK');
+    } catch (error) {
+        logger.error('Ошибка обработки webhook', error);
+        res.status(500).send('Error');
+    }
+});
+
 // Переменная для отслеживания состояния базы данных
 let isDatabaseConnected = false;
 
@@ -58,18 +78,55 @@ async function initializeDatabase() {
 async function launchBot() {
     try {
         logger.info('Запуск бота...');
-        
+
         // Инициализируем бота
         const bot = require('./bot');
-        
+
+        // Настройка webhook для production
+        const webhookUrl = process.env.WEBHOOK_URL;
+        const botToken = process.env.BOT_TOKEN;
+
+        if (webhookUrl && botToken) {
+            const fullWebhookUrl = `${webhookUrl}/webhook`;
+
+            logger.info('Настройка webhook для бота', {
+                webhookUrl: fullWebhookUrl,
+                botToken: botToken.substring(0, 10) + '...'
+            });
+
+            // Устанавливаем webhook
+            await bot.telegram.setWebhook(fullWebhookUrl);
+            logger.info('✅ Webhook успешно настроен');
+
+            // Проверяем статус webhook
+            const webhookInfo = await bot.telegram.getWebhookInfo();
+            logger.info('Статус webhook', {
+                url: webhookInfo.url,
+                hasCustomCertificate: webhookInfo.has_custom_certificate,
+                pendingUpdateCount: webhookInfo.pending_update_count,
+                lastErrorDate: webhookInfo.last_error_date,
+                lastErrorMessage: webhookInfo.last_error_message
+            });
+
+        } else {
+            logger.warn('WEBHOOK_URL или BOT_TOKEN не установлены, запускаем в режиме polling');
+            // Для development используем polling
+            if (process.env.NODE_ENV !== 'production') {
+                await bot.launch();
+                logger.info('✅ Бот запущен в режиме polling (development)');
+            } else {
+                throw new Error('WEBHOOK_URL и BOT_TOKEN обязательны для production');
+            }
+        }
+
         if (isDatabaseConnected) {
             logger.info('Бот запущен с подключением к базе данных');
         } else {
             logger.warn('Бот запущен в режиме fallback (без базы данных)');
         }
-        
+
         return bot;
-        
+
     } catch (error) {
         logger.error('Ошибка запуска бота', error);
         throw error;

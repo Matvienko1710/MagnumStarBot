@@ -558,11 +558,8 @@ function initializeBot() {
 // Создаем и инициализируем бота
 const { bot, launchBot } = initializeBot();
 
-// Автоматически запускаем бота
-launchBot().catch(error => {
-    logger.error('Критическая ошибка при запуске бота', error);
-    process.exit(1);
-});
+// Бот будет запущен через webhook в server.js, здесь не запускаем автоматически
+logger.info('Бот инициализирован, запуск будет выполнен через server.js');
 
 // Экспортируем бота и функцию запуска
 module.exports = { bot, launchBot };
