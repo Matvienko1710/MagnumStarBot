@@ -9,7 +9,6 @@ const inlineKeyboard = (isAdmin = false) => {
   const buttons = [
     [Markup.button.callback('👤 Профиль', 'profile')],
     [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-    [Markup.button.callback('⚒️ Майнеры', 'miners')],
     [Markup.button.callback('🌟 Вывести звезды', 'withdraw_stars')],
     [Markup.button.callback('👥 Рефералы', 'referrals')]
   ];

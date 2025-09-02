@@ -77,56 +77,7 @@ async function callbackHandler(ctx) {
                 await handleProfile(ctx);
                 break;
                 
-            case 'miners':
-                await handleMiners(ctx);
-                break;
-                
-            case 'miners_shop':
-                await handleMinersShop(ctx);
-                break;
-            case (() => {
-                if (callbackData.startsWith('miners_shop_')) {
-                    const minerIndex = parseInt(callbackData.replace('miners_shop_', ''));
-                    return `miners_shop_${minerIndex}`;
-                }
-                return null;
-            })():
-                const minerIndex = parseInt(callbackData.replace('miners_shop_', ''));
-                await handleMinersShop(ctx, minerIndex);
-                break;
-            case (action) => action.startsWith('next_miner_shop_'):
-                const nextMinerIndex = parseInt(action.replace('next_miner_shop_', ''));
-                await handleMinersShop(ctx, nextMinerIndex);
-                break;
-                
-            case 'my_miners':
-                await handleMyMiners(ctx);
-                break;
-                
-            case 'start_mining':
-                await handleStartMining(ctx);
-                break;
-            case 'mining_active':
-                await ctx.answerCbQuery('⏰ Майнинг уже активен! Доход начисляется автоматически.');
-                break;
-                
-            case 'buy_miner':
-                await handleBuyMiner(ctx);
-                break;
-                
-            case 'next_miner':
-                await handleNextMiner(ctx);
-                break;
-                
-            case 'buy_miner_novice':
-                await handleBuyMiner(ctx, 'novice');
-                break;
-            case 'buy_miner_limited':
-                await handleBuyMiner(ctx, 'limited');
-                break;
-            case 'buy_miner_epic':
-                await handleBuyMiner(ctx, 'epic');
-                break;
+
                 
             case 'withdraw':
                 await handleWithdraw(ctx);
@@ -402,8 +353,8 @@ async function handleProfile(ctx) {
     }
 }
 
-// Обработка майнеров - главное меню
-async function handleMiners(ctx) {
+// Функции майнеров удалены - функционал перенесен в вебапп
+// async function handleMiners(ctx) {
     const userId = ctx.from.id;
     
     logger.info('Обработка майнеров - главное меню', { userId });
@@ -511,41 +462,10 @@ async function handleMiners(ctx) {
 
 // Обработка магазина майнеров
 async function handleMinersShop(ctx, currentMinerIndex = 0) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка магазина майнеров', { userId, currentMinerIndex });
-    
-    try {
-        // Получаем баланс пользователя
-        const userBalance = await getUserBalance(userId);
-        
-        // Список доступных майнеров
-        const availableMiners = [
-            {
-                id: 'novice',
-                name: 'Новичок',
-                price: { coins: 100, stars: 0 },
-                speed: { coins: 1, stars: 0 }, // 1 Magnum Coin в минуту
-                rarity: 'Обычный',
-                description: 'Первый майнер для начинающих. Добывает 1 🪙 Magnum Coin в минуту'
-            },
-            {
-                id: 'limited',
-                name: 'Лимитированная версия',
-                price: { coins: 0, stars: 100 },
-                speed: { coins: 0, stars: 0.001999 }, // 0.001999 Stars в минуту
-                rarity: 'Редкий',
-                description: 'Эксклюзивный майнер! Всего 10 на сервере. Добывает 0.001999 ⭐ Stars в минуту'
-            },
-            {
-                id: 'epic',
-                name: 'Епический',
-                price: { coins: 10000, stars: 0 },
-                speed: { coins: 0, stars: 0.6944 }, // 0.6944 Stars в минуту
-                rarity: 'Епический',
-                description: 'Мощный епический майнер! Всего 100 на сервере. Добывает 0.6944 ⭐ Stars в минуту'
-            }
-        ];
+    // Функционал перенесен в вебапп
+    await ctx.answerCbQuery('🔄 Функционал майнеров перенесен в веб-приложение', false);
+    return;
+}
         
         // Проверяем, что индекс в допустимых пределах
         if (currentMinerIndex >= availableMiners.length) {
@@ -718,7 +638,7 @@ async function handleMyMiners(ctx) {
             `├ 🌐 Активные майнеры на сервере: ${minerAvailability.activeCount}/${minerAvailability.globalLimit}\n` +
             `└ 🆕 Можно купить еще: ${Math.max(0, minerAvailability.maxPerUser - userMinerCount)} майнеров\n\n` +
             `🎯 **Выберите действие:**`;
-
+        
         const myMinersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
@@ -904,7 +824,7 @@ async function showMiningReady(ctx, userId) {
             `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
             `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
             `🎯 **Выберите действие:**`;
-
+        
         const myMinersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
@@ -955,7 +875,7 @@ async function showMiningInProgress(ctx, userId, startTime) {
             `⏰ **Майнинг в процессе...**\n` +
             `🔄 **Следующий запуск в:** ${nextMiningTimeString}\n\n` +
             `💡 Доход начисляется автоматически каждую минуту!`;
-
+        
         const myMinersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback(`⏰ Майнинг в процессе (${nextMiningTimeString})`, 'mining_active')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
@@ -1020,8 +940,7 @@ async function showMiningTimer(ctx, userId, nextMiningTime) {
     }
 }
 
-// Обработка покупки майнера
-async function handleBuyMiner(ctx, minerType) {
+// Функция handleBuyMiner удалена - функционал перенесен в вебапп
     const userId = ctx.from.id;
     
     logger.info('Обработка покупки майнера', { userId, minerType });
@@ -1075,7 +994,7 @@ async function handleBuyMiner(ctx, minerType) {
             `├ 🎯 Редкость: ${minerInfo.rarity}\n` +
             `└ 📅 Дата покупки: ${new Date().toLocaleDateString('ru-RU')}\n\n` +
             `🎉 Теперь вы можете запустить майнинг и получать доход автоматически!`;
-
+        
         const successKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
             [Markup.button.callback('🔙 Назад к майнерам', 'miners')]
@@ -1107,15 +1026,7 @@ async function handleBuyMiner(ctx, minerType) {
 
 
 
-// Обработка следующего майнера (заглушка)
-async function handleNextMiner(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка следующего майнера', { userId });
-    
-    // Пока заглушка
-    await ctx.reply('🔄 Функция "Следующий майнер" в разработке');
-}
+// Функции майнеров удалены - функционал перенесен в вебапп
 
 // Обработка активации ключа
 async function handleActivateKey(ctx) {
@@ -3012,7 +2923,7 @@ async function handleMyTickets(ctx) {
     try {
         // Импортируем dataManager
         const dataManager = require('../utils/dataManager');
-
+        
         const tickets = await dataManager.db.collection('support_tickets')
             .find({ userId: Number(userId) })
             .sort({ createdAt: -1 })
@@ -3232,7 +3143,7 @@ async function handleCloseTicket(ctx, action) {
         if (!isAdmin(userId)) {
             return;
         }
-
+        
         // Получаем информацию о тикете
         const dataManager = require('../utils/dataManager');
         const ticket = await dataManager.db.collection('support_tickets').updateOne(
@@ -3301,7 +3212,7 @@ async function handleReplyTicket(ctx, action) {
         if (!isAdmin(userId)) {
             return;
         }
-
+        
         // Получаем информацию о тикете
         const dataManager = require('../utils/dataManager');
         const ticket = await dataManager.db.collection('support_tickets').findOne({ id: ticketId });
@@ -3386,7 +3297,7 @@ async function handleCancelReply(ctx, action) {
         if (!isAdmin(userId)) {
             return;
         }
-
+        
         // Получаем информацию о тикете
         const dataManager = require('../utils/dataManager');
         const ticket = await dataManager.db.collection('support_tickets').findOne({ id: ticketId });
@@ -3613,8 +3524,8 @@ async function handleProcessWithdrawal(ctx, action) {
                 try {
                     await ctx.answerCbQuery(`❌ Ошибка: ${editError.message}`, true);
                     logger.error('Неизвестная ошибка при обновлении сообщения', editError);
-                } catch (answerError) {
-                    logger.error('Не удалось отправить уведомление об ошибке', answerError);
+            } catch (answerError) {
+                logger.error('Не удалось отправить уведомление об ошибке', answerError);
                 }
             }
         }
