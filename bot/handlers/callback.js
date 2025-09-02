@@ -145,41 +145,7 @@ async function callbackHandler(ctx) {
                 await handleCacheStats(ctx);
                 break;
                 
-            case 'titles':
-                await handleTitles(ctx);
-                break;
 
-            case 'grant_title':
-                await handleGrantTitle(ctx);
-                break;
-
-            case 'revoke_title':
-                await handleRevokeTitle(ctx);
-                break;
-
-            case 'view_user_titles':
-                await handleViewUserTitles(ctx);
-                break;
-
-            case 'titles_stats':
-                await handleTitlesStats(ctx);
-                break;
-
-            case 'my_titles':
-                await handleMyTitles(ctx);
-                break;
-                
-            case 'key_reward_stars':
-                await handleKeyRewardType(ctx, 'stars');
-                break;
-                
-            case 'key_reward_coins':
-                await handleKeyRewardType(ctx, 'coins');
-                break;
-                
-            case 'manage_titles':
-                await handleManageTitles(ctx);
-                break;
                 
             case 'check_missed_rewards':
                 await handleCheckMissedRewards(ctx);
@@ -1429,57 +1395,10 @@ async function handleCacheStats(ctx) {
     });
 }
 
-// Обработка титулов
-async function handleTitles(ctx) {
-    const userId = ctx.from.id;
-    
-    logger.info('Обработка титулов', { userId });
-    
-    const titlesMessage = `👑 **Доступные титулы**\n\n` +
-            `🎯 **Всего титулов:** 7\n\n` +
-            `🆕 **Новичок** (Обычный)\n` +
-            `├ 📝 Первый титул для новых пользователей\n` +
-        `├ 🎯 Требования: Уровень 1\n` +
-        `└ ✅ Статус: Разблокирован\n\n` +
-            `⛏️ **Майнер** (Обычный)\n` +
-            `├ 📝 Титул для активных майнеров\n` +
-            `├ 🎯 Требования: Уровень 5, 100 ⭐, 500 🪙\n` +
-            `└ 🔒 Статус: Заблокирован\n\n` +
-            `💼 **Трейдер** (Редкий)\n` +
-            `├ 📝 Титул для опытных трейдеров\n` +
-            `├ 🎯 Требования: Уровень 10, 500 ⭐, 1000 🪙\n` +
-            `└ 🔒 Статус: Заблокирован\n\n` +
-            `💰 **Инвестор** (Эпический)\n` +
-            `├ 📝 Титул для крупных инвесторов\n` +
-            `├ 🎯 Требования: Уровень 20, 1000 ⭐, 5000 🪙\n` +
-            `└ 🔒 Статус: Заблокирован\n\n` +
-            `🎭 **Мастер** (Легендарный)\n` +
-            `├ 📝 Титул для мастеров своего дела\n` +
-            `├ 🎯 Требования: Уровень 30, 2500 ⭐, 10000 🪙\n` +
-            `└ 🔒 Статус: Заблокирован\n\n` +
-            `🌟 **Легенда** (Мифический)\n` +
-            `├ 📝 Титул для легендарных игроков\n` +
-            `├ 🎯 Требования: Уровень 50, 5000 ⭐, 25000 🪙\n` +
-            `└ 🔒 Статус: Заблокирован\n\n` +
-            `👑 **Владелец** (Эксклюзивный)\n` +
-            `├ 📝 Эксклюзивный титул владельца бота\n` +
-            `├ 🎯 Требования: Уровень 100, 10000 ⭐, 50000 🪙\n` +
-        `└ 🔒 Статус: Заблокирован`;
-    
-    const titlesKeyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('📊 Мои титулы', 'my_titles')],
-        [Markup.button.callback('👤 Профиль', 'profile')],
-        [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-    ]);
-    
-    await ctx.editMessageText(titlesMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: titlesKeyboard.reply_markup
-    });
-}
+// Функции титулов удалены - функционал убран из бота
 
-// Обработка моих титулов
-async function handleMyTitles(ctx) {
+// Функция handleMyTitles удалена - функционал убран из бота
+// async function handleMyTitles(ctx) {
     const userId = ctx.from.id;
     
     logger.info('Обработка моих титулов', { userId });
@@ -2152,7 +2071,8 @@ async function handleCheckSubscription(ctx) {
 }
 
 // Обработка управления титулами
-async function handleManageTitles(ctx) {
+// Функция handleManageTitles удалена - функционал убран из бота
+// async function handleManageTitles(ctx) {
     const userId = ctx.from.id;
     
     logger.info('Обработка управления титулами', { userId });
@@ -2503,7 +2423,8 @@ async function handleMinerKeyCreation(ctx, text) {
 }
 
 // Обработка выдачи титула пользователю (только админы)
-async function handleGrantTitle(ctx) {
+// Функция handleGrantTitle удалена - функционал убран из бота
+// async function handleGrantTitle(ctx) {
     const userId = ctx.from.id;
 
     logger.info('Обработка выдачи титула', { userId });
@@ -2537,7 +2458,8 @@ async function handleGrantTitle(ctx) {
 }
 
 // Обработка забора титула у пользователя (только админы)
-async function handleRevokeTitle(ctx) {
+// Функция handleRevokeTitle удалена - функционал убран из бота
+// async function handleRevokeTitle(ctx) {
     const userId = ctx.from.id;
 
     logger.info('Обработка забора титула', { userId });
@@ -2571,7 +2493,8 @@ async function handleRevokeTitle(ctx) {
 }
 
 // Обработка просмотра титулов пользователя (только админы)
-async function handleViewUserTitles(ctx) {
+// Функция handleViewUserTitles удалена - функционал убран из бота
+// async function handleViewUserTitles(ctx) {
     const userId = ctx.from.id;
 
     logger.info('Обработка просмотра титулов пользователя', { userId });
@@ -2605,7 +2528,8 @@ async function handleViewUserTitles(ctx) {
 }
 
 // Обработка статистики титулов (только админы)
-async function handleTitlesStats(ctx) {
+// Функция handleTitlesStats удалена - функционал убран из бота
+// async function handleTitlesStats(ctx) {
     const userId = ctx.from.id;
 
     logger.info('Обработка статистики титулов', { userId });
@@ -2657,7 +2581,8 @@ async function handleTitlesStats(ctx) {
 }
 
 // Обработка раздела титулов
-async function handleTitles(ctx) {
+// Функция handleTitles (дубликат) удалена - функционал убран из бота
+// async function handleTitles(ctx) {
     const userId = ctx.from.id;
 
     logger.info('Обработка раздела титулов', { userId });

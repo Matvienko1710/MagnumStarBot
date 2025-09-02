@@ -134,35 +134,14 @@ const buyMinerKeyboard = (page = 1) => {
 // Клавиатура для профиля
 const profileKeyboard = (isAdmin = false) => {
   const buttons = [
-    [Markup.button.callback('👑 Титулы', 'titles')],
     [Markup.button.callback('👥 Рефералы', 'referrals')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
   ];
-  
+
   return Markup.inlineKeyboard(buttons);
 };
 
-// Клавиатура для титулов
-const titlesKeyboard = () => {
-  return Markup.inlineKeyboard([
-    [Markup.button.callback('👑 Сменить титул', 'change_title')],
-    [Markup.button.callback('📊 Мои титулы', 'my_titles')],
-    [Markup.button.callback('🏠 В главное меню', 'main_menu')]
-  ]);
-};
-
-// Клавиатура для смены титула
-const changeTitleKeyboard = (unlockedTitles, currentTitleId) => {
-  const buttons = unlockedTitles.map(title => {
-    const isCurrent = title.id === currentTitleId;
-    const buttonText = `${isCurrent ? '✅ ' : ''}${title.color} ${title.name}`;
-    return [Markup.button.callback(buttonText, `set_title_${title.id}`)];
-  });
-  
-  buttons.push([Markup.button.callback('🏠 В главное меню', 'main_menu')]);
-  
-  return Markup.inlineKeyboard(buttons);
-};
+// Функции титулов удалены - функционал убран из бота
 
 // Клавиатура для вывода звезд
 const withdrawKeyboard = () => {
@@ -194,8 +173,6 @@ module.exports = {
   createMinerKeyKeyboard,
   minersKeyboard,
   buyMinerKeyboard,
-  titlesKeyboard,
-  changeTitleKeyboard,
   profileKeyboard,
   withdrawKeyboard,
   referralsKeyboard
