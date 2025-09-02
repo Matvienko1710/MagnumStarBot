@@ -479,6 +479,7 @@ async function handleMiners(ctx) {
     const minersKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🛒 Магазин майнеров', 'miners_shop')],
             [Markup.button.callback('📊 Мои майнеры', 'my_miners')],
+            [Markup.button.callback('🚀 Запустить майнер', 'start_mining')],
         [Markup.button.callback('🏠 Главное меню', 'main_menu')]
     ]);
     
