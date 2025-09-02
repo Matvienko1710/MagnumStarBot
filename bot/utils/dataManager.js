@@ -3158,6 +3158,14 @@ class DataManager {
             logger.error('Ошибка обновления активности пользователя', error, { userId });
         }
     }
+
+    // Публичный метод для получения базы данных
+    getDb() {
+        if (!this.isInitialized) {
+            throw new Error('DataManager не инициализирован');
+        }
+        return this.db;
+    }
 }
 
 // Создаем и экспортируем экземпляр
