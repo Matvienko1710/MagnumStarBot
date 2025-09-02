@@ -3468,13 +3468,29 @@ async function handleProcessWithdrawal(ctx, action) {
 
         // Проверяем, является ли пользователь админом
         const isUserAdmin = isAdmin(userId);
-        logger.info('Проверка прав админа', { userId, isUserAdmin });
+        logger.info('🔍 Проверка прав админа для обработки заявки', {
+            userId,
+            isUserAdmin,
+            chatId: ctx.chat?.id,
+            chatType: ctx.chat?.type,
+            callbackData: action
+        });
 
         if (!isUserAdmin) {
-            logger.warn('Пользователь не является админом', { userId });
+            logger.warn('🚫 Пользователь не является админом', {
+                userId,
+                chatId: ctx.chat?.id,
+                chatType: ctx.chat?.type
+            });
             await ctx.answerCbQuery('❌ У вас нет прав для обработки заявок', true);
             return;
         }
+
+        logger.info('✅ Админ подтвердил права, продолжаем обработку', {
+            userId,
+            requestId,
+            chatId: ctx.chat?.id
+        });
 
         // Импортируем dataManager
         const dataManager = require('../utils/dataManager');
@@ -3563,14 +3579,43 @@ async function handleProcessWithdrawal(ctx, action) {
                 requestId,
                 chatId: ctx.chat?.id,
                 messageId: ctx.callbackQuery?.message?.message_id,
-                errorMessage: editError.message
+                errorMessage: editError.message,
+                errorCode: editError.code
             });
 
-            // Попробуем отправить уведомление об ошибке
-            try {
-                await ctx.answerCbQuery(`❌ Ошибка обновления: ${editError.message}`, true);
-            } catch (answerError) {
-                logger.error('Не удалось отправить уведомление об ошибке', answerError);
+            // Проверяем тип ошибки
+            if (editError.code === 400 || editError.message?.includes('message is not modified')) {
+                // Сообщение уже имеет такой же текст, просто отвечаем
+                try {
+                    await ctx.answerCbQuery('🔧 Заявка уже в обработке', false);
+                    logger.info('Сообщение уже в обработке, пропускаем обновление', { userId, requestId });
+                } catch (answerError) {
+                    logger.error('Не удалось отправить уведомление', answerError);
+                }
+            } else if (editError.code === 403 || editError.message?.includes('bot was blocked')) {
+                // Бот заблокирован или не имеет прав
+                try {
+                    await ctx.answerCbQuery('❌ Бот не имеет прав на редактирование в этом канале', true);
+                    logger.warn('Бот не имеет прав на редактирование в канале', { userId, requestId });
+                } catch (answerError) {
+                    logger.error('Не удалось отправить уведомление об отсутствии прав', answerError);
+                }
+            } else if (editError.code === 429) {
+                // Слишком много запросов
+                try {
+                    await ctx.answerCbQuery('⏳ Слишком много запросов, попробуйте позже', true);
+                    logger.warn('Слишком много запросов при обработке заявки', { userId, requestId });
+                } catch (answerError) {
+                    logger.error('Не удалось отправить уведомление о rate limit', answerError);
+                }
+            } else {
+                // Другая ошибка
+                try {
+                    await ctx.answerCbQuery(`❌ Ошибка: ${editError.message}`, true);
+                    logger.error('Неизвестная ошибка при обновлении сообщения', editError);
+                } catch (answerError) {
+                    logger.error('Не удалось отправить уведомление об ошибке', answerError);
+                }
             }
         }
         
