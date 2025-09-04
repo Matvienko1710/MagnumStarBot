@@ -25,8 +25,24 @@
                     <div class="balance-amount" id="magnum-balance">0</div>
                 </div>
             </div>
+            <div class="balance-divider"></div>
+            <div class="balance-item">
+                <div class="balance-icon">⚡</div>
+                <div class="balance-info">
+                    <div class="balance-label">Энергия</div>
+                    <div class="balance-amount" id="energy-balance">1000</div>
+                </div>
+            </div>
         </div>
     </nav>
+
+    <!-- Прогресс-бар энергии -->
+    <div class="energy-progress-container">
+        <div class="energy-progress-bar">
+            <div class="energy-progress-fill" id="energy-progress-fill"></div>
+        </div>
+        <div class="energy-progress-text" id="energy-progress-text">1000/1000</div>
+    </div>
 
     <div class="container">
         <header class="header">
@@ -36,6 +52,26 @@
         <!-- Основной контент -->
         <div id="main-content" class="main-content">
             <!-- Контент будет загружаться динамически -->
+        </div>
+
+        <!-- Кнопка-монета для заработка -->
+        <div class="coin-container">
+            <button class="coin-button" id="coin-button" onclick="clickCoin()">
+                <div class="coin-inner">
+                    <div class="coin-icon">🪙</div>
+                    <div class="coin-text">Клик!</div>
+                </div>
+            </button>
+            <div class="coin-rewards" id="coin-rewards">
+                <div class="reward-item">
+                    <span class="reward-icon">💰</span>
+                    <span class="reward-text">+1</span>
+                </div>
+                <div class="reward-item">
+                    <span class="reward-icon">⭐</span>
+                    <span class="reward-text">+0.001</span>
+                </div>
+            </div>
         </div>
     </div>
 

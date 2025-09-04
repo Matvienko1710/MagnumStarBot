@@ -295,14 +295,9 @@ async function handleProfile(ctx) {
         // Получаем реферальную статистику
         const referralStats = await getReferralStats(userId);
         
-        // Получаем текущий титул пользователя
-        const { getUserCurrentTitle } = require('../utils/titles');
-        const currentTitle = await getUserCurrentTitle(userId);
-        
         const profileMessage = `🎮 **Твой профиль в Magnum Stars**\n\n` +
             `✨ Ник: ${ctx.from.first_name || 'Не указано'}\n` +
-            `🆔 ID: \`${userId}\`\n` +
-            `🏅 Титул: ${currentTitle.name}\n\n` +
+            `🆔 ID: \`${userId}\`\n\n` +
             `💎 **Баланс:**\n` +
             `⭐ Stars → ${userBalance.stars}\n` +
             `🪙 Magnum Coins → ${userBalance.coins}\n\n` +
@@ -310,7 +305,6 @@ async function handleProfile(ctx) {
             `💰 Реф. доход: ${referralStats.totalEarned.stars} ⭐, ${referralStats.totalEarned.coins} 🪙`;
         
         const profileKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('👑 Титулы', 'titles')],
             [Markup.button.callback('👥 Рефералы', 'referrals')],
             [Markup.button.callback('🆘 Поддержка', 'support')],
             [Markup.button.callback('🏠 Главное меню', 'main_menu')]
@@ -461,12 +455,6 @@ async function updateMiningTimer(ctx, userId, startTime) {
     // Функционал майнеров отключен
     await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
     return;
-            await showMiningTimer(ctx, userId, nextMiningTime);
-        }
-        
-    } catch (error) {
-        logger.error('Ошибка обновления таймера майнинга', error, { userId });
-    }
 }
 
 // Показать готовность к майнингу
@@ -475,20 +463,6 @@ async function showMiningReady(ctx, userId) {
     // Функционал майнеров отключен
     await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
     return;
-        
-        const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(myMinersMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: myMinersKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка показа готовности к майнингу', error, { userId });
-    }
 }
 
 // Показать информацию о майнинге в процессе (функционал отключен)
@@ -497,38 +471,6 @@ async function showMiningInProgress(ctx, userId, startTime) {
     // Функционал майнеров отключен
     await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
     return;
-        
-        // Форматируем время следующего запуска
-        const nextMiningDate = new Date(nextMiningTime);
-        const nextMiningTimeString = nextMiningDate.toLocaleTimeString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-        
-        const myMinersMessage = `📊 **Мои майнеры**\n\n` +
-            `⛏️ **Всего майнеров:** ${userMiners.length}\n\n` +
-            `💰 **Общий доход:**\n` +
-            `├ 🪙 Magnum Coins: ${totalCoinsPerMin.toFixed(2)}/мин\n` +
-            `└ ⭐ Stars: ${totalStarsPerMin.toFixed(2)}/мин\n\n` +
-            `⏰ **Майнинг в процессе...**\n` +
-            `🔄 **Следующий запуск в:** ${nextMiningTimeString}\n\n` +
-            `💡 Доход начисляется автоматически каждую минуту!`;
-        
-        const myMinersKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback(`⏰ Майнинг в процессе (${nextMiningTimeString})`, 'mining_active')],
-            [Markup.button.callback('🔙 Назад к майнерам', 'miners')],
-            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-        ]);
-        
-        await ctx.editMessageText(myMinersMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: myMinersKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка показа информации о майнинге в процессе', error, { userId });
-    }
 }
 
 // Показать время следующего запуска майнинга
@@ -537,15 +479,6 @@ async function showMiningTimer(ctx, userId, nextMiningTime) {
     // Функционал майнеров отключен
     await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
     return;
-        
-        await ctx.editMessageText(myMinersMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: myMinersKeyboard.reply_markup
-        });
-        
-    } catch (error) {
-        logger.error('Ошибка показа таймера майнинга', error, { userId });
-    }
 }
 
 // Функции майнеров удалены - функционал перенесен в вебапп
@@ -831,7 +764,6 @@ async function handleAdminPanel(ctx) {
         const adminKeyboard = Markup.inlineKeyboard([
             [Markup.button.callback('🔑 Создать ключ', 'create_key')],
             [Markup.button.callback('📝 Создать пост', 'create_post')],
-            [Markup.button.callback('👑 Выдать/забрать титул', 'manage_titles')],
             [Markup.button.callback('⛏️ Проверить пропущенные награды', 'check_missed_rewards')],
             [Markup.button.callback('📊 Статистика кэша', 'cache_stats')],
             [Markup.button.callback('🗑️ Очистить кэш', 'clear_cache')],
@@ -1688,77 +1620,6 @@ async function handleCheckMissedRewards(ctx) {
     // Функционал майнинга отключен
     await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
     return;
-        
-        // Показываем сообщение о начале проверки
-        const startMessage = `⛏️ **Проверка пропущенных наград за майнинг**\n\n` +
-            `🔄 Начинаем проверку всех пользователей...\n` +
-            `⏳ Это может занять некоторое время\n\n` +
-            `💡 Проверяются награды за последние 4 часа майнинга`;
-        
-        await ctx.editMessageText(startMessage, {
-            parse_mode: 'Markdown'
-        });
-        
-        // Запускаем проверку пропущенных наград
-        const result = await dataManager.processAllMissedMiningRewards();
-        
-        if (result.success) {
-            const successMessage = `✅ **Проверка пропущенных наград завершена!**\n\n` +
-                `📊 **Результаты:**\n` +
-                `├ 👥 Пользователей обработано: ${result.totalUsersProcessed}\n` +
-                `├ 🪙 Magnum Coins начислено: ${result.totalCoinsAwarded}\n` +
-                `├ ⭐ Stars начислено: ${result.totalStarsAwarded}\n` +
-                `└ ⏰ Минут обработано: ${result.totalMinutesProcessed}\n\n` +
-                `🎉 Все пропущенные награды успешно начислены!`;
-            
-            const successKeyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('🔙 Админ панель', 'admin_panel')],
-                [Markup.button.callback('🏠 Главное меню', 'main_menu')]
-            ]);
-            
-            await ctx.editMessageText(successMessage, {
-                parse_mode: 'Markdown',
-                reply_markup: successKeyboard.reply_markup
-            });
-            
-            logger.info('Проверка пропущенных наград завершена успешно', { userId, result });
-            
-        } else {
-            const errorMessage = `❌ **Ошибка проверки пропущенных наград**\n\n` +
-                `🚫 Не удалось выполнить проверку\n` +
-                `🔍 Ошибка: ${result.error}\n\n` +
-                `💡 Попробуйте позже или обратитесь к администратору`;
-            
-            const errorKeyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('🔄 Попробовать снова', 'check_missed_rewards')],
-                [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
-            ]);
-            
-            await ctx.editMessageText(errorMessage, {
-                parse_mode: 'Markdown',
-                reply_markup: errorKeyboard.reply_markup
-            });
-            
-            logger.error('Ошибка проверки пропущенных наград', { userId, error: result.error });
-        }
-        
-    } catch (error) {
-        logger.error('Ошибка обработки проверки пропущенных наград', error, { userId });
-        
-        const errorMessage = `❌ **Ошибка проверки пропущенных наград**\n\n` +
-            `🚫 Не удалось выполнить проверку\n` +
-            `🔧 Попробуйте позже или обратитесь к администратору`;
-        
-        const errorKeyboard = Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Попробовать снова', 'check_missed_rewards')],
-            [Markup.button.callback('🔙 Админ панель', 'admin_panel')]
-        ]);
-        
-        await ctx.editMessageText(errorMessage, {
-            parse_mode: 'Markdown',
-            reply_markup: errorKeyboard.reply_markup
-        });
-    }
 }
 
 // Обработка создания поста
@@ -1810,9 +1671,6 @@ async function handleCreateMinerKey(ctx) {
     // Функционал майнинга отключен
     await ctx.answerCbQuery('⛔ Функционал майнеров отключен', false);
     return;
-        parse_mode: 'Markdown',
-        reply_markup: createMinerKeyKeyboard.reply_markup
-    });
 }
 
 // Обработка выбора типа майнера для ключа

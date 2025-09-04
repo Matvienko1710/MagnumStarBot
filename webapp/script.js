@@ -444,6 +444,11 @@ document.addEventListener('DOMContentLoaded', function() {
         hue = (hue + 1) % 360;
         header.style.textShadow = `2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px hsl(${hue}, 70%, 50%)`;
     }, 50);
+
+    // Загружаем энергию при инициализации
+    if (userId) {
+        loadUserEnergy(userId);
+    }
 });
 
 // Функции навигации (глобальные)
@@ -498,3 +503,169 @@ function showTasksPage() {
         </div>
     `;
 }
+
+// Глобальные переменные для энергии
+let currentEnergy = 1000;
+let maxEnergy = 1000;
+let energyUpdateInterval;
+
+// Функция загрузки энергии пользователя
+async function loadUserEnergy(userId) {
+    try {
+        console.log('⚡ Загружаем энергию пользователя:', userId);
+        
+        const response = await fetch(`/api/energy/${userId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentEnergy = data.data.current;
+            maxEnergy = data.data.max;
+            
+            updateEnergyDisplay();
+            console.log('✅ Энергия загружена:', data.data);
+        } else {
+            console.error('❌ Ошибка загрузки энергии:', data.error);
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сети при загрузке энергии:', error);
+    }
+}
+
+// Функция обновления отображения энергии
+function updateEnergyDisplay() {
+    const energyBalance = document.getElementById('energy-balance');
+    const energyProgressFill = document.getElementById('energy-progress-fill');
+    const energyProgressText = document.getElementById('energy-progress-text');
+    
+    if (energyBalance) {
+        energyBalance.textContent = currentEnergy;
+    }
+    
+    if (energyProgressFill) {
+        const percentage = (currentEnergy / maxEnergy) * 100;
+        energyProgressFill.style.width = `${percentage}%`;
+    }
+    
+    if (energyProgressText) {
+        energyProgressText.textContent = `${currentEnergy}/${maxEnergy}`;
+    }
+    
+    // Обновляем состояние кнопки
+    const coinButton = document.getElementById('coin-button');
+    if (coinButton) {
+        if (currentEnergy < 1) {
+            coinButton.disabled = true;
+            coinButton.style.opacity = '0.5';
+        } else {
+            coinButton.disabled = false;
+            coinButton.style.opacity = '1';
+        }
+    }
+}
+
+// Функция клика по монете
+async function clickCoin() {
+    const userId = localStorage.getItem('magnumBot_userId');
+    if (!userId) {
+        showError('Пользователь не авторизован');
+        return;
+    }
+    
+    if (currentEnergy < 1) {
+        showError('Недостаточно энергии!');
+        return;
+    }
+    
+    const coinButton = document.getElementById('coin-button');
+    if (coinButton.disabled) return;
+    
+    try {
+        // Анимация клика
+        coinButton.classList.add('clicked');
+        setTimeout(() => {
+            coinButton.classList.remove('clicked');
+        }, 300);
+        
+        // Отправляем запрос на сервер
+        const response = await fetch(`/api/click/${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Обновляем энергию
+            currentEnergy = data.data.energy.current;
+            maxEnergy = data.data.energy.max;
+            updateEnergyDisplay();
+            
+            // Обновляем баланс
+            updateBalanceDisplay('stars', data.data.balance.stars);
+            updateBalanceDisplay('magnum', data.data.balance.magnumCoins);
+            
+            // Показываем анимацию награды
+            showRewardAnimation(data.data.rewards);
+            
+            console.log('✅ Клик обработан:', data.data);
+        } else {
+            showError(data.error || 'Ошибка при клике');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка клика по монете:', error);
+        showError('Ошибка подключения к серверу');
+    }
+}
+
+// Функция показа анимации награды
+function showRewardAnimation(rewards) {
+    const coinButton = document.getElementById('coin-button');
+    if (!coinButton) return;
+    
+    // Создаем попапы для наград
+    const coinRect = coinButton.getBoundingClientRect();
+    const centerX = coinRect.left + coinRect.width / 2;
+    const centerY = coinRect.top + coinRect.height / 2;
+    
+    // Анимация для магнум коинов
+    const coinPopup = document.createElement('div');
+    coinPopup.className = 'reward-popup';
+    coinPopup.textContent = `+${rewards.coins} 💰`;
+    coinPopup.style.left = `${centerX - 20}px`;
+    coinPopup.style.top = `${centerY - 20}px`;
+    document.body.appendChild(coinPopup);
+    
+    // Анимация для звезд
+    const starPopup = document.createElement('div');
+    starPopup.className = 'reward-popup';
+    starPopup.textContent = `+${rewards.stars} ⭐`;
+    starPopup.style.left = `${centerX + 20}px`;
+    starPopup.style.top = `${centerY - 20}px`;
+    starPopup.style.animationDelay = '0.2s';
+    document.body.appendChild(starPopup);
+    
+    // Удаляем попапы после анимации
+    setTimeout(() => {
+        if (coinPopup.parentNode) {
+            coinPopup.parentNode.removeChild(coinPopup);
+        }
+        if (starPopup.parentNode) {
+            starPopup.parentNode.removeChild(starPopup);
+        }
+    }, 1200);
+}
+
+// Автоматическое обновление энергии каждую секунду
+function startEnergyRegeneration() {
+    energyUpdateInterval = setInterval(() => {
+        if (currentEnergy < maxEnergy) {
+            currentEnergy = Math.min(maxEnergy, currentEnergy + 1);
+            updateEnergyDisplay();
+        }
+    }, 1000); // 1 энергия в секунду
+}
+
+// Запускаем регенерацию энергии
+startEnergyRegeneration();

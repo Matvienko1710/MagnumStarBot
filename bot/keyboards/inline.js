@@ -51,7 +51,6 @@ const adminPanelKeyboard = () => {
   return Markup.inlineKeyboard([
     [Markup.button.callback('🔑 Создать ключ', 'create_key')],
     [Markup.button.callback('⛏️ Создать ключ майнера', 'create_miner_key')],
-    [Markup.button.callback('👑 Создать ключ титула', 'create_title_key')],
     [Markup.button.callback('📊 Статистика ключей', 'keys_stats')],
     [Markup.button.callback('🏠 В главное меню', 'main_menu')]
   ]);

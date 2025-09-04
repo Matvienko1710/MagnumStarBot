@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 
 // Импортируем функции для работы с данными
-const { getUserBalance } = require('../bot/utils/currency');
+const { getUserBalance, updateCoins, updateStars } = require('../bot/utils/currency');
+const dataManager = require('../bot/utils/dataManager');
 
 // API для получения баланса пользователя
 router.get('/balance/:userId', async (req, res) => {
@@ -163,6 +164,11 @@ router.get('/profile/:userId', async (req, res) => {
                 magnumCoins: user.balance?.coins || 0,
                 totalEarned: user.balance?.totalEarned || { stars: 0, coins: 0 }
             },
+            energy: {
+                current: user.energy?.current || 1000,
+                max: user.energy?.max || 1000,
+                lastRegen: user.energy?.lastRegen || new Date()
+            },
             miners: user.miners || [],
             titles: user.titles || { current: 'novice', unlocked: ['novice'] },
             referral: user.referral || { count: 0, earned: 0 },
@@ -176,6 +182,156 @@ router.get('/profile/:userId', async (req, res) => {
         });
     } catch (error) {
         console.error('Ошибка получения профиля:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка сервера'
+        });
+    }
+});
+
+// API для получения энергии пользователя
+router.get('/energy/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const numericUserId = parseInt(userId);
+        
+        if (isNaN(numericUserId)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат User ID'
+            });
+        }
+
+        const user = await dataManager.getUser(numericUserId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+
+        // Инициализируем энергию если её нет
+        if (!user.energy) {
+            await dataManager.updateUser(numericUserId, {
+                energy: {
+                    current: 1000,
+                    max: 1000,
+                    lastRegen: new Date()
+                }
+            });
+        }
+
+        // Рассчитываем восстановленную энергию
+        const now = new Date();
+        const lastRegen = new Date(user.energy?.lastRegen || now);
+        const timeDiff = now - lastRegen;
+        const energyRegenRate = 1; // 1 энергия в секунду
+        const energyToRegen = Math.floor(timeDiff / 1000) * energyRegenRate;
+        
+        let currentEnergy = user.energy?.current || 1000;
+        const maxEnergy = user.energy?.max || 1000;
+        
+        if (energyToRegen > 0) {
+            currentEnergy = Math.min(maxEnergy, currentEnergy + energyToRegen);
+            await dataManager.updateUser(numericUserId, {
+                'energy.current': currentEnergy,
+                'energy.lastRegen': now
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                current: currentEnergy,
+                max: maxEnergy,
+                percentage: Math.round((currentEnergy / maxEnergy) * 100)
+            }
+        });
+    } catch (error) {
+        console.error('Ошибка получения энергии:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка сервера'
+        });
+    }
+});
+
+// API для клика по монете
+router.post('/click/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const numericUserId = parseInt(userId);
+        
+        if (isNaN(numericUserId)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат User ID'
+            });
+        }
+
+        const user = await dataManager.getUser(numericUserId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
+            });
+        }
+
+        // Инициализируем энергию если её нет
+        if (!user.energy) {
+            await dataManager.updateUser(numericUserId, {
+                energy: {
+                    current: 1000,
+                    max: 1000,
+                    lastRegen: new Date()
+                }
+            });
+        }
+
+        // Проверяем энергию
+        let currentEnergy = user.energy?.current || 1000;
+        if (currentEnergy < 1) {
+            return res.status(400).json({
+                success: false,
+                error: 'Недостаточно энергии',
+                message: 'Нужно подождать восстановления энергии'
+            });
+        }
+
+        // Начисляем награды
+        await updateCoins(numericUserId, 1, 'coin_click');
+        await updateStars(numericUserId, 0.001, 'coin_click');
+
+        // Тратим энергию
+        currentEnergy -= 1;
+        await dataManager.updateUser(numericUserId, {
+            'energy.current': currentEnergy,
+            'energy.lastRegen': new Date()
+        });
+
+        // Получаем обновленный баланс
+        const balance = await getUserBalance(numericUserId);
+
+        res.json({
+            success: true,
+            data: {
+                rewards: {
+                    coins: 1,
+                    stars: 0.001
+                },
+                energy: {
+                    current: currentEnergy,
+                    max: user.energy?.max || 1000,
+                    percentage: Math.round((currentEnergy / (user.energy?.max || 1000)) * 100)
+                },
+                balance: {
+                    stars: balance.stars,
+                    magnumCoins: balance.coins
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Ошибка клика по монете:', error);
         res.status(500).json({
             success: false,
             error: 'Ошибка сервера'
