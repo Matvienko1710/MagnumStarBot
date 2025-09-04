@@ -466,13 +466,31 @@ function showEarnPage() {
         <div class="page-content active">
             <div class="page-header">
                 <h2 class="page-title">⭐ Заработать</h2>
-                <p class="page-subtitle">Зарабатывайте Stars и Magnum Coins различными способами</p>
+                <p class="page-subtitle">Кликайте по монете и зарабатывайте награды!</p>
             </div>
             
-            <div class="coming-soon">
-                <div class="coming-soon-icon">🚀</div>
-                <h3>Скоро будет доступно</h3>
-                <p>Функции заработка будут добавлены в ближайшее время</p>
+            <!-- Кнопка-монета для заработка -->
+            <div class="coin-container-page">
+                <button class="coin-button" id="coin-button" onclick="clickCoin()">
+                    <div class="coin-inner">
+                        <div class="coin-icon">🪙</div>
+                        <div class="coin-text">Клик!</div>
+                    </div>
+                </button>
+                <div class="coin-rewards" id="coin-rewards">
+                    <div class="reward-item">
+                        <span class="reward-icon">💰</span>
+                        <span class="reward-text">+1</span>
+                    </div>
+                    <div class="reward-item">
+                        <span class="reward-icon">⭐</span>
+                        <span class="reward-text">+0.001</span>
+                    </div>
+                </div>
+                <div class="energy-info">
+                    <div class="energy-text">⚡ Энергия: <span id="energy-display">1000/1000</span></div>
+                    <div class="energy-description">1 клик = 1 энергия. Восстанавливается 1 энергия в секунду</div>
+                </div>
             </div>
         </div>
     `;
@@ -534,20 +552,14 @@ async function loadUserEnergy(userId) {
 // Функция обновления отображения энергии
 function updateEnergyDisplay() {
     const energyBalance = document.getElementById('energy-balance');
-    const energyProgressFill = document.getElementById('energy-progress-fill');
-    const energyProgressText = document.getElementById('energy-progress-text');
+    const energyDisplay = document.getElementById('energy-display');
     
     if (energyBalance) {
         energyBalance.textContent = currentEnergy;
     }
     
-    if (energyProgressFill) {
-        const percentage = (currentEnergy / maxEnergy) * 100;
-        energyProgressFill.style.width = `${percentage}%`;
-    }
-    
-    if (energyProgressText) {
-        energyProgressText.textContent = `${currentEnergy}/${maxEnergy}`;
+    if (energyDisplay) {
+        energyDisplay.textContent = `${currentEnergy}/${maxEnergy}`;
     }
     
     // Обновляем состояние кнопки
