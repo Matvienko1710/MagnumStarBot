@@ -153,6 +153,18 @@ async function callbackHandler(ctx) {
                 await handleCheckMissedRewards(ctx);
                 break;
                 
+            case 'earn_money':
+                await handleEarnMoney(ctx);
+                break;
+                
+            case 'earn_stars_ads':
+                await handleEarnStarsAds(ctx);
+                break;
+                
+            case 'watch_ad':
+                await handleWatchAd(ctx);
+                break;
+                
             default:
                 // Обработка кнопок одобрения/отклонения заявок
                 if (callbackData.startsWith('approve_withdrawal_')) {
@@ -2740,6 +2752,104 @@ async function handleRejectWithReason(ctx, action) {
     }
 }
 
+// Функция обработки кнопки "Заработать"
+async function handleEarnMoney(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('💰 Показываем страницу заработка', { userId });
+    
+    try {
+        const message = `💰 **Заработать**\n\n` +
+            `🎯 Выберите способ заработка:\n\n` +
+            `📺 **Просмотр рекламы** - зарабатывайте Stars за просмотр рекламных роликов\n` +
+            `🎮 **Игры** - скоро будут доступны мини-игры\n` +
+            `📱 **Задания** - выполняйте задания и получайте награды\n\n` +
+            `💡 Все способы заработка абсолютно бесплатны!`;
+        
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('📺 Заработать звезды', 'earn_stars_ads')],
+            [Markup.button.callback('🎮 Игры (скоро)', 'earn_games')],
+            [Markup.button.callback('📱 Задания (скоро)', 'earn_tasks')],
+            [Markup.button.callback('🔙 Назад', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(message, {
+            parse_mode: 'Markdown',
+            reply_markup: keyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка показа страницы заработка', error, { userId });
+        await ctx.answerCbQuery('❌ Ошибка при загрузке страницы');
+    }
+}
+
+// Функция обработки кнопки "Заработать звезды"
+async function handleEarnStarsAds(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('📺 Показываем страницу просмотра рекламы', { userId });
+    
+    try {
+        const message = `📺 **Заработать звезды**\n\n` +
+            `🎬 Просматривайте рекламные ролики и получайте Stars!\n\n` +
+            `💰 **Награда:** 0.1 ⭐ за каждый просмотр\n` +
+            `⏰ **Время:** ~30 секунд на ролик\n` +
+            `🔄 **Лимит:** 10 роликов в день\n\n` +
+            `🚀 Нажмите кнопку ниже, чтобы начать просмотр!`;
+        
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🎬 Смотреть рекламу', 'watch_ad')],
+            [Markup.button.callback('🔙 Назад', 'earn_money')]
+        ]);
+        
+        await ctx.editMessageText(message, {
+            parse_mode: 'Markdown',
+            reply_markup: keyboard.reply_markup
+        });
+        
+    } catch (error) {
+        logger.error('Ошибка показа страницы просмотра рекламы', error, { userId });
+        await ctx.answerCbQuery('❌ Ошибка при загрузке страницы');
+    }
+}
+
+// Функция обработки кнопки "Смотреть рекламу"
+async function handleWatchAd(ctx) {
+    const userId = ctx.from.id;
+    
+    logger.info('🎬 Обработка просмотра рекламы', { userId });
+    
+    try {
+        // Пока что показываем заглушку, позже здесь будет встроена реклама
+        const message = `🎬 **Просмотр рекламы**\n\n` +
+            `📺 Реклама будет встроена здесь в ближайшее время!\n\n` +
+            `💰 **Награда:** 0.1 ⭐\n` +
+            `⏰ **Время:** ~30 секунд\n\n` +
+            `🚀 Пока что вы можете:\n` +
+            `• Кликать по монете в WebApp\n` +
+            `• Получать ежедневные бонусы\n` +
+            `• Приглашать друзей по реферальной ссылке\n\n` +
+            `💡 Следите за обновлениями!`;
+        
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.callback('🔙 Назад', 'earn_stars_ads')],
+            [Markup.button.callback('🏠 Главное меню', 'main_menu')]
+        ]);
+        
+        await ctx.editMessageText(message, {
+            parse_mode: 'Markdown',
+            reply_markup: keyboard.reply_markup
+        });
+        
+        await ctx.answerCbQuery('📺 Реклама будет добавлена в ближайшее время!');
+        
+    } catch (error) {
+        logger.error('Ошибка обработки просмотра рекламы', error, { userId });
+        await ctx.answerCbQuery('❌ Ошибка при загрузке рекламы');
+    }
+}
+
 module.exports = {
     callbackHandler,
     updateLastBotMessage,
@@ -2760,5 +2870,8 @@ module.exports = {
     userStates,
     handleProcessWithdrawal,
     handleRejectWithReason,
-    handleCreatePost
+    handleCreatePost,
+    handleEarnMoney,
+    handleEarnStarsAds,
+    handleWatchAd
 };
