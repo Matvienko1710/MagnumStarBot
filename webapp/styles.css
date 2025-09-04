@@ -545,6 +545,103 @@ body {
     }
 }
 
+/* Секция баланса на странице профиля */
+.balance-section {
+    margin: 20px 0;
+}
+
+.balance-card {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.balance-card .balance-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.balance-card .balance-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    text-align: center;
+}
+
+.balance-card .balance-info {
+    flex: 1;
+}
+
+.balance-card .balance-label {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 2px;
+}
+
+.balance-card .balance-amount {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Секция статистики */
+.stats-section {
+    margin: 30px 0;
+}
+
+.stats-title {
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.stat-item {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    padding: 15px;
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stat-icon {
+    font-size: 1.5rem;
+    width: 30px;
+    text-align: center;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 2px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 /* Контейнер кнопки-монеты на странице */
 .coin-container-page {
     display: flex;
@@ -743,5 +840,41 @@ body {
     
     .energy-description {
         font-size: 12px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .balance-card {
+        padding: 15px;
+    }
+    
+    .balance-card .balance-item {
+        gap: 10px;
+        padding: 8px 0;
+    }
+    
+    .balance-card .balance-icon {
+        font-size: 1.2rem;
+        width: 30px;
+    }
+    
+    .balance-card .balance-amount {
+        font-size: 16px;
+    }
+    
+    .stat-item {
+        padding: 12px;
+    }
+    
+    .stat-icon {
+        font-size: 1.2rem;
+        width: 25px;
+    }
+    
+    .stat-value {
+        font-size: 14px;
     }
 }

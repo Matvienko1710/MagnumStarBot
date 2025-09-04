@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (userId) {
         // Если userId найден, загружаем приложение
         initializeApp(userId);
+        // Показываем страницу профиля по умолчанию
+        showProfilePage();
     } else {
         // Если userId не найден, показываем простую форму ввода
         showSimpleLoginForm();
@@ -343,6 +345,41 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             headerTitle.textContent = 'MagnumStarBot';
         }
+        
+        // Обновляем баланс на странице профиля
+        updateProfileBalance(profile);
+    }
+    
+    // Функция обновления баланса на странице профиля
+    function updateProfileBalance(profile) {
+        // Обновляем баланс звезд
+        const starsBalance = document.getElementById('profile-stars-balance');
+        if (starsBalance && profile.balance && profile.balance.stars !== undefined) {
+            starsBalance.textContent = profile.balance.stars.toFixed(3);
+        }
+        
+        // Обновляем баланс монет
+        const coinsBalance = document.getElementById('profile-coins-balance');
+        if (coinsBalance && profile.balance && profile.balance.coins !== undefined) {
+            coinsBalance.textContent = profile.balance.coins.toLocaleString();
+        }
+        
+        // Обновляем энергию
+        const energyBalance = document.getElementById('profile-energy-balance');
+        if (energyBalance && profile.energy) {
+            energyBalance.textContent = profile.energy.current;
+        }
+        
+        // Обновляем статистику
+        const totalEarned = document.getElementById('total-earned');
+        if (totalEarned && profile.balance && profile.balance.totalEarned && profile.balance.totalEarned.stars !== undefined) {
+            totalEarned.textContent = `${profile.balance.totalEarned.stars.toFixed(3)} ⭐`;
+        }
+        
+        const referralsCount = document.getElementById('referrals-count');
+        if (referralsCount && profile.referrals) {
+            referralsCount.textContent = profile.referrals.count || 0;
+        }
     }
 
 
@@ -452,6 +489,80 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Функции навигации (глобальные)
+function showProfilePage() {
+    console.log('👤 showProfilePage вызвана!');
+    console.log('Показываем страницу "Профиль"');
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('profile-btn').classList.add('active');
+    
+    // Загружаем контент страницы "Профиль"
+    const mainContent = document.getElementById('main-content');
+    mainContent.innerHTML = `
+        <div class="page-content active">
+            <div class="page-header">
+                <h2 class="page-title">👤 Профиль</h2>
+                <p class="page-subtitle">Ваша статистика и баланс</p>
+            </div>
+            
+            <!-- Баланс пользователя -->
+            <div class="balance-section">
+                <div class="balance-card">
+                    <div class="balance-item">
+                        <div class="balance-icon">⭐</div>
+                        <div class="balance-info">
+                            <div class="balance-label">Звёзды</div>
+                            <div class="balance-amount" id="profile-stars-balance">0</div>
+                        </div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-icon">💰</div>
+                        <div class="balance-info">
+                            <div class="balance-label">Магнум Коины</div>
+                            <div class="balance-amount" id="profile-coins-balance">0</div>
+                        </div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-icon">⚡</div>
+                        <div class="balance-info">
+                            <div class="balance-label">Энергия</div>
+                            <div class="balance-amount" id="profile-energy-balance">1000</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Статистика -->
+            <div class="stats-section">
+                <h3 class="stats-title">📊 Статистика</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-info">
+                            <div class="stat-label">Всего заработано</div>
+                            <div class="stat-value" id="total-earned">0 ⭐</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-label">Рефералы</div>
+                            <div class="stat-value" id="referrals-count">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Загружаем данные профиля
+    const userId = localStorage.getItem('magnumBot_userId');
+    if (userId) {
+        loadUserProfile(userId);
+    }
+}
+
 function showEarnPage() {
     console.log('🔥 showEarnPage вызвана!');
     console.log('Показываем страницу "Заработать"');
@@ -551,15 +662,15 @@ async function loadUserEnergy(userId) {
 
 // Функция обновления отображения энергии
 function updateEnergyDisplay() {
-    const energyBalance = document.getElementById('energy-balance');
     const energyDisplay = document.getElementById('energy-display');
-    
-    if (energyBalance) {
-        energyBalance.textContent = currentEnergy;
-    }
+    const profileEnergyBalance = document.getElementById('profile-energy-balance');
     
     if (energyDisplay) {
         energyDisplay.textContent = `${currentEnergy}/${maxEnergy}`;
+    }
+    
+    if (profileEnergyBalance) {
+        profileEnergyBalance.textContent = currentEnergy;
     }
     
     // Обновляем состояние кнопки

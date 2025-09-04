@@ -7,34 +7,6 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Закрепленная панель баланса -->
-    <nav class="balance-navbar">
-        <div class="balance-container">
-            <div class="balance-item">
-                <div class="balance-icon">⭐</div>
-                <div class="balance-info">
-                    <div class="balance-label">Звёзды</div>
-                    <div class="balance-amount" id="stars-balance">0</div>
-                </div>
-            </div>
-            <div class="balance-divider"></div>
-            <div class="balance-item">
-                <div class="balance-icon">💰</div>
-                <div class="balance-info">
-                    <div class="balance-label">Магнум Коины</div>
-                    <div class="balance-amount" id="magnum-balance">0</div>
-                </div>
-            </div>
-            <div class="balance-divider"></div>
-            <div class="balance-item">
-                <div class="balance-icon">⚡</div>
-                <div class="balance-info">
-                    <div class="balance-label">Энергия</div>
-                    <div class="balance-amount" id="energy-balance">1000</div>
-                </div>
-            </div>
-        </div>
-    </nav>
 
 
     <div class="container">
@@ -52,7 +24,11 @@
     <!-- Закрепленные кнопки в нижней части -->
     <nav class="bottom-navbar">
         <div class="bottom-nav-container">
-            <button class="bottom-nav-btn active" id="earn-btn" onclick="showEarnPage()">
+            <button class="bottom-nav-btn active" id="profile-btn" onclick="showProfilePage()">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Профиль</div>
+            </button>
+            <button class="bottom-nav-btn" id="earn-btn" onclick="showEarnPage()">
                 <div class="nav-icon">⭐</div>
                 <div class="nav-label">Заработать</div>
             </button>
