@@ -1432,6 +1432,8 @@ async function handleRejectWithdrawal(ctx, action) {
         chatUsername: ctx.chat?.username,
         action: action,
         callbackData: ctx.callbackQuery?.data,
+        hasEditMessageText: !!ctx.editMessageText,
+        hasReply: !!ctx.reply,
         timestamp: new Date().toISOString()
     });
 
@@ -1500,18 +1502,39 @@ async function handleRejectWithdrawal(ctx, action) {
         
         // Обновляем сообщение в канале
         try {
+            // Проверяем, есть ли у нас доступ к editMessageText
+            if (ctx.editMessageText) {
             await ctx.editMessageText(updatedMessage, {
                 parse_mode: 'Markdown',
                 reply_markup: rejectionKeyboard
             });
+            } else {
+                // Если нет доступа к editMessageText, отправляем новое сообщение
+                await ctx.reply(updatedMessage, {
+                    parse_mode: 'Markdown',
+                    reply_markup: rejectionKeyboard
+                });
+            }
             
             logger.info('Показаны кнопки причин отклонения', { 
                 userId, 
-                requestId 
+                requestId,
+                hasEditMessageText: !!ctx.editMessageText
             });
             
         } catch (editError) {
             logger.error('Ошибка обновления сообщения в канале', editError, { userId, requestId });
+            
+            // Попробуем отправить новое сообщение как fallback
+            try {
+                await ctx.reply(updatedMessage, {
+                    parse_mode: 'Markdown',
+                    reply_markup: rejectionKeyboard
+                });
+                logger.info('Отправлено новое сообщение с кнопками причин отклонения', { userId, requestId });
+            } catch (fallbackError) {
+                logger.error('Ошибка отправки fallback сообщения', fallbackError, { userId, requestId });
+            }
         }
 
     } catch (error) {

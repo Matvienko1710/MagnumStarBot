@@ -323,6 +323,7 @@ function initializeBot() {
                                 }
                             },
                             editMessageText: async (text, options) => {
+                                // В канале мы не можем редактировать сообщения, поэтому отправляем новое
                                 await ctx.reply(text, options);
                             }
                         };
@@ -353,6 +354,7 @@ function initializeBot() {
                                     }
                                 },
                                 editMessageText: async (text, options) => {
+                                    // В канале мы не можем редактировать сообщения, поэтому отправляем новое
                                     await ctx.reply(text, options);
                                 }
                             };
