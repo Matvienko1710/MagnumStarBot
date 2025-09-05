@@ -15,6 +15,8 @@ const Loader = () => {
               <rect strokeWidth={2} stroke="#282828" fill="#282828" rx={1} height={11} width={4} y={81} x={193} />
               <rect strokeWidth={3} stroke="#282828" fill="#DFDFDF" rx="2.5" height={90} width={121} y="1.5" x="6.5" />
               <rect strokeWidth={2} stroke="#282828" fill="#DFDFDF" rx={2} height={4} width={6} y={84} x={1} />
+              <text x="30" y="50" fill="#282828" fontSize="14" fontFamily="Arial Black" fontWeight="bold">MAGNUM</text>
+              <text x="30" y="70" fill="#282828" fontSize="14" fontFamily="Arial Black" fontWeight="bold">DELIVERY</text>
             </svg>
           </div>
           <div className="truckTires">
@@ -33,7 +35,6 @@ const Loader = () => {
           </svg>
         </div>
       </div>
-      <div className="title">Loading Magnum Star Bot...</div>
     </StyledWrapper>
   );
 }
@@ -55,14 +56,6 @@ const StyledWrapper = styled.div`
     #22223B 100% /* Dark night */
   );
   z-index: 9999;
-
-  .title {
-    margin-top: 2rem;
-    color: #FFFFFF;
-    font-size: 1.5rem;
-    font-weight: bold;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
 
   .loader {
     width: fit-content;
