@@ -119,25 +119,14 @@ async function callbackHandler(ctx) {
                 await handleCreateKey(ctx);
                 break;
                 
-            case 'create_title_key':
-                await handleCreateTitleKey(ctx);
-                break;
 
-            case 'create_miner_key':
-                await handleCreateMinerKey(ctx);
-                break;
+
                 
             case 'create_post':
                 await handleCreatePost(ctx);
                 break;
 
-            case 'miner_key_novice':
-                await handleMinerKeyType(ctx, 'novice');
-                break;
 
-            case 'miner_key_star_path':
-                await handleMinerKeyType(ctx, 'star_path');
-                break;
 
             case 'clear_cache':
                 await handleClearCache(ctx);

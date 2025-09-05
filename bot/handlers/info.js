@@ -28,12 +28,6 @@ async function infoHandler(ctx) {
             return;
         }
         
-        if (userState && userState.state === 'creating_title_key') {
-            // Обработка создания ключа титула
-            const { handleTitleKeyCreation } = require('./callback');
-            await handleTitleKeyCreation(ctx, text);
-            return;
-        }
         
         if (userState && userState.state === 'waiting_for_withdrawal_amount') {
             // Обработка создания заявки на вывод
@@ -41,12 +35,6 @@ async function infoHandler(ctx) {
             return;
         }
 
-        if (userState && userState.state === 'creating_miner_key') {
-            // Обработка создания ключа майнера
-            const { handleMinerKeyCreation } = require('./callback');
-            await handleMinerKeyCreation(ctx, text);
-            return;
-        }
         
         if (userState && userState.state === 'creating_support_ticket') {
             // Обработка создания тикета поддержки
