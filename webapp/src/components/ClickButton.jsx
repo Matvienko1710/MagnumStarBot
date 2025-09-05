@@ -31,14 +31,23 @@ const ClickButton = ({ onBalanceUpdate }) => {
 
     try {
       const userId = webApp.initDataUnsafe.user.id;
+      console.log('Sending click request for user:', userId); // Добавляем лог
       const response = await fetch(`/api/click/${userId}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+      console.log('Click response:', response); // Добавляем лог
       const data = await response.json();
+      console.log('Click data:', data); // Добавляем лог
 
       if (data.success) {
         onBalanceUpdate();
-        // Анимация получения монет можно добавить здесь
+        // Анимация получения монет
+        if (webApp && webApp.HapticFeedback) {
+          webApp.HapticFeedback.impactOccurred('medium');
+        }
       }
     } catch (error) {
       console.error('Error clicking:', error);
@@ -51,14 +60,17 @@ const ClickButton = ({ onBalanceUpdate }) => {
 
   return (
     <motion.button
-      className="relative w-full h-32 rounded-2xl bg-gradient-to-br from-accent-gold/30 to-accent-gold/5 backdrop-blur-lg overflow-hidden border border-accent-gold/20 shadow-lg"
+      className="relative w-full h-48 rounded-2xl bg-gradient-to-br from-yellow-500/30 to-yellow-600/5 backdrop-blur-lg overflow-hidden border-2 border-yellow-500/50 shadow-xl"
       whileTap={{ scale: 0.95 }}
       onClick={handleClick}
       disabled={isLoading || cooldown > 0}
+      style={{
+        boxShadow: '0 0 20px rgba(234, 179, 8, 0.2)'
+      }}
     >
       {/* Прогресс бар */}
       <motion.div
-        className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-accent-gold/50 to-accent-gold"
+        className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-yellow-500/70 to-yellow-400"
         style={{ width: `${progress}%` }}
         transition={{ duration: 0.1 }}
       />
@@ -66,14 +78,14 @@ const ClickButton = ({ onBalanceUpdate }) => {
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className="relative">
           <motion.div
-            className="text-6xl font-bold mb-2 text-accent-gold"
+            className="text-7xl font-bold mb-3 text-yellow-400"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
             МС
           </motion.div>
           <motion.div 
-            className="absolute -top-1 -right-1 transform translate-x-full"
+            className="absolute -top-2 -right-2 transform translate-x-full text-4xl"
             animate={{
               scale: [1, 1.2, 1],
               rotate: [0, -10, 10, -10, 0]
@@ -87,17 +99,17 @@ const ClickButton = ({ onBalanceUpdate }) => {
             🪙
           </motion.div>
         </div>
-        <span className="text-white/80 font-medium mt-2">
+        <span className="text-yellow-300 font-bold text-xl mt-3">
           {cooldown > 0 ? 
-            `${(cooldown / 1000).toFixed(1)}s` : 
-            `Получить ${COINS_PER_CLICK} монету`}
+            `⏳ ${(cooldown / 1000).toFixed(1)}s` : 
+            `✨ Получить ${COINS_PER_CLICK} монету ✨`}
         </span>
       </div>
 
       {/* Эффект нажатия */}
       {isLoading && (
         <motion.div
-          className="absolute inset-0 bg-accent-gold/10"
+          className="absolute inset-0 bg-yellow-400/20"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1.2, opacity: 0 }}
           transition={{ duration: 0.5 }}
