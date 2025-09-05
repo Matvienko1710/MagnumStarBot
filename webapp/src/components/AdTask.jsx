@@ -36,11 +36,11 @@ const AdTask = ({ onComplete }) => {
         }
         onComplete(data.balance);
       } else {
-        throw new Error(data.message || 'Ошибка получения награды');
+        throw new Error(data.message || 'Error receiving reward');
       }
     } catch (error) {
       console.error('Error watching ad:', error);
-      setError(error.message || 'Произошла ошибка при просмотре рекламы');
+      setError(error.message || 'An error occurred while watching the ad');
     } finally {
       setIsLoading(false);
     }

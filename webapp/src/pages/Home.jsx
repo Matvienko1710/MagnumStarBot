@@ -1,10 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import BalanceCard from '../components/BalanceCard';
 import EarnButton from '../components/EarnButton';
 import ClickButton from '../components/ClickButton';
+import AdModal from '../components/AdModal';
 
 const Home = () => {
   const balanceCardRef = useRef();
+  const [isAdModalOpen, setIsAdModalOpen] = useState(false);
 
   useEffect(() => {
     const webApp = window.Telegram.WebApp;
@@ -15,9 +17,14 @@ const Home = () => {
   }, []);
 
   const handleEarnClick = () => {
-    // Открываем бота при клике на кнопку
-    const webApp = window.Telegram.WebApp;
-    webApp.close();
+    setIsAdModalOpen(true);
+  };
+
+  const handleAdComplete = (newBalance) => {
+    if (balanceCardRef.current) {
+      balanceCardRef.current.updateBalance();
+    }
+    setIsAdModalOpen(false);
   };
 
   const handleBalanceUpdate = () => {
@@ -45,6 +52,11 @@ const Home = () => {
       <BalanceCard ref={balanceCardRef} />
       <ClickButton onBalanceUpdate={handleBalanceUpdate} />
       <EarnButton onClick={handleEarnClick} />
+      <AdModal 
+        isOpen={isAdModalOpen}
+        onClose={() => setIsAdModalOpen(false)}
+        onComplete={handleAdComplete}
+      />
     </div>
   );
 };
