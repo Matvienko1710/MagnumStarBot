@@ -1,8 +1,8 @@
-import express from 'express';
+const express = require('express');
 const router = express.Router();
 
 // Импортируем функции для работы с данными
-import { getUserBalance } from '../bot/utils/currency.js';
+const { getUserBalance } = require('../bot/utils/currency');
 
 // API для получения баланса пользователя
 router.get('/balance/:userId', async (req, res) => {
@@ -46,4 +46,4 @@ router.get('/balance/:userId', async (req, res) => {
     }
 });
 
-export default router;
+module.exports = router;
