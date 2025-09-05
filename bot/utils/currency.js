@@ -2,6 +2,13 @@
 const dataManager = require('./dataManager');
 const logger = require('./logger');
 
+// Экспорт всех функций
+module.exports = {
+  addCoinsForClick,
+  getUserBalance,
+  updateStars
+};
+
 // Курсы обмена
 const EXCHANGE_RATES = {
   STAR_TO_COIN: 10, // 1 Star = 10 Magnum Coins
@@ -38,6 +45,29 @@ const getUserBalance = async (userId) => {
       coins: 0,
       totalEarned: { stars: 0, coins: 0 }
     };
+  }
+};
+
+// Добавление монет через клик
+const addCoinsForClick = async (userId) => {
+  try {
+    const lastClick = await dataManager.getLastAction(userId, 'click');
+    const now = Date.now();
+    const COOLDOWN_TIME = 1000; // 1 секунда между кликами
+
+    if (lastClick && (now - lastClick < COOLDOWN_TIME)) {
+      throw new Error('Слишком частые клики');
+    }
+
+    const COINS_PER_CLICK = 1;
+    const newBalance = await dataManager.updateBalance(userId, 'coins', COINS_PER_CLICK, 'click-reward');
+    await dataManager.updateLastAction(userId, 'click', now);
+
+    logger.info('Монеты за клик добавлены', { userId, amount: COINS_PER_CLICK, newBalance });
+    return newBalance;
+  } catch (error) {
+    logger.error('Ошибка добавления монет за клик', error, { userId });
+    throw error;
   }
 };
 
