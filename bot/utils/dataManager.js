@@ -79,6 +79,43 @@ class DataManager {
         return;
     }
 
+    // Получение времени последнего действия пользователя
+    async getLastAction(userId, actionType) {
+        try {
+            const user = await this.db.collection('users').findOne(
+                { userId },
+                { projection: { [`lastActions.${actionType}`]: 1 } }
+            );
+
+            return user?.lastActions?.[actionType] || 0;
+        } catch (error) {
+            logger.error('Ошибка получения времени последнего действия', error, { userId, actionType });
+            return 0;
+        }
+    }
+
+    // Обновление времени последнего действия пользователя
+    async updateLastAction(userId, actionType, timestamp) {
+        try {
+            await this.db.collection('users').updateOne(
+                { userId },
+                { 
+                    $set: { [`lastActions.${actionType}`]: timestamp },
+                    $setOnInsert: { 
+                        userId,
+                        balance: { stars: 0, coins: 0, totalEarned: { stars: 0, coins: 0 } }
+                    }
+                },
+                { upsert: true }
+            );
+
+            logger.info('Время последнего действия обновлено', { userId, actionType, timestamp });
+        } catch (error) {
+            logger.error('Ошибка обновления времени последнего действия', error, { userId, actionType });
+            throw error;
+        }
+    }
+
     // Диагностика системы майнинга
     async diagnoseMiningSystem() {
         try {

@@ -2,13 +2,6 @@
 const dataManager = require('./dataManager');
 const logger = require('./logger');
 
-// Экспорт всех функций
-module.exports = {
-  addCoinsForClick,
-  getUserBalance,
-  updateStars
-};
-
 // Курсы обмена
 const EXCHANGE_RATES = {
   STAR_TO_COIN: 10, // 1 Star = 10 Magnum Coins
@@ -193,6 +186,7 @@ module.exports = {
   getUserBalance,
   updateStars,
   updateCoins,
+  addCoinsForClick,
   
   // Обмен валют
   exchangeStarsToCoins,
