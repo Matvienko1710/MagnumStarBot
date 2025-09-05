@@ -14,10 +14,9 @@ const BalanceCard = () => {
         const data = await response.json();
         
         if (data.success) {
-          setBalance({
-            stars: data.balance.stars || 0,
-            coins: data.balance.coins || 0
-          });
+          const { stars = 0, coins = 0 } = data.balance;
+          console.log('Received balance:', { stars, coins });
+          setBalance({ stars, coins });
         } else {
           setError(data.message || 'Failed to fetch balance');
         }

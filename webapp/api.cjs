@@ -25,7 +25,7 @@ router.get('/balance/:userId', async (req, res) => {
         // Форматируем ответ
         const responseData = {
             stars: balance.stars || 0,
-            magnumCoins: balance.coins || 0,
+            coins: balance.coins || 0,
             totalEarned: balance.totalEarned || { stars: 0, coins: 0 },
             lastUpdate: new Date().toISOString()
         };
@@ -34,7 +34,7 @@ router.get('/balance/:userId', async (req, res) => {
 
         res.json({
             success: true,
-            data: responseData
+            balance: responseData
         });
     } catch (error) {
         console.error('Ошибка получения баланса:', error);
