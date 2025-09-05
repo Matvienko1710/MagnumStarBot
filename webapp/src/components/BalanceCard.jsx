@@ -1,39 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { motion } from 'framer-motion';
 
-const BalanceCard = () => {
+const BalanceCard = forwardRef((props, ref) => {
   const [balance, setBalance] = useState({ stars: 0, coins: 0 });
   const [error, setError] = useState(null);
   const webApp = window.Telegram.WebApp;
 
-  useEffect(() => {
-    const fetchBalance = async () => {
-      try {
-        const userId = webApp.initDataUnsafe.user.id;
-        const response = await fetch(`/api/balance/${userId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-          const { stars = 0, coins = 0 } = data.balance;
-          console.log('Received balance:', { stars, coins });
-          setBalance({ stars, coins });
-        } else {
-          setError(data.message || 'Failed to fetch balance');
-        }
-      } catch (err) {
-        setError('Error fetching balance');
-        console.error('Error:', err);
+  const fetchBalance = async () => {
+    try {
+      const userId = webApp.initDataUnsafe.user.id;
+      const response = await fetch(`/api/balance/${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const { stars = 0, coins = 0 } = data.balance;
+        console.log('Received balance:', { stars, coins });
+        setBalance({ stars, coins });
+      } else {
+        setError(data.message || 'Failed to fetch balance');
       }
-    };
+    } catch (err) {
+      setError('Error fetching balance');
+      console.error('Error:', err);
+    }
+  };
 
-    // Получаем баланс сразу при монтировании
+  useImperativeHandle(ref, () => ({
+    updateBalance: fetchBalance
+  }));
+
+  useEffect(() => {
     fetchBalance();
-
-    // Обновляем баланс каждые 30 секунд
     const interval = setInterval(fetchBalance, 30000);
-
     return () => clearInterval(interval);
   }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -83,6 +84,6 @@ const BalanceCard = () => {
       </div>
     </motion.div>
   );
-};
+});
 
 export default BalanceCard;
