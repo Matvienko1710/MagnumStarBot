@@ -181,12 +181,36 @@ const getCurrencyStats = async () => {
   }
 };
 
+// Добавление звезд за просмотр рекламы
+const addStarsForAd = async (userId) => {
+  try {
+    const lastAdWatch = await dataManager.getLastAction(userId, 'ad-watch');
+    const now = Date.now();
+    const COOLDOWN_TIME = 5000; // 5 секунд между просмотрами рекламы
+
+    if (lastAdWatch && (now - lastAdWatch < COOLDOWN_TIME)) {
+      throw new Error('Слишком частые просмотры рекламы');
+    }
+
+    const STARS_PER_AD = 0.05;
+    const newBalance = await dataManager.updateBalance(userId, 'stars', STARS_PER_AD, 'ad-watch-reward');
+    await dataManager.updateLastAction(userId, 'ad-watch', now);
+
+    logger.info('Звезды за просмотр рекламы добавлены', { userId, amount: STARS_PER_AD, newBalance });
+    return newBalance;
+  } catch (error) {
+    logger.error('Ошибка добавления звезд за рекламу', error, { userId });
+    throw error;
+  }
+};
+
 module.exports = {
   // Основные функции
   getUserBalance,
   updateStars,
   updateCoins,
   addCoinsForClick,
+  addStarsForAd,
   
   // Обмен валют
   exchangeStarsToCoins,

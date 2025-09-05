@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Импортируем функции для работы с данными
-const { getUserBalance, addCoinsForClick } = require('../bot/utils/currency');
+const { getUserBalance, addCoinsForClick, addStarsForAd } = require('../bot/utils/currency');
 
 // API для получения баланса пользователя
 router.get('/balance/:userId', async (req, res) => {
@@ -71,6 +71,43 @@ router.post('/click/:userId', async (req, res) => {
         });
     } catch (error) {
         console.error('Ошибка при клике:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка сервера',
+            message: error.message
+        });
+    }
+});
+
+// API для получения наград за просмотр рекламы
+router.post('/reward/:userId/ad-watch', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const numericUserId = parseInt(userId);
+        
+        if (isNaN(numericUserId)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат User ID',
+                message: 'User ID должен быть числом'
+            });
+        }
+
+        // Добавляем звезды за просмотр рекламы
+        const balance = await addStarsForAd(numericUserId);
+        
+        res.json({
+            success: true,
+            message: 'Добавлено 0.05 звезд',
+            balance: {
+                stars: balance.stars || 0,
+                coins: balance.coins || 0,
+                totalEarned: balance.totalEarned || { stars: 0, coins: 0 },
+                lastUpdate: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('Ошибка при начислении награды за рекламу:', error);
         res.status(500).json({
             success: false,
             error: 'Ошибка сервера',
