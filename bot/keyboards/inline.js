@@ -1,10 +1,7 @@
 const { Markup } = require('telegraf');
 
 const inlineKeyboard = (isAdmin = false) => {
-  // WebApp временно отключен
-// const webappUrl = process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com';
-// console.log('WEBAPP_URL:', process.env.WEBAPP_URL);
-// console.log('Using webappUrl:', webappUrl);
+  const webappUrl = process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com';
   
   const buttons = [
     [Markup.button.callback('👤 Профиль', 'profile')],
@@ -12,13 +9,12 @@ const inlineKeyboard = (isAdmin = false) => {
     [Markup.button.callback('💰 Заработать', 'earn_money')],
     [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
     [Markup.button.callback('🌟 Вывести звезды', 'withdraw_stars')],
-    [Markup.button.callback('👥 Рефералы', 'referrals')]
+    [Markup.button.callback('👥 Рефералы', 'referrals')],
+    [Markup.button.webApp('🌐 WebApp', webappUrl)]
   ];
   
   // Добавляем кнопки админа только если пользователь является администратором
-  // WebApp временно отключен
   if (isAdmin) {
-    // buttons.push([Markup.button.webApp('🌐 WebApp', webappUrl)]);
     buttons.push([Markup.button.callback('🔧 Админ панель', 'admin_panel')]);
   }
   
@@ -31,13 +27,12 @@ const inlineKeyboardWithBack = (isAdmin = false) => {
   const buttons = [
     [Markup.button.callback('👤 Профиль', 'profile')],
     [Markup.button.callback('🔑 Активировать ключ', 'activate_key')],
-    [Markup.button.callback('🌟 Вывести звезды', 'withdraw_stars')]
+    [Markup.button.callback('🌟 Вывести звезды', 'withdraw_stars')],
+    [Markup.button.webApp('🌐 WebApp', webappUrl)]
   ];
   
   // Добавляем кнопки админа только если пользователь является администратором
-  // WebApp временно отключен
   if (isAdmin) {
-    // buttons.push([Markup.button.webApp('🌐 WebApp', webappUrl)]);
     buttons.push([Markup.button.callback('🔧 Админ панель', 'admin_panel')]);
   }
   
