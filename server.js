@@ -22,11 +22,11 @@ app.use(express.json());
 const apiRoutes = require('./webapp/api.cjs');
 app.use('/api', apiRoutes);
 // Статические файлы вебаппа
-app.use(express.static('webapp'));
+app.use(express.static('webapp/dist'));
 
 // Явный маршрут для корневого пути вебаппа
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/webapp/index.html');
+    res.sendFile(__dirname + '/webapp/dist/index.html');
 });
 
 
