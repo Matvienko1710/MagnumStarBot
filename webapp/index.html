@@ -1,19 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="MobileOptimized" content="width" />
+    <meta name="HandheldFriendly" content="true" />
+
+    <!-- Оптимизация для Telegram WebApp -->
+    <meta name="theme-color" content="#22223B" />
+    <meta name="color-scheme" content="dark" />
+
     <title>Magnum Star Bot</title>
+
+    <!-- Preload критических ресурсов -->
+    <link rel="preconnect" href="https://telegram.org">
+    <link rel="preconnect" href="https://libtl.com">
+
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src='//libtl.com/sdk.js' data-zone='9830844' data-sdk='show_9830844'></script>
-  </head>
-  <body>
+
+    <style>
+        /* Оптимизации для WebApp */
+        
+        html {
+            background-color: #22223B;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        html::-webkit-scrollbar {
+            display: none;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            -webkit-text-size-adjust: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+
+<body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
-    <script src="index.js"></script>
 </body>
+
 </html>
 ```
-
