@@ -5,7 +5,11 @@ const ClickButton = ({ onBalanceUpdate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastClickTime, setLastClickTime] = useState(0);
   const [cooldown, setCooldown] = useState(0);
-  const webApp = window.Telegram.WebApp;
+  const [webApp, setWebApp] = useState(null);
+
+  useEffect(() => {
+    setWebApp(window.Telegram.WebApp);
+  }, []);
 
   const COOLDOWN_TIME = 1000; // 1 секунда между кликами
   const COINS_PER_CLICK = 1; // 1 монета за клик
@@ -57,6 +61,14 @@ const ClickButton = ({ onBalanceUpdate }) => {
   };
 
   const progress = ((COOLDOWN_TIME - cooldown) / COOLDOWN_TIME) * 100;
+
+  if (!webApp) {
+    return (
+      <div className="w-full h-48 rounded-2xl bg-red-500/20 border-2 border-red-500/50 flex items-center justify-center">
+        <span className="text-red-300">Ошибка инициализации Telegram WebApp</span>
+      </div>
+    );
+  }
 
   return (
     <motion.button
