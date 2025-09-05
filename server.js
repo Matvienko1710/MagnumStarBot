@@ -21,7 +21,6 @@ app.use(express.json());
 // API роуты вебаппа (должны быть ПЕРЕД статическими файлами)
 const apiRoutes = require('./webapp/api');
 app.use('/api', apiRoutes);
-
 // Статические файлы вебаппа
 app.use(express.static('webapp'));
 

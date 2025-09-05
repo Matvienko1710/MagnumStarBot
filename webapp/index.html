@@ -1,97 +1,27 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MagnumStarBot WebApp</title>
-    <meta name="description" content="MagnumStarBot - управляйте своим балансом и заработком">
-    <meta name="theme-color" content="#4CAF50">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192x192.png">
-    <link rel="apple-touch-icon" href="/images/icon-192x192.png">
-    <link rel="stylesheet" href="styles.css">
-    <!-- Добавляем анимации -->
+    <title>Balance</title>
     <style>
-        .loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.9);
+        body {
+            font-family: sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
         }
-        
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .shake {
-            animation: shake 0.5s ease-in-out;
-        }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+        #balance {
+            font-size: 2em;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: white;
         }
     </style>
 </head>
 <body>
-
-
-    <div class="container">
-        <header class="header">
-            <h1>MagnumStarBot</h1>
-        </header>
-
-        <!-- Основной контент -->
-        <div id="main-content" class="main-content">
-            <!-- Контент будет загружаться динамически -->
-        </div>
-
-    </div>
-
-    <!-- Закрепленные кнопки в нижней части -->
-    <nav class="bottom-navbar">
-        <div class="bottom-nav-container">
-            <button class="bottom-nav-btn active" id="profile-btn" onclick="showProfilePage()">
-                <div class="nav-icon">👤</div>
-                <div class="nav-label">Профиль</div>
-            </button>
-            <button class="bottom-nav-btn" id="earn-btn" onclick="showEarnPage()">
-                <div class="nav-icon">⭐</div>
-                <div class="nav-label">Заработать</div>
-            </button>
-            <button class="bottom-nav-btn" id="tasks-btn" onclick="showTasksPage()">
-                <div class="nav-icon">📋</div>
-                <div class="nav-label">Задания</div>
-            </button>
-        </div>
-    </nav>
-
+    <div id="balance">Loading...</div>
     <script src="script.js"></script>
 </body>
 </html>
