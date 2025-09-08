@@ -5,16 +5,27 @@ import Home from './pages/Home';
 import Tasks from './pages/Tasks';
 import Exchange from './pages/Exchange';
 import Cases from './pages/Cases';
+import ComingSoon from './pages/ComingSoon';
 import Loader from './components/Loader';
+import { isAdmin } from './utils/admin';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
 
   useEffect(() => {
     // Initialize Telegram WebApp
     const webApp = window.Telegram.WebApp;
     webApp.ready();
     webApp.expand();
+
+    // Check admin status
+    const checkAdminStatus = () => {
+      const adminStatus = isAdmin();
+      setUserIsAdmin(adminStatus);
+    };
+
+    checkAdminStatus();
 
     // Show loading screen for 5 seconds
     const timer = setTimeout(() => {
@@ -23,6 +34,11 @@ function App() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Компонент для условного рендеринга страниц
+  const ConditionalRoute = ({ adminComponent, userComponent, ...props }) => {
+    return userIsAdmin ? adminComponent : (userComponent || <ComingSoon />);
+  };
   return (
     <>
       {isLoading ? (
@@ -33,9 +49,15 @@ function App() {
             <div className="max-w-md mx-auto pb-20">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/tasks" element={<Tasks />} />
-                <Route path="/exchange" element={<Exchange />} />
-                <Route path="/cases" element={<Cases />} />
+                <Route path="/tasks" element={
+                  <ConditionalRoute adminComponent={<Tasks />} />
+                } />
+                <Route path="/exchange" element={
+                  <ConditionalRoute adminComponent={<Exchange />} />
+                } />
+                <Route path="/cases" element={
+                  <ConditionalRoute adminComponent={<Cases />} />
+                } />
               </Routes>
             </div>
             <BottomNavBar />
