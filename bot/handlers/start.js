@@ -189,11 +189,9 @@ async function startHandler(ctx) {
         
         // Проверяем, является ли пользователь админом
         const userIsAdmin = isAdmin(userId);
-        
-        // Создаем кнопку WebApp в зависимости от статуса пользователя
-        const webAppButton = userIsAdmin
-            ? Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
-            : Markup.button.callback('Magnum Star - Beta', 'webapp_coming_soon');
+
+        // Создаем кнопку WebApp - теперь доступна для всех пользователей
+        const webAppButton = Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
 
         // Создаем основное меню
         const mainMenuButtons = [

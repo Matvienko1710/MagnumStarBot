@@ -90,10 +90,6 @@ async function callbackHandler(ctx) {
             case 'my_withdrawals':
                 await handleMyWithdrawals(ctx);
                 break;
-            case 'webapp_coming_soon':
-                // Уведомление для обычных пользователей
-                await ctx.answerCbQuery('🚀 WebApp скоро будет доступен! Следите за обновлениями.', true);
-                break;
             case 'activate_key':
                 await handleActivateKey(ctx);
                 break;
@@ -633,10 +629,8 @@ async function handleMainMenu(ctx) {
             `└ 💎 Всего выведено: ${botStats.totalStarsWithdrawn} ⭐\n\n` +
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
-        // Создаем кнопку WebApp в зависимости от статуса пользователя
-        const webAppButton = isAdmin(userId)
-            ? Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
-            : Markup.button.callback('Magnum Star - Beta', 'webapp_coming_soon');
+        // Создаем кнопку WebApp - теперь доступна для всех пользователей
+        const webAppButton = Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
 
         // Создаем основное меню
         const mainMenuButtons = [
@@ -1563,10 +1557,8 @@ async function handleCheckSubscription(ctx) {
             // Проверяем, является ли пользователь админом
             const userIsAdmin = isAdmin(userId);
 
-            // Создаем кнопку WebApp в зависимости от статуса пользователя
-            const webAppButton = userIsAdmin
-                ? Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com')
-                : Markup.button.callback('Magnum Star - Beta', 'webapp_coming_soon');
+            // Создаем кнопку WebApp - теперь доступна для всех пользователей
+            const webAppButton = Markup.button.webApp('Magnum Star - Beta', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
 
             // Создаем основное меню
             const mainMenuButtons = [
