@@ -4,7 +4,7 @@ import BottomNavBar from './components/BottomNavBar';
 import Home from './pages/Home';
 import Tasks from './pages/Tasks';
 import Exchange from './pages/Exchange';
-import Profile from './pages/Profile';
+import Cases from './pages/Cases';
 import Loader from './components/Loader';
 
 function App() {
@@ -35,7 +35,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/exchange" element={<Exchange />} />
-                <Route path="/profile" element={<Profile />} />
+                <Route path="/cases" element={<Cases />} />
               </Routes>
             </div>
             <BottomNavBar />
