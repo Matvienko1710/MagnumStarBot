@@ -84,7 +84,11 @@ const RouletteItem = ({ item, isSelected = false, isSpinning = false }) => {
           minWidth: '48px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          imageRendering: 'high-quality',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
+          willChange: 'transform'
         }}
       >
         {item.icon && !item.icon.startsWith('http') && item.icon}
@@ -116,16 +120,43 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
   const containerRef = useRef(null);
   const [displayItems, setDisplayItems] = useState([]);
   const [currentPosition, setCurrentPosition] = useState(0);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   useEffect(() => {
-    // Предзагружаем изображения для плавной анимации
-    const preloadImages = () => {
-      items.forEach(item => {
-        if (item.icon && item.icon.startsWith('http')) {
+    // Предзагружаем изображения с прогресс-баром
+    const preloadImages = async () => {
+      const imageUrls = items
+        .filter(item => item.icon && item.icon.startsWith('http'))
+        .map(item => item.icon);
+      
+      if (imageUrls.length === 0) {
+        setImagesLoaded(true);
+        return;
+      }
+      
+      let loadedCount = 0;
+      const totalImages = imageUrls.length;
+      
+      const loadPromises = imageUrls.map(url => {
+        return new Promise((resolve, reject) => {
           const img = new Image();
-          img.src = item.icon;
-        }
+          img.onload = () => {
+            loadedCount++;
+            setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
+            resolve();
+          };
+          img.onerror = () => {
+            loadedCount++;
+            setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
+            resolve(); // Продолжаем даже если изображение не загрузилось
+          };
+          img.src = url;
+        });
       });
+      
+      await Promise.all(loadPromises);
+      setImagesLoaded(true);
     };
     
     preloadImages();
@@ -139,7 +170,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
   }, [items]);
 
   useEffect(() => {
-    if (isSpinning && selectedItem && containerRef.current) {
+    if (isSpinning && selectedItem && containerRef.current && imagesLoaded) {
       let animationId = null;
       
       // Параметры анимации
@@ -177,7 +208,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         const startAnimation = () => {
           playSpinSound();
           const startTime = Date.now();
-          const startDuration = 2000;
+          const startDuration = 3000;
           const startDistance = finalPosition * 0.15;
           
           const animate1 = () => {
@@ -203,7 +234,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         // Этап 2: Быстрое вращение (2.5 секунды)
         const mediumAnimation = () => {
           const mediumTime = Date.now();
-          const mediumDuration = 4000;
+          const mediumDuration = 6000;
           const mediumDistance = finalPosition * 0.7;
           
           const animate2 = () => {
@@ -230,7 +261,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         const endAnimation = () => {
           playSlowSound();
           const endTime = Date.now();
-          const endDuration = 5000;
+          const endDuration = 7000;
           const startPos = finalPosition * 0.85;
           const remainingDistance = finalPosition - startPos;
           
@@ -238,8 +269,10 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
             const elapsed = Date.now() - endTime;
             const progress = Math.min(elapsed / endDuration, 1);
             
-            // Плавное замедление (обратная квадратичная функция)
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            // Плавное замедление с физикой (кубическая функция с отскоком)
+            const easeProgress = progress < 0.5 
+              ? 4 * progress * progress * progress 
+              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
             currentPos = startPos + (remainingDistance * easeProgress);
             
             // Добавляем небольшую вибрацию к концу анимации
@@ -285,10 +318,26 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         }
       };
     }
-  }, [isSpinning, selectedItem, displayItems, onSpinComplete]);
+  }, [isSpinning, selectedItem, displayItems, onSpinComplete, imagesLoaded]);
 
   return (
     <div className="relative overflow-hidden bg-black/30 rounded-xl p-4 border border-white/20">
+      {/* Индикатор загрузки изображений */}
+      {!imagesLoaded && (
+        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-20">
+          <div className="text-white text-lg mb-4">Загрузка изображений...</div>
+          <div className="w-64 h-2 bg-white/20 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-yellow-400 rounded-full"
+              initial={{ width: "0%" }}
+              animate={{ width: `${loadingProgress}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+          <div className="text-white/60 text-sm mt-2">{loadingProgress}%</div>
+        </div>
+      )}
+      
       {/* Указатель с эффектами */}
       <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
         <motion.div 
@@ -329,12 +378,15 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
       
       {/* Рулетка */}
       <div className="overflow-hidden rounded-lg relative">
-        <div 
+        <div
           ref={containerRef}
           className={`flex will-change-transform ${isSpinning ? 'blur-[1px]' : ''}`}
           style={{ 
             transition: 'none',
-            filter: isSpinning ? 'blur(0.5px)' : 'none'
+            filter: isSpinning ? 'blur(0.5px)' : 'none',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            perspective: '1000px'
           }}
         >
           {displayItems.map((item, index) => (
