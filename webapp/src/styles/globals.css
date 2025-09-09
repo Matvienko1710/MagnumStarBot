@@ -2,129 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Оптимизации для WebApp */
-
-:root {
-    color-scheme: dark;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-    -webkit-text-size-adjust: 100%;
-    -webkit-tap-highlight-color: transparent;
-    /* Ensure proper box-sizing for all elements */
-    box-sizing: border-box;
-}
-
-
-/* Переменные цветов и темы */
-
-:root {
-    --color-bg-dark: #22223B;
-    --color-bg-dark2: #4A4E69;
-    --color-accent-blue: #4A4E69;
-    --color-accent-gold: #FFD700;
-    --color-accent-orange: #FF8C42;
-    --color-accent-pink: #FF6B6B;
-    --color-text-light: #FFFFFF;
-    --color-text-muted: #9CA3AF;
-}
-
-
 /* Base styles */
-
-*, *::before, *::after {
-    box-sizing: inherit;
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
 
 html {
     height: 100%;
-    overflow-x: hidden;
 }
 
 body {
     min-height: 100vh;
-    /* 100dvh removed for better browser compatibility */
     margin: 0;
-    color: var(--color-text-light);
-    background: linear-gradient(to bottom, var(--color-bg-dark), var(--color-bg-dark2));
+    color: #FFFFFF;
+    background: linear-gradient(to bottom, #22223B, #4A4E69);
     font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    /* Removed deprecated -webkit-overflow-scrolling: touch */
-    overscroll-behavior-y: contain;
-    /* Better font rendering on mobile */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-}
-
-
-/* Glass effect */
-
-.glass {
-    backdrop-filter: blur(16px);
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-
-/* Scrollbar styles */
-
-.custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.1);
-    /* Fallback for browsers that don't support scrollbar-width */
-    overflow: auto;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-/* Mobile-specific optimizations */
-
-@media (max-width: 640px) {
-    /* Smaller safe areas for mobile */
-    .pb-safe {
-        padding-bottom: max(1rem, env(safe-area-inset-bottom));
-    }
-
-    /* Better touch targets */
-    button, .touch-target {
-        min-height: 44px;
-        min-width: 44px;
-    }
-
-    /* Prevent zoom on input focus */
-    input[type="text"],
-    input[type="email"],
-    input[type="number"],
-    select,
-    textarea {
-        font-size: 16px;
-    }
-}
-
-/* Better responsive text scaling */
-@media (max-width: 375px) {
-    .text-responsive-sm {
-        font-size: 0.875rem;
-        line-height: 1.25rem;
-    }
-
-    .text-responsive-base {
-        font-size: 1rem;
-        line-height: 1.5rem;
-    }
 }
