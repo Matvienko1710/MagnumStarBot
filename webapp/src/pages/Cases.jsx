@@ -75,8 +75,19 @@ const RouletteItem = ({ item, isSelected = false, isSpinning = false }) => {
           rotateZ: [0, 10, -10, 0]
         } : {}}
         transition={{ duration: 0.6, repeat: isSelected ? 3 : 0 }}
+        style={{
+          backgroundImage: item.icon && item.icon.startsWith('http') ? `url(${item.icon})` : 'none',
+          backgroundSize: 'contain',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          minHeight: '48px',
+          minWidth: '48px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
       >
-        {item.icon}
+        {item.icon && !item.icon.startsWith('http') && item.icon}
       </motion.div>
       <div className="text-white font-bold text-sm mb-1">{item.name}</div>
       <div className="text-white/80 text-xs">{item.description}</div>
@@ -107,6 +118,18 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
   const [currentPosition, setCurrentPosition] = useState(0);
 
   useEffect(() => {
+    // Предзагружаем изображения для плавной анимации
+    const preloadImages = () => {
+      items.forEach(item => {
+        if (item.icon && item.icon.startsWith('http')) {
+          const img = new Image();
+          img.src = item.icon;
+        }
+      });
+    };
+    
+    preloadImages();
+    
     // Создаем массив предметов для рулетки (больше элементов для лучшего эффекта)
     const extendedItems = [];
     for (let i = 0; i < 30; i++) { // Уменьшили количество для лучшей производительности
@@ -117,6 +140,8 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
 
   useEffect(() => {
     if (isSpinning && selectedItem && containerRef.current) {
+      let animationId = null;
+      
       // Параметры анимации
       const itemWidth = 144; // 120px + margins
       const containerWidth = containerRef.current.offsetWidth;
@@ -133,7 +158,6 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
       // Многоэтапная анимация
       const animateRoulette = () => {
         let currentPos = 0;
-        let animationId;
         
         // Звуковые эффекты (виртуальные)
         const playSpinSound = () => {
@@ -153,7 +177,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         const startAnimation = () => {
           playSpinSound();
           const startTime = Date.now();
-          const startDuration = 1200;
+          const startDuration = 2000;
           const startDistance = finalPosition * 0.15;
           
           const animate1 = () => {
@@ -179,7 +203,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         // Этап 2: Быстрое вращение (2.5 секунды)
         const mediumAnimation = () => {
           const mediumTime = Date.now();
-          const mediumDuration = 2500;
+          const mediumDuration = 4000;
           const mediumDistance = finalPosition * 0.7;
           
           const animate2 = () => {
@@ -206,7 +230,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         const endAnimation = () => {
           playSlowSound();
           const endTime = Date.now();
-          const endDuration = 3500;
+          const endDuration = 5000;
           const startPos = finalPosition * 0.85;
           const remainingDistance = finalPosition - startPos;
           
@@ -251,11 +275,14 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         };
       };
       
-      // Начинаем анимацию через небольшую задержку
+      // Начинаем анимацию через небольшую задержку для предзагрузки изображений
       const timeoutId = setTimeout(animateRoulette, 100);
       
       return () => {
         clearTimeout(timeoutId);
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+        }
       };
     }
   }, [isSpinning, selectedItem, displayItems, onSpinComplete]);
