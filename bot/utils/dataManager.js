@@ -615,6 +615,11 @@ class DataManager {
                     operation: amount > 0 ? 'increase' : 'decrease'
                 });
 
+                // Проверяем достаточность средств при списании
+                if (amount < 0 && oldBalance < Math.abs(amount)) {
+                    throw new Error(`Недостаточно средств: требуется ${Math.abs(amount)} ${currency}, доступно ${oldBalance}`);
+                }
+
                 // Создаем объект для атомарного обновления
                 const updateObj = {
                     $set: { lastActivity: new Date() }

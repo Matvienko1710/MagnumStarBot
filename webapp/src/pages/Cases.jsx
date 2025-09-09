@@ -684,6 +684,17 @@ const Cases = () => {
       return;
     }
 
+    // Дополнительная проверка баланса
+    if (balance === null || balance === undefined) {
+      alert('Ошибка: баланс не загружен. Попробуйте обновить страницу.');
+      return;
+    }
+
+    if (balance < caseData.price) {
+      alert(`Недостаточно монет для открытия кейса. Нужно: ${caseData.price}, у вас: ${balance}`);
+      return;
+    }
+
     try {
       // Сначала списываем монеты через API
       const deductResponse = await fetch(`/api/balance/${userId}`, {
@@ -700,14 +711,17 @@ const Cases = () => {
 
       if (!deductResponse.ok) {
         console.error('❌ Ошибка списания средств');
-        alert('Ошибка при списании средств');
+        const errorData = await deductResponse.json().catch(() => ({}));
+        const errorMessage = errorData.error || 'Ошибка при списании средств';
+        alert(`Ошибка: ${errorMessage}`);
         return;
       }
 
       const deductData = await deductResponse.json();
       if (!deductData.success) {
         console.error('❌ Не удалось списать средства:', deductData.error);
-        alert('Недостаточно средств');
+        const errorMessage = deductData.error || 'Недостаточно средств';
+        alert(`Ошибка: ${errorMessage}`);
         return;
       }
 

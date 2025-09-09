@@ -37,6 +37,16 @@ export function updateUserBalance(userId, type, amount, reason = 'transaction') 
     }
   };
   
+  // Проверяем достаточность средств при списании
+  if (amount < 0) {
+    if (type === 'coins' && balance.coins < Math.abs(amount)) {
+      throw new Error(`Недостаточно монет: требуется ${Math.abs(amount)}, доступно ${balance.coins}`);
+    }
+    if (type === 'stars' && balance.stars < Math.abs(amount)) {
+      throw new Error(`Недостаточно звезд: требуется ${Math.abs(amount)}, доступно ${balance.stars}`);
+    }
+  }
+
   if (type === 'coins') {
     balance.coins += amount;
     if (amount > 0) balance.totalEarned.coins += amount;
@@ -44,10 +54,6 @@ export function updateUserBalance(userId, type, amount, reason = 'transaction') 
     balance.stars += amount;
     if (amount > 0) balance.totalEarned.stars += amount;
   }
-  
-  // Не позволяем балансу уйти в минус
-  balance.coins = Math.max(0, balance.coins);
-  balance.stars = Math.max(0, balance.stars);
   
   transaction.balanceAfter = {
     stars: balance.stars,

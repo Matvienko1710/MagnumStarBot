@@ -126,6 +126,8 @@ export default function handler(req, res) {
       if (botFunctions) {
         // Используем функции бота
         try {
+          console.log('🔄 Обновляем баланс через бота:', { userId: numericUserId, type, amount: numericAmount, reason });
+          
           if (type === 'coins') {
             updatedBalance = await botFunctions.updateCoins(numericUserId, numericAmount, reason);
           } else if (type === 'stars') {
@@ -134,14 +136,17 @@ export default function handler(req, res) {
           
           // Получаем полный баланс после обновления
           updatedBalance = await botFunctions.getUserBalance(numericUserId);
-          console.log('💰 Баланс обновлен через бота:', updatedBalance);
+          console.log('✅ Баланс обновлен через бота:', updatedBalance);
         } catch (error) {
-          console.warn('⚠️ Ошибка обновления баланса через бота, используем fallback:', error.message);
+          console.error('❌ Ошибка обновления баланса через бота:', error.message);
+          console.warn('⚠️ Используем fallback хранилище');
           updatedBalance = fallbackUpdateUserBalance(numericUserId, type, numericAmount, reason);
         }
       } else {
         // Используем fallback хранилище
+        console.log('🔄 Обновляем баланс через fallback:', { userId: numericUserId, type, amount: numericAmount, reason });
         updatedBalance = fallbackUpdateUserBalance(numericUserId, type, numericAmount, reason);
+        console.log('✅ Баланс обновлен через fallback:', updatedBalance);
       }
       
       const responseData = {
