@@ -382,7 +382,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
       
       {/* Рулетка */}
       <div className="overflow-hidden rounded-lg relative">
-        <div
+        <div 
           ref={containerRef}
           className={`flex will-change-transform ${isSpinning ? 'blur-[1px]' : ''}`}
           style={{ 
@@ -395,11 +395,11 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         >
           {displayItems.map((item, index) => (
             <div key={item.id || index} data-item>
-              <RouletteItem 
-                item={item}
-                isSelected={selectedItem && item.id === selectedItem.id && !isSpinning}
-                isSpinning={isSpinning}
-              />
+            <RouletteItem 
+              item={item}
+              isSelected={selectedItem && item.id === selectedItem.id && !isSpinning}
+              isSpinning={isSpinning}
+            />
             </div>
           ))}
         </div>
@@ -407,6 +407,51 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
       
       {/* Центральная линия */}
       <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-yellow-400/50 transform -translate-x-0.5 z-5 pointer-events-none" />
+    </div>
+  );
+};
+
+// Компонент отображения шансов выпадения
+const DropChances = ({ items }) => {
+  const rarityGroups = items.reduce((groups, item) => {
+    const rarity = item.rarity;
+    if (!groups[rarity]) {
+      groups[rarity] = [];
+    }
+    groups[rarity].push(item);
+    return groups;
+  }, {});
+
+  return (
+    <div className="mt-6 p-4 bg-black/30 rounded-xl border border-white/10">
+      <h3 className="text-lg font-bold text-white mb-4 text-center">🎯 Шансы выпадения</h3>
+      <div className="space-y-3">
+        {Object.entries(rarityGroups).map(([rarity, items]) => {
+          const rarityConfig = getRarityConfig(rarity);
+          const totalChance = items.reduce((sum, item) => sum + rarityConfig.dropChance, 0);
+          
+          return (
+            <div key={rarity} className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">{rarityConfig.emoji}</span>
+                <span className="text-white font-medium capitalize">{rarity}</span>
+                <span className="text-white/60 text-sm">({items.length} предметов)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-20 h-2 bg-white/20 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full bg-gradient-to-r ${rarityConfig.color} rounded-full transition-all duration-500`}
+                    style={{ width: `${totalChance}%` }}
+                  />
+                </div>
+                <span className="text-yellow-400 font-bold text-sm w-12 text-right">
+                  {totalChance.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -421,6 +466,7 @@ const CaseCard = ({ caseData, onOpen, isDisabled = false }) => {
       whileHover={{ scale: 1.02 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
+      onClick={() => !isDisabled && onOpen(caseData)}
     >
       <div className={`
         relative p-6 rounded-2xl border-2 border-white/20 backdrop-blur-lg
@@ -465,30 +511,14 @@ const CaseCard = ({ caseData, onOpen, isDisabled = false }) => {
           </div>
         </div>
 
-        {/* Цена и кнопка */}
-        <div className="flex items-center justify-between">
+        {/* Цена */}
+        <div className="flex items-center justify-center">
           <div className="flex items-center space-x-2">
             <span className="text-2xl">💰</span>
             <span className="text-xl font-bold text-yellow-400">
               {caseData.price.toLocaleString()}
             </span>
           </div>
-          
-          <motion.button
-            className={`
-              px-6 py-3 rounded-xl font-semibold
-              shadow-lg transition-all duration-200
-              ${isDisabled 
-                ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-50' 
-                : 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black hover:shadow-xl'
-              }
-            `}
-            whileHover={!isDisabled ? { scale: 1.05 } : {}}
-            whileTap={!isDisabled ? { scale: 0.95 } : {}}
-            onClick={() => !isDisabled && onOpen(caseData)}
-          >
-            {isDisabled ? 'Недостаточно монет' : 'Открыть'}
-          </motion.button>
         </div>
 
         {/* Эффект частиц при наведении */}
@@ -755,9 +785,15 @@ const Cases = () => {
     return items[Math.floor(Math.random() * items.length)];
   };
 
+  // Выбор кейса для открытия
+  const handleSelectCase = (caseData) => {
+    setSelectedCase(caseData);
+    setIsOpening(true);
+  };
+
   // Открытие кейса
-  const handleOpenCase = async (caseData) => {
-    if (balance < caseData.price || isOpening) return;
+  const handleOpenCase = async () => {
+    if (!selectedCase || balance < selectedCase.price || isOpening) return;
     
     const webApp = window.Telegram?.WebApp;
     const userId = webApp?.initDataUnsafe?.user?.id;
@@ -1078,15 +1114,50 @@ const Cases = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h2 className="text-2xl font-bold text-white text-center mb-4">
-            Открываем {selectedCase.title}...
+          <div className="flex items-center justify-between mb-4">
+            <motion.button
+              onClick={() => setIsOpening(false)}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              ← Назад
+            </motion.button>
+            <h2 className="text-2xl font-bold text-white text-center flex-1">
+              {selectedCase.title}
           </h2>
+            <div className="w-20"></div> {/* Для центрирования заголовка */}
+          </div>
+          
+          {/* Кнопка открыть */}
+          <div className="text-center mb-6">
+            <motion.button
+              onClick={handleOpenCase}
+              disabled={balance === null || balance < selectedCase.price || isSpinning}
+              className={`
+                px-8 py-4 rounded-xl font-bold text-lg
+                shadow-lg transition-all duration-200
+                ${(balance === null || balance < selectedCase.price || isSpinning)
+                  ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-50' 
+                  : 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black hover:shadow-xl'
+                }
+              `}
+              whileHover={!(balance === null || balance < selectedCase.price || isSpinning) ? { scale: 1.05 } : {}}
+              whileTap={!(balance === null || balance < selectedCase.price || isSpinning) ? { scale: 0.95 } : {}}
+            >
+              {isSpinning ? 'Открываем...' : (balance === null || balance < selectedCase.price) ? 'Недостаточно монет' : 'Открыть'}
+            </motion.button>
+          </div>
+
           <CaseRoulette 
             items={selectedCase.possibleItems}
             isSpinning={isSpinning}
             selectedItem={selectedItem}
             onSpinComplete={handleSpinComplete}
           />
+          
+          {/* Шансы выпадения */}
+          <DropChances items={selectedCase.possibleItems} />
         </motion.div>
       )}
 
@@ -1105,7 +1176,7 @@ const Cases = () => {
           >
             <CaseCard 
               caseData={cases[0]}
-              onOpen={handleOpenCase}
+              onOpen={handleSelectCase}
               isDisabled={balance === null || balance < cases[0].price}
             />
             
