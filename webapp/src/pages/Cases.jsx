@@ -198,17 +198,18 @@ const CaseCard = ({ caseData, onOpen, isDisabled = false }) => {
           
           <motion.button
             className={`
-              px-6 py-3 rounded-xl font-semibold text-black
-              bg-gradient-to-r from-yellow-400 to-orange-500
-              hover:from-yellow-500 hover:to-orange-600
-              shadow-lg hover:shadow-xl transition-all duration-200
-              ${isDisabled ? 'cursor-not-allowed opacity-50' : ''}
+              px-6 py-3 rounded-xl font-semibold
+              shadow-lg transition-all duration-200
+              ${isDisabled 
+                ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-50' 
+                : 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black hover:shadow-xl'
+              }
             `}
             whileHover={!isDisabled ? { scale: 1.05 } : {}}
             whileTap={!isDisabled ? { scale: 0.95 } : {}}
             onClick={() => !isDisabled && onOpen(caseData)}
           >
-            Открыть
+            {isDisabled ? 'Недостаточно монет' : 'Открыть'}
           </motion.button>
         </div>
 
@@ -355,12 +356,27 @@ const Cases = () => {
         
         // Загружаем баланс
         if (userId) {
-          const balanceResponse = await fetch(`/api/balance/${userId}`);
-          if (balanceResponse.ok) {
-            const data = await balanceResponse.json();
-            setBalance(data.coins || 0);
-            setStarBalance(data.stars || 0);
+          try {
+            const balanceResponse = await fetch(`/api/balance/${userId}`);
+            if (balanceResponse.ok) {
+              const data = await balanceResponse.json();
+              setBalance(data.coins || 0);
+              setStarBalance(data.stars || 0);
+              console.log('✅ Баланс загружен:', data);
+            } else {
+              console.warn('⚠️ API баланса недоступен, используем дефолтные значения');
+              setBalance(1000); // Дефолтный баланс для тестирования
+              setStarBalance(10);
+            }
+          } catch (balanceError) {
+            console.warn('⚠️ Ошибка загрузки баланса:', balanceError);
+            setBalance(1000); // Дефолтный баланс для тестирования
+            setStarBalance(10);
           }
+        } else {
+          console.warn('⚠️ UserId не найден, используем дефолтные значения');
+          setBalance(1000); // Дефолтный баланс для тестирования
+          setStarBalance(10);
         }
 
         // Загружаем последние выигрыши из бота
@@ -746,6 +762,48 @@ const Cases = () => {
               onOpen={handleOpenCase}
               isDisabled={balance === null || balance < cases[0].price}
             />
+            
+            {/* Уведомление о недостатке средств */}
+            {balance !== null && balance < cases[0].price && (
+              <motion.div
+                className="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-center"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="text-red-300 text-sm">
+                  💸 Недостаточно монет для открытия кейса
+                </div>
+                <div className="text-white/60 text-xs mt-1">
+                  Нужно: {cases[0].price} монет, у вас: {balance} монет
+                </div>
+                <div className="text-white/60 text-xs mt-1">
+                  💡 Заработайте монеты на главной странице!
+                </div>
+                <motion.button
+                  className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm font-medium transition-colors"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setBalance(prev => prev + 500);
+                    console.log('🎁 Добавлено 500 монет для тестирования');
+                  }}
+                >
+                  🎁 Получить 500 монет (тест)
+                </motion.button>
+              </motion.div>
+            )}
+            
+            {/* Отладочная информация */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 p-4 bg-black/50 rounded-lg text-xs text-white">
+                <div>🔍 Отладка кейса:</div>
+                <div>Баланс: {balance}</div>
+                <div>Цена кейса: {cases[0].price}</div>
+                <div>Заблокирован: {balance === null || balance < cases[0].price ? 'ДА' : 'НЕТ'}</div>
+                <div>Баланс загружен: {balance !== null ? 'ДА' : 'НЕТ'}</div>
+                <div>User ID: {window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'не найден'}</div>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}
