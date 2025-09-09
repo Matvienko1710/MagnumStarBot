@@ -7,34 +7,15 @@ import Exchange from './pages/Exchange';
 import Cases from './pages/Cases';
 import ComingSoon from './pages/ComingSoon';
 import Loader from './components/Loader';
-import { isAdmin } from './utils/admin';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [userIsAdmin, setUserIsAdmin] = useState(false);
 
   useEffect(() => {
     // Initialize Telegram WebApp
     const webApp = window.Telegram.WebApp;
     webApp.ready();
     webApp.expand();
-
-    // Check admin status
-    const checkAdminStatus = () => {
-      console.log('🔧 Checking admin status...');
-      const adminStatus = isAdmin();
-      console.log('✅ Admin status result:', adminStatus);
-      setUserIsAdmin(adminStatus);
-      
-      // Дополнительная отладочная информация
-      console.log('📊 Admin Debug Summary:');
-      console.log('- REACT_APP_ADMIN_IDS:', process.env.REACT_APP_ADMIN_IDS);
-      console.log('- Telegram WebApp available:', !!window.Telegram?.WebApp);
-      console.log('- User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-      console.log('- Final userIsAdmin will be:', adminStatus);
-    };
-
-    checkAdminStatus();
 
     // Show loading screen for 5 seconds
     const timer = setTimeout(() => {
@@ -44,15 +25,10 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Компонент для условного рендеринга страниц
+  // Компонент для рендеринга страниц (теперь доступны всем)
   const ConditionalRoute = ({ adminComponent, userComponent, ...props }) => {
-    // Отладочная информация для проверки админского статуса
-    console.log('🔍 ConditionalRoute Debug:');
-    console.log('👤 userIsAdmin:', userIsAdmin);
-    console.log('🎯 adminComponent exists:', !!adminComponent);
-    console.log('📱 WebApp user:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-    
-    return userIsAdmin ? adminComponent : (userComponent || <ComingSoon />);
+    // Всегда показываем основной компонент (ранее админский)
+    return adminComponent || (userComponent || <ComingSoon />);
   };
   return (
     <>

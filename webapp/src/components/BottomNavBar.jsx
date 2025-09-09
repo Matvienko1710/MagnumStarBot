@@ -1,39 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, Link } from 'react-router-dom';
-import { isAdmin } from '../utils/admin';
 
 const BottomNavBar = () => {
-  const [userIsAdmin, setUserIsAdmin] = useState(false);
   const location = useLocation();
 
-  useEffect(() => {
-    // Проверяем статус админа при загрузке компонента
-    const checkAdminStatus = async () => {
-      const adminStatus = isAdmin();
-      setUserIsAdmin(adminStatus);
-    };
-
-    checkAdminStatus();
-  }, []);
-
-  // Навигационные элементы для админов
-  const adminNavItems = [
+  // Навигационные элементы доступны всем пользователям
+  const navItems = [
     { path: '/', icon: '🏠', label: 'Home' },
     { path: '/tasks', icon: '📋', label: 'Tasks' },
     { path: '/exchange', icon: '💱', label: 'Exchange' },
     { path: '/cases', icon: '📦', label: 'Кейсы' }
   ];
-
-  // Навигационные элементы для обычных пользователей
-  const userNavItems = [
-    { path: '/', icon: '🏠', label: 'Home' },
-    { path: '/tasks', icon: '📋', label: 'Tasks' },
-    { path: '/exchange', icon: '💱', label: 'Exchange' },
-    { path: '/cases', icon: '📦', label: 'Кейсы' }
-  ];
-
-  const navItems = userIsAdmin ? adminNavItems : userNavItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-bg-dark/95 to-bg-dark2/95 backdrop-blur-lg border-t border-white/10 safe-bottom z-50">
