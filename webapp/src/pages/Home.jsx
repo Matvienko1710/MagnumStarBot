@@ -62,7 +62,7 @@ const Home = () => {
       </div>
       
       <div className="flex-1 flex items-center justify-center py-4 xs:py-6">
-        <ClickButton />
+        <ClickButton onBalanceUpdate={handleBalanceUpdate} />
       </div>
       
       <div className="safe-bottom">
