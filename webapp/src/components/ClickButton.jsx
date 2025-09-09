@@ -45,11 +45,11 @@ const ClickButton = () => {
               repeatType: "reverse"
             }}
           >
-            🪙
+            💰
           </motion.div>
         </div>
         <span className="text-yellow-300 font-bold text-sm sm:text-base md:text-lg lg:text-xl mt-2 sm:mt-3 text-center leading-tight">
-          Почему монета орла
+          Magnum Coins
         </span>
       </div>
     </div>
