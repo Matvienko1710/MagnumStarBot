@@ -10,7 +10,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "cd webapp && npm install && npm run build",
-    "postinstall": "npm run build"
+    "postinstall": "npm run build",
+    "vercel-build": "cd webapp && npm install && npm run build"
   },
   "keywords": [
     "telegram",

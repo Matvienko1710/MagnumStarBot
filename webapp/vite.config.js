@@ -13,6 +13,12 @@ export default defineConfig({
       }
     } : undefined
   },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'terser'
+  },
   define: {
     'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL)
   }
