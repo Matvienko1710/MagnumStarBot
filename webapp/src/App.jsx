@@ -19,15 +19,9 @@ function App() {
     webApp.ready();
     webApp.expand();
 
-    console.log('🚀 APP DEBUG: Инициализация приложения');
-    console.log('📱 Telegram WebApp:', webApp);
-    console.log('👤 User data:', webApp?.initDataUnsafe?.user);
-
     // Check admin status
     const checkAdminStatus = () => {
-      console.log('🔍 APP DEBUG: Проверка статуса админа...');
       const adminStatus = isAdmin();
-      console.log('✅ APP DEBUG: Результат проверки админа:', adminStatus);
       setUserIsAdmin(adminStatus);
     };
 

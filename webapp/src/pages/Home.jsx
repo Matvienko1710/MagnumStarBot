@@ -53,7 +53,7 @@ const Home = () => {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4">
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-black/50 p-4 rounded-lg text-xs font-mono whitespace-pre overflow-auto">
           {JSON.stringify(debugInfo, null, 2)}

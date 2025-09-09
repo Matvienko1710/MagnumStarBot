@@ -39,45 +39,45 @@ const BalanceCard = forwardRef((props, ref) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative p-6 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg shadow-xl border border-white/10"
+      className="relative p-4 sm:p-5 md:p-6 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg shadow-xl border border-white/10"
     >
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div className="space-y-2">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex items-center justify-between"
           >
-            <span className="text-white/60">Stars Balance</span>
+            <span className="text-white/60 text-sm sm:text-base">Stars Balance</span>
             <motion.span
               key={balance.stars}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-2xl font-bold text-white"
+              className="text-lg sm:text-xl md:text-2xl font-bold text-white"
             >
               ⭐ {balance.stars.toLocaleString()}
             </motion.span>
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex items-center justify-between"
           >
-            <span className="text-white/60">Magnum Coins</span>
+            <span className="text-white/60 text-sm sm:text-base">Magnum Coins</span>
             <motion.span
               key={balance.coins}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-2xl font-bold text-white"
+              className="text-lg sm:text-xl md:text-2xl font-bold text-white"
             >
               🪙 {balance.coins.toLocaleString()}
             </motion.span>
           </motion.div>
         </div>
-        
-        <div className="pt-4 border-t border-white/10">
-          <span className="text-sm text-white/40">
+
+        <div className="pt-3 sm:pt-4 border-t border-white/10">
+          <span className="text-xs sm:text-sm text-white/40">
             Your digital assets are growing! 🚀
           </span>
         </div>

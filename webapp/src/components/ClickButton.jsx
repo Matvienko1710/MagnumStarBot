@@ -72,7 +72,7 @@ const ClickButton = ({ onBalanceUpdate }) => {
 
   return (
     <motion.button
-      className="relative w-full h-48 rounded-2xl bg-gradient-to-br from-yellow-500/30 to-yellow-600/5 backdrop-blur-lg overflow-hidden border-2 border-yellow-500/50 shadow-xl"
+      className="relative w-full h-40 sm:h-44 md:h-48 rounded-2xl bg-gradient-to-br from-yellow-500/30 to-yellow-600/5 backdrop-blur-lg overflow-hidden border-2 border-yellow-500/50 shadow-xl"
       whileTap={{ scale: 0.95 }}
       onClick={handleClick}
       disabled={isLoading || cooldown > 0}
@@ -82,27 +82,27 @@ const ClickButton = ({ onBalanceUpdate }) => {
     >
       {/* Прогресс бар */}
       <motion.div
-        className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-yellow-500/70 to-yellow-400"
+        className="absolute bottom-0 left-0 h-1.5 sm:h-2 bg-gradient-to-r from-yellow-500/70 to-yellow-400"
         style={{ width: `${progress}%` }}
         transition={{ duration: 0.1 }}
       />
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
         <div className="relative">
           <motion.div
-            className="text-7xl font-bold mb-3 text-yellow-400"
+            className="text-5xl sm:text-6xl md:text-7xl font-bold mb-2 sm:mb-3 text-yellow-400"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
             МС
           </motion.div>
-          <motion.div 
-            className="absolute -top-2 -right-2 transform translate-x-full text-4xl"
+          <motion.div
+            className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 transform translate-x-full text-2xl sm:text-3xl md:text-4xl"
             animate={{
               scale: [1, 1.2, 1],
               rotate: [0, -10, 10, -10, 0]
             }}
-            transition={{ 
+            transition={{
               duration: 2,
               repeat: Infinity,
               repeatType: "reverse"
@@ -111,9 +111,9 @@ const ClickButton = ({ onBalanceUpdate }) => {
             🪙
           </motion.div>
         </div>
-        <span className="text-yellow-300 font-bold text-xl mt-3">
-          {cooldown > 0 ? 
-            `⏳ ${(cooldown / 1000).toFixed(1)}s` : 
+        <span className="text-yellow-300 font-bold text-sm sm:text-base md:text-lg lg:text-xl mt-2 sm:mt-3 text-center leading-tight">
+          {cooldown > 0 ?
+            `⏳ ${(cooldown / 1000).toFixed(1)}s` :
             `✨ Получить ${COINS_PER_CLICK} монету ✨`}
         </span>
       </div>
