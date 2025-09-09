@@ -555,9 +555,12 @@ const Cases = () => {
             if (balanceResponse.ok) {
               const data = await balanceResponse.json();
               if (data.success) {
-                setBalance(data.coins || 0);
-                setStarBalance(data.stars || 0);
-                console.log('✅ Баланс загружен:', data);
+                // Поддерживаем оба формата API: старый (data.balance) и новый (data.coins/stars)
+                const coins = data.coins || data.balance?.coins || 0;
+                const stars = data.stars || data.balance?.stars || 0;
+                setBalance(coins);
+                setStarBalance(stars);
+                console.log('✅ Баланс загружен в Cases:', { coins, stars, fullData: data });
               } else {
                 console.warn('⚠️ API вернул ошибку:', data.error);
                 setBalance(1000);
@@ -709,10 +712,12 @@ const Cases = () => {
       }
 
       // Обновляем локальный баланс
-      setBalance(deductData.coins);
-      setStarBalance(deductData.stars);
+      const coins = deductData.coins || deductData.balance?.coins || 0;
+      const stars = deductData.stars || deductData.balance?.stars || 0;
+      setBalance(coins);
+      setStarBalance(stars);
       
-      console.log('💰 Средства списаны, новый баланс:', deductData);
+      console.log('💰 Средства списаны, новый баланс:', { coins, stars, fullData: deductData });
 
       setSelectedCase(caseData);
       setIsOpening(true);
@@ -757,9 +762,11 @@ const Cases = () => {
           const data = await response.json();
           if (data.success) {
             // Обновляем баланс из ответа сервера
-            setBalance(data.coins || balance);
-            setStarBalance(data.stars || starBalance);
-            console.log('🎁 Награда получена, обновлен баланс:', data);
+            const coins = data.coins || data.balance?.coins || balance;
+            const stars = data.stars || data.balance?.stars || starBalance;
+            setBalance(coins);
+            setStarBalance(stars);
+            console.log('🎁 Награда получена, обновлен баланс:', { coins, stars, fullData: data });
           } else {
             console.error('❌ Ошибка при получении награды:', data.error);
           }
@@ -847,7 +854,8 @@ const Cases = () => {
         if (coinsResponse.ok) {
           const coinsData = await coinsResponse.json();
           if (coinsData.success) {
-            setBalance(coinsData.coins);
+            const coins = coinsData.coins || coinsData.balance?.coins || 0;
+            setBalance(coins);
           }
         }
       }
@@ -867,7 +875,8 @@ const Cases = () => {
         if (starsResponse.ok) {
           const starsData = await starsResponse.json();
           if (starsData.success) {
-            setStarBalance(starsData.stars);
+            const stars = starsData.stars || starsData.balance?.stars || 0;
+            setStarBalance(stars);
           }
         }
       }
@@ -923,9 +932,11 @@ const Cases = () => {
         if (data.success) {
           // Обновляем баланс
           if (item.type === 'coins') {
-            setBalance(data.coins);
+            const coins = data.coins || data.balance?.coins || 0;
+            setBalance(coins);
           } else {
-            setStarBalance(data.stars);
+            const stars = data.stars || data.balance?.stars || 0;
+            setStarBalance(stars);
           }
 
           // Удаляем предмет из инвентаря
