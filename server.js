@@ -26,7 +26,31 @@ app.use(express.static('webapp/dist'));
 
 // Явный маршрут для корневого пути вебаппа
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/webapp/dist/index.html');
+    // Читаем HTML файл
+    const fs = require('fs');
+    const path = require('path');
+    const htmlPath = path.join(__dirname, 'webapp', 'dist', 'index.html');
+
+    fs.readFile(htmlPath, 'utf8', (err, html) => {
+        if (err) {
+            console.error('Ошибка чтения HTML файла:', err);
+            return res.status(500).send('Internal Server Error');
+        }
+
+        // Получаем список администраторов из переменной окружения
+        const adminIds = process.env.ADMIN_IDS || '';
+
+        // Добавляем скрипт с переменной ADMIN_IDS в HTML
+        const adminScript = `<script>
+            window.ADMIN_IDS = "${adminIds}";
+            console.log('📋 ADMIN_IDS переданы в веб-приложение:', window.ADMIN_IDS);
+        </script>`;
+
+        // Вставляем скрипт перед закрывающим тегом </head>
+        const modifiedHtml = html.replace('</head>', adminScript + '</head>');
+
+        res.send(modifiedHtml);
+    });
 });
 
 
