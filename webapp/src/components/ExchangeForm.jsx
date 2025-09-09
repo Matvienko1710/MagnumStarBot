@@ -38,7 +38,7 @@ const ExchangeForm = () => {
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-accent-blue"
               >
                 <option value="stars">⭐ Stars</option>
-                <option value="coins">🪙 Magnum Coins</option>
+                <option value="coins">💰 Magnum Coins</option>
               </select>
             </div>
 
@@ -57,7 +57,7 @@ const ExchangeForm = () => {
                 disabled
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-accent-blue"
               >
-                <option value="coins">🪙 Magnum Coins</option>
+                <option value="coins">💰 Magnum Coins</option>
                 <option value="stars">⭐ Stars</option>
               </select>
             </div>

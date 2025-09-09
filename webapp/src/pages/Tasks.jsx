@@ -30,7 +30,7 @@ const Tasks = () => {
     if (webApp.MainButton) {
       webApp.MainButton.show();
       webApp.MainButton.setParams({
-        text: `Balance: ${newBalance.stars.toFixed(2)} ⭐ | ${newBalance.coins} 🪙`
+        text: `Balance: ${newBalance.stars.toFixed(2)} ⭐ | ${newBalance.coins} 💰`
       });
     }
   };

@@ -11,7 +11,7 @@ const TaskCard = ({ title, description, reward, type }) => {
         <div className="flex items-center justify-between">
           <h3 className="text-base sm:text-lg font-semibold text-white leading-tight">{title}</h3>
           <div className="flex items-center space-x-1 flex-shrink-0">
-            <span className="text-base sm:text-lg">{type === 'stars' ? '⭐' : '🪙'}</span>
+            <span className="text-base sm:text-lg">{type === 'stars' ? '⭐' : '💰'}</span>
             <span className="font-bold text-accent-gold text-sm sm:text-base">
               {reward.toLocaleString()}
             </span>

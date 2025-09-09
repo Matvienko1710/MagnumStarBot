@@ -91,7 +91,7 @@ const BalanceCard = forwardRef((props, ref) => {
               animate={{ opacity: 1, y: 0 }}
               className="text-lg sm:text-xl md:text-2xl font-bold text-white"
             >
-              🪙 {balance.coins.toLocaleString()}
+              💰 {balance.coins.toLocaleString()}
             </motion.span>
           </motion.div>
         </div>

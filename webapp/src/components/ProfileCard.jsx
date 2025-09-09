@@ -36,7 +36,7 @@ const ProfileCard = ({ userId, totalStars, totalCoins }) => {
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <p className="text-sm text-white/60">Total Coins Earned</p>
             <p className="text-xl font-bold text-white flex items-center space-x-1">
-              <span>🪙</span>
+              <span>💰</span>
               <span>{totalCoins.toLocaleString()}</span>
             </p>
           </div>

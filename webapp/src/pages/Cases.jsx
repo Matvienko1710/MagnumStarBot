@@ -384,7 +384,7 @@ const CaseCard = ({ caseData, onOpen, isDisabled = false }) => {
         {/* Цена и кнопка */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-2xl">🪙</span>
+            <span className="text-2xl">💰</span>
             <span className="text-xl font-bold text-yellow-400">
               {caseData.price.toLocaleString()}
             </span>
@@ -496,7 +496,7 @@ const ResultModal = ({ isOpen, result, onClose, onPlayAgain }) => {
             <div className="text-center mb-6">
               <div className="text-white/60 text-sm mb-1">Вы получили:</div>
               <div className="flex items-center justify-center space-x-2">
-                <span className="text-3xl">{result.type === 'stars' ? '⭐' : '🪙'}</span>
+                <span className="text-3xl">{result.type === 'stars' ? '⭐' : '💰'}</span>
                 <span className="text-2xl font-bold text-yellow-400">
                   {result.amount} {result.type === 'stars' ? 'звезд' : 'монет'}
                 </span>
@@ -625,20 +625,20 @@ const Cases = () => {
     { id: 'stars_10', name: '10 Звезд', description: '⭐ x10', icon: '🌟', rarity: 'rare', value: 1000, type: 'stars', amount: 10 },
     
     // Обычные предметы - монеты
-    { id: 'coins_50', name: '50 Монет', description: '🪙 x50', icon: '🪙', rarity: 'common', value: 50, type: 'coins', amount: 50 },
-    { id: 'coins_100', name: '100 Монет', description: '🪙 x100', icon: '🪙', rarity: 'common', value: 100, type: 'coins', amount: 100 },
+    { id: 'coins_50', name: '50 Монет', description: '💰 x50', icon: '💰', rarity: 'common', value: 50, type: 'coins', amount: 50 },
+    { id: 'coins_100', name: '100 Монет', description: '💰 x100', icon: '💰', rarity: 'common', value: 100, type: 'coins', amount: 100 },
     
     // Редкие предметы - больше монет
-    { id: 'coins_250', name: '250 Монет', description: '🪙 x250', icon: '💰', rarity: 'rare', value: 250, type: 'coins', amount: 250 },
-    { id: 'coins_500', name: '500 Монет', description: '🪙 x500', icon: '💰', rarity: 'rare', value: 500, type: 'coins', amount: 500 },
+    { id: 'coins_250', name: '250 Монет', description: '💰 x250', icon: '💰', rarity: 'rare', value: 250, type: 'coins', amount: 250 },
+    { id: 'coins_500', name: '500 Монет', description: '💰 x500', icon: '💰', rarity: 'rare', value: 500, type: 'coins', amount: 500 },
     
     // Эпические предметы
     { id: 'stars_25', name: '25 Звезд', description: '⭐ x25', icon: '✨', rarity: 'epic', value: 2500, type: 'stars', amount: 25 },
-    { id: 'coins_1000', name: '1000 Монет', description: '🪙 x1000', icon: '💎', rarity: 'epic', value: 1000, type: 'coins', amount: 1000 },
+    { id: 'coins_1000', name: '1000 Монет', description: '💰 x1000', icon: '💎', rarity: 'epic', value: 1000, type: 'coins', amount: 1000 },
     
     // Легендарные предметы
     { id: 'jackpot_stars', name: 'ДЖЕКПОТ Звезд!', description: '⭐ x50', icon: '🎯', rarity: 'legendary', value: 5000, type: 'stars', amount: 50 },
-    { id: 'jackpot_coins', name: 'ДЖЕКПОТ Монет!', description: '🪙 x2500', icon: '🏆', rarity: 'legendary', value: 2500, type: 'coins', amount: 2500 }
+    { id: 'jackpot_coins', name: 'ДЖЕКПОТ Монет!', description: '💰 x2500', icon: '🏆', rarity: 'legendary', value: 2500, type: 'coins', amount: 2500 }
   ];
 
   // Данные кейсов - только один Кейс Новичка
@@ -889,7 +889,7 @@ const Cases = () => {
               >
                 {/* Иконка */}
                 <div className="text-xl">
-                  {win.type === 'stars' ? '⭐' : '🪙'}
+                  {win.type === 'stars' ? '⭐' : '💰'}
                 </div>
                 
                 {/* Информация */}
@@ -962,7 +962,7 @@ const Cases = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <span className="text-2xl">🪙</span>
+            <span className="text-2xl">💰</span>
             <span className="text-lg font-bold text-yellow-400">
               {balance !== null ? balance.toLocaleString() : '---'}
             </span>
