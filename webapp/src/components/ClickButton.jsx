@@ -72,13 +72,16 @@ const ClickButton = ({ onBalanceUpdate }) => {
 
   return (
     <motion.button
-      className="relative w-full h-40 sm:h-44 md:h-48 rounded-2xl bg-gradient-to-br from-yellow-500/30 to-yellow-600/5 backdrop-blur-lg overflow-hidden border-2 border-yellow-500/50 shadow-xl"
+      className="relative w-full h-40 xs:h-44 sm:h-48 md:h-52 rounded-2xl bg-gradient-to-br from-yellow-500/30 to-yellow-600/5 backdrop-blur-lg overflow-hidden border-2 border-yellow-500/50 shadow-xl touch-target tap-highlight-transparent select-none-mobile"
       whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.02 }}
       onClick={handleClick}
       disabled={isLoading || cooldown > 0}
       style={{
-        boxShadow: '0 0 20px rgba(234, 179, 8, 0.2)'
+        boxShadow: '0 0 20px rgba(234, 179, 8, 0.2)',
+        touchAction: 'manipulation'
       }}
+      transition={{ duration: 0.15 }}
     >
       {/* Прогресс бар */}
       <motion.div

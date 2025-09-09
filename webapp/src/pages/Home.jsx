@@ -53,17 +53,25 @@ const Home = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4">
+    <div className="space-y-3 xs:space-y-4 sm:space-y-6 p-2 xs:p-3 sm:p-4 min-h-screen-safe">
       {process.env.NODE_ENV === 'development' && (
-        <div className="bg-black/50 p-4 rounded-lg text-xs font-mono whitespace-pre overflow-auto">
+        <div className="bg-black/50 p-3 xs:p-4 rounded-lg text-xs font-mono whitespace-pre overflow-auto max-h-40 overflow-y-auto">
           {JSON.stringify(debugInfo, null, 2)}
         </div>
       )}
 
-
-      <BalanceCard ref={balanceCardRef} />
-      <ClickButton onBalanceUpdate={handleBalanceUpdate} />
-      <EarnButton onClick={handleEarnClick} />
+      <div className="safe-top">
+        <BalanceCard ref={balanceCardRef} />
+      </div>
+      
+      <div className="flex-1 flex items-center justify-center py-4 xs:py-6">
+        <ClickButton onBalanceUpdate={handleBalanceUpdate} />
+      </div>
+      
+      <div className="safe-bottom">
+        <EarnButton onClick={handleEarnClick} />
+      </div>
+      
       <AdModal
         isOpen={isAdModalOpen}
         onClose={() => setIsAdModalOpen(false)}

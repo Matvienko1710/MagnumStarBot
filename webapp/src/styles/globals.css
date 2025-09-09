@@ -11,12 +11,100 @@
 
 html {
     height: 100%;
+    /* Поддержка новых единиц viewport */
+    height: 100dvh;
+    /* Отключение масштабирования на iOS */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 body {
     min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     color: #FFFFFF;
     background: linear-gradient(to bottom, #22223B, #4A4E69);
     font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    /* Улучшения для мобильных */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Поддержка safe areas */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* Мобильные утилиты */
+@layer utilities {
+    .touch-action-manipulation {
+        touch-action: manipulation;
+    }
+    
+    .select-none-mobile {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    .tap-highlight-transparent {
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Минимальные размеры для тач-элементов */
+    .touch-target {
+        min-width: 44px;
+        min-height: 44px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Безопасные отступы */
+    .safe-top {
+        padding-top: env(safe-area-inset-top);
+    }
+    
+    .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .safe-left {
+        padding-left: env(safe-area-inset-left);
+    }
+    
+    .safe-right {
+        padding-right: env(safe-area-inset-right);
+    }
+    
+    .safe-all {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+}
+
+/* Анимации производительности */
+@layer base {
+    * {
+        transform: translateZ(0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+    }
+}
+
+/* Адаптивная типографика */
+@media (max-width: 640px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 375px) {
+    html {
+        font-size: 14px;
+    }
 }
