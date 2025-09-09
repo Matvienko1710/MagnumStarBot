@@ -41,7 +41,7 @@ const getRarityConfig = (rarity) => {
 };
 
 // Компонент предмета в рулетке
-const RouletteItem = ({ item, isSelected = false }) => {
+const RouletteItem = ({ item, isSelected = false, isSpinning = false }) => {
   const rarityConfig = getRarityConfig(item.rarity);
   
   return (
@@ -52,17 +52,50 @@ const RouletteItem = ({ item, isSelected = false }) => {
         border-2 ${rarityConfig.borderColor}
         flex flex-col items-center justify-center text-center
         ${isSelected ? `ring-4 ring-white/50 scale-110 ${rarityConfig.glow}` : 'shadow-lg'}
+        ${isSpinning ? 'transform-gpu' : ''}
       `}
       animate={isSelected ? { 
-        scale: [1, 1.1, 1], 
-        boxShadow: ['0 0 0 rgba(255,255,255,0)', '0 0 30px rgba(255,255,255,0.5)', '0 0 0 rgba(255,255,255,0)']
+        scale: [1, 1.15, 1.1], 
+        boxShadow: ['0 0 0 rgba(255,255,255,0)', '0 0 30px rgba(255,255,255,0.5)', '0 0 0 rgba(255,255,255,0)'],
+        rotateY: [0, 5, -5, 0]
+      } : isSpinning ? {
+        scale: [1, 0.95, 1],
+        brightness: [1, 1.1, 1]
       } : {}}
-      transition={{ duration: 0.5 }}
+      transition={{ 
+        duration: isSelected ? 0.8 : 0.3,
+        repeat: isSpinning ? Infinity : 0,
+        ease: isSelected ? "easeInOut" : "linear"
+      }}
     >
-      <div className="text-3xl mb-2">{item.icon}</div>
+      <motion.div 
+        className="text-3xl mb-2"
+        animate={isSelected ? { 
+          scale: [1, 1.2, 1],
+          rotateZ: [0, 10, -10, 0]
+        } : {}}
+        transition={{ duration: 0.6, repeat: isSelected ? 3 : 0 }}
+      >
+        {item.icon}
+      </motion.div>
       <div className="text-white font-bold text-sm mb-1">{item.name}</div>
       <div className="text-white/80 text-xs">{item.description}</div>
       <div className="absolute top-1 right-1 text-xs">{rarityConfig.emoji}</div>
+      
+      {/* Эффект сияния для выбранного предмета */}
+      {isSelected && (
+        <motion.div 
+          className="absolute inset-0 rounded-xl pointer-events-none"
+          style={{
+            background: `linear-gradient(45deg, transparent, ${rarityConfig.color.replace('from-', '').replace('to-', '').split(' ')[0]}/20, transparent)`
+          }}
+          animate={{
+            rotate: [0, 360],
+            scale: [1, 1.05, 1]
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        />
+      )}
     </motion.div>
   );
 };
@@ -71,64 +104,225 @@ const RouletteItem = ({ item, isSelected = false }) => {
 const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
   const containerRef = useRef(null);
   const [displayItems, setDisplayItems] = useState([]);
+  const [currentPosition, setCurrentPosition] = useState(0);
 
   useEffect(() => {
-    // Создаем массив предметов для рулетки (много дубликатов для эффекта)
+    // Создаем массив предметов для рулетки (больше элементов для лучшего эффекта)
     const extendedItems = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 50; i++) {
       extendedItems.push(...items.map((item, index) => ({ ...item, id: `${item.id}-${i}-${index}` })));
     }
     setDisplayItems(extendedItems);
   }, [items]);
 
   useEffect(() => {
-    if (isSpinning && selectedItem) {
-      // Находим позицию выигрышного предмета (ближе к концу)
-      const winnerIndex = displayItems.length - Math.floor(Math.random() * 20) - 10;
+    if (isSpinning && selectedItem && containerRef.current) {
+      // Параметры анимации
+      const itemWidth = 144; // 120px + margins
+      const containerWidth = containerRef.current.offsetWidth;
       
-      if (containerRef.current) {
-        const itemWidth = 144; // 120px + margins
-        const containerWidth = containerRef.current.offsetWidth;
-        const targetPosition = (winnerIndex * itemWidth) - (containerWidth / 2) + (itemWidth / 2);
+      // Находим позицию выигрышного предмета
+      const winnerIndex = displayItems.length - Math.floor(Math.random() * 15) - 8;
+      const finalPosition = (winnerIndex * itemWidth) - (containerWidth / 2) + (itemWidth / 2);
+      
+      // Сбрасываем позицию
+      containerRef.current.style.transition = 'none';
+      containerRef.current.style.transform = 'translateX(0px)';
+      setCurrentPosition(0);
+      
+      // Многоэтапная анимация
+      const animateRoulette = () => {
+        let currentPos = 0;
+        let animationId;
         
-        // Применяем плавную анимацию
-        containerRef.current.style.transition = 'transform 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        containerRef.current.style.transform = `translateX(-${targetPosition}px)`;
+        // Звуковые эффекты (виртуальные)
+        const playSpinSound = () => {
+          // В реальном проекте здесь будет audio.play()
+          console.log('🔊 Звук вращения рулетки');
+        };
         
-        setTimeout(() => {
-          onSpinComplete(selectedItem);
-        }, 3500);
-      }
+        const playSlowSound = () => {
+          console.log('🔊 Звук замедления');
+        };
+        
+        const playStopSound = () => {
+          console.log('🔊 Звук остановки');
+        };
+
+        // Этап 1: Медленный старт (0.8 секунды)
+        const startAnimation = () => {
+          playSpinSound();
+          const startTime = Date.now();
+          const startDuration = 800;
+          const startDistance = finalPosition * 0.15;
+          
+          const animate1 = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / startDuration, 1);
+            
+            // Плавное ускорение
+            const easeProgress = progress * progress;
+            currentPos = startDistance * easeProgress;
+            
+            containerRef.current.style.transform = `translateX(-${currentPos}px)`;
+            setCurrentPosition(currentPos);
+            
+            if (progress < 1) {
+              animationId = requestAnimationFrame(animate1);
+            } else {
+              mediumAnimation();
+            }
+          };
+          animate1();
+        };
+        
+        // Этап 2: Быстрое вращение (1.5 секунды)
+        const mediumAnimation = () => {
+          const mediumTime = Date.now();
+          const mediumDuration = 1500;
+          const mediumDistance = finalPosition * 0.7;
+          
+          const animate2 = () => {
+            const elapsed = Date.now() - mediumTime;
+            const progress = Math.min(elapsed / mediumDuration, 1);
+            
+            // Линейная скорость на пике
+            const startPos = finalPosition * 0.15;
+            currentPos = startPos + (mediumDistance * progress);
+            
+            containerRef.current.style.transform = `translateX(-${currentPos}px)`;
+            setCurrentPosition(currentPos);
+            
+            if (progress < 1) {
+              animationId = requestAnimationFrame(animate2);
+            } else {
+              endAnimation();
+            }
+          };
+          animate2();
+        };
+        
+        // Этап 3: Замедление до остановки (2.5 секунды)
+        const endAnimation = () => {
+          playSlowSound();
+          const endTime = Date.now();
+          const endDuration = 2500;
+          const startPos = finalPosition * 0.85;
+          const remainingDistance = finalPosition - startPos;
+          
+          const animate3 = () => {
+            const elapsed = Date.now() - endTime;
+            const progress = Math.min(elapsed / endDuration, 1);
+            
+            // Плавное замедление (обратная квадратичная функция)
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            currentPos = startPos + (remainingDistance * easeProgress);
+            
+            // Добавляем небольшую вибрацию к концу анимации
+            let vibration = 0;
+            if (progress > 0.8) {
+              const vibrateIntensity = (1 - progress) * 5; // Уменьшается к концу
+              vibration = Math.sin(elapsed * 0.03) * vibrateIntensity;
+            }
+            
+            containerRef.current.style.transform = `translateX(-${currentPos + vibration}px)`;
+            setCurrentPosition(currentPos);
+            
+            if (progress < 1) {
+              animationId = requestAnimationFrame(animate3);
+            } else {
+              // Анимация завершена
+              playStopSound();
+              setTimeout(() => {
+                onSpinComplete(selectedItem);
+              }, 500);
+            }
+          };
+          animate3();
+        };
+        
+        startAnimation();
+        
+        // Очистка анимации при размонтировании
+        return () => {
+          if (animationId) {
+            cancelAnimationFrame(animationId);
+          }
+        };
+      };
+      
+      // Начинаем анимацию через небольшую задержку
+      const timeoutId = setTimeout(animateRoulette, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
   }, [isSpinning, selectedItem, displayItems, onSpinComplete]);
 
   return (
     <div className="relative overflow-hidden bg-black/30 rounded-xl p-4 border border-white/20">
-      {/* Указатель */}
+      {/* Указатель с эффектами */}
       <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
         <motion.div 
-          className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[15px] border-l-transparent border-r-transparent border-t-yellow-400"
-          animate={isSpinning ? { scale: [1, 1.2, 1] } : {}}
-          transition={{ duration: 0.5, repeat: Infinity }}
+          className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[15px] border-l-transparent border-r-transparent border-t-yellow-400 drop-shadow-lg"
+          animate={isSpinning ? { 
+            scale: [1, 1.3, 1], 
+            rotateZ: [0, 5, -5, 0],
+            filter: ['drop-shadow(0 0 5px rgba(255,255,0,0.3))', 'drop-shadow(0 0 15px rgba(255,255,0,0.8))', 'drop-shadow(0 0 5px rgba(255,255,0,0.3))']
+          } : {}}
+          transition={{ duration: 0.3, repeat: isSpinning ? Infinity : 0 }}
         />
       </div>
       
+      {/* Боковые градиенты для эффекта скорости */}
+      {isSpinning && (
+        <>
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-black/80 to-transparent z-5 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-black/80 to-transparent z-5 pointer-events-none" />
+        </>
+      )}
+      
+      {/* Эффект движения (полосы) */}
+      {isSpinning && (
+        <div className="absolute inset-0 z-5 pointer-events-none">
+          <motion.div 
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+            animate={{
+              x: ['-100%', '100%'],
+            }}
+            transition={{
+              duration: 0.8,
+              repeat: Infinity,
+              ease: 'linear'
+            }}
+          />
+        </div>
+      )}
+      
       {/* Рулетка */}
-      <div className="overflow-hidden rounded-lg">
+      <div className="overflow-hidden rounded-lg relative">
         <div 
           ref={containerRef}
-          className="flex will-change-transform"
-          style={{ transition: 'none' }}
+          className={`flex will-change-transform ${isSpinning ? 'blur-[1px]' : ''}`}
+          style={{ 
+            transition: 'none',
+            filter: isSpinning ? 'blur(0.5px)' : 'none'
+          }}
         >
           {displayItems.map((item, index) => (
             <RouletteItem 
               key={item.id || index} 
               item={item}
               isSelected={selectedItem && item.id === selectedItem.id && !isSpinning}
+              isSpinning={isSpinning}
             />
           ))}
         </div>
       </div>
+      
+      {/* Центральная линия */}
+      <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-yellow-400/50 transform -translate-x-0.5 z-5 pointer-events-none" />
     </div>
   );
 };
@@ -236,7 +430,7 @@ const CaseCard = ({ caseData, onOpen, isDisabled = false }) => {
                 }}
               />
             ))}
-          </div>
+        </div>
         )}
       </div>
     </motion.div>
@@ -631,7 +825,7 @@ const Cases = () => {
       return 'давно';
     };
 
-    return (
+  return (
       <div className="mb-6 overflow-hidden bg-black/20 rounded-xl border border-white/10">
         <div className="px-4 py-2 border-b border-white/10">
           <h3 className="text-sm font-bold text-white flex items-center">
@@ -708,7 +902,7 @@ const Cases = () => {
               </motion.div>
             ))}
           </motion.div>
-        </div>
+      </div>
       </div>
     );
   };
