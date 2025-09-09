@@ -75,33 +75,29 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
   useEffect(() => {
     // Создаем массив предметов для рулетки (много дубликатов для эффекта)
     const extendedItems = [];
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 30; i++) {
       extendedItems.push(...items.map((item, index) => ({ ...item, id: `${item.id}-${i}-${index}` })));
     }
     setDisplayItems(extendedItems);
   }, [items]);
 
-  const scrollToWinner = (winnerIndex) => {
-    if (containerRef.current) {
-      const itemWidth = 144; // 120px + margins
-      const containerWidth = containerRef.current.offsetWidth;
-      const targetPosition = (winnerIndex * itemWidth) - (containerWidth / 2) + (itemWidth / 2);
-      
-      containerRef.current.style.transform = `translateX(-${targetPosition}px)`;
-    }
-  };
-
   useEffect(() => {
     if (isSpinning && selectedItem) {
-      // Находим позицию выигрышного предмета
-      const winnerIndex = displayItems.findIndex(item => item.id === selectedItem.id);
-      if (winnerIndex !== -1) {
+      // Находим позицию выигрышного предмета (ближе к концу)
+      const winnerIndex = displayItems.length - Math.floor(Math.random() * 20) - 10;
+      
+      if (containerRef.current) {
+        const itemWidth = 144; // 120px + margins
+        const containerWidth = containerRef.current.offsetWidth;
+        const targetPosition = (winnerIndex * itemWidth) - (containerWidth / 2) + (itemWidth / 2);
+        
+        // Применяем плавную анимацию
+        containerRef.current.style.transition = 'transform 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        containerRef.current.style.transform = `translateX(-${targetPosition}px)`;
+        
         setTimeout(() => {
-          scrollToWinner(winnerIndex);
-          setTimeout(() => {
-            onSpinComplete(selectedItem);
-          }, 3000);
-        }, 500);
+          onSpinComplete(selectedItem);
+        }, 3500);
       }
     }
   }, [isSpinning, selectedItem, displayItems, onSpinComplete]);
@@ -110,22 +106,19 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
     <div className="relative overflow-hidden bg-black/30 rounded-xl p-4 border border-white/20">
       {/* Указатель */}
       <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
-        <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[15px] border-l-transparent border-r-transparent border-t-yellow-400"></div>
+        <motion.div 
+          className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[15px] border-l-transparent border-r-transparent border-t-yellow-400"
+          animate={isSpinning ? { scale: [1, 1.2, 1] } : {}}
+          transition={{ duration: 0.5, repeat: Infinity }}
+        />
       </div>
       
       {/* Рулетка */}
-      <div className="overflow-hidden">
-        <motion.div 
+      <div className="overflow-hidden rounded-lg">
+        <div 
           ref={containerRef}
-          className="flex"
-          initial={{ x: 0 }}
-          animate={isSpinning ? {
-            x: [0, -200, -400, -600, -800]
-          } : {}}
-          transition={{
-            duration: isSpinning ? 4 : 0,
-            ease: [0.25, 0.46, 0.45, 0.94]
-          }}
+          className="flex will-change-transform"
+          style={{ transition: 'none' }}
         >
           {displayItems.map((item, index) => (
             <RouletteItem 
@@ -134,7 +127,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
               isSelected={selectedItem && item.id === selectedItem.id && !isSpinning}
             />
           ))}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
@@ -143,7 +136,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
 // Компонент кейса
 const CaseCard = ({ caseData, onOpen, isDisabled = false }) => {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   return (
     <motion.div
       className="relative group"
@@ -304,13 +297,13 @@ const ResultModal = ({ isOpen, result, onClose, onPlayAgain }) => {
               </div>
             </motion.div>
 
-            {/* Стоимость */}
+            {/* Награда */}
             <div className="text-center mb-6">
-              <div className="text-white/60 text-sm mb-1">Стоимость предмета:</div>
+              <div className="text-white/60 text-sm mb-1">Вы получили:</div>
               <div className="flex items-center justify-center space-x-2">
-                <span className="text-2xl">🪙</span>
+                <span className="text-3xl">{result.type === 'stars' ? '⭐' : '🪙'}</span>
                 <span className="text-2xl font-bold text-yellow-400">
-                  {result.value.toLocaleString()}
+                  {result.amount} {result.type === 'stars' ? 'звезд' : 'монет'}
                 </span>
               </div>
             </div>
@@ -342,65 +335,79 @@ const ResultModal = ({ isOpen, result, onClose, onPlayAgain }) => {
 };
 
 const Cases = () => {
-  const [balance, setBalance] = useState(5000); // Стартовый баланс
+  const [balance, setBalance] = useState(null); // Баланс из API
+  const [starBalance, setStarBalance] = useState(null); // Баланс звезд
   const [isOpening, setIsOpening] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [inventory, setInventory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Данные предметов
+  // Получение баланса из API
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const webApp = window.Telegram?.WebApp;
+        const userId = webApp?.initDataUnsafe?.user?.id;
+        
+        if (userId) {
+          const response = await fetch(`/api/balance/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setBalance(data.coins || 0);
+            setStarBalance(data.stars || 0);
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки баланса:', error);
+        // Устанавливаем дефолтные значения при ошибке
+        setBalance(1000);
+        setStarBalance(10);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBalance();
+  }, []);
+
+  // Данные предметов для Кейса Новичка
   const gameItems = [
-    // Обычные предметы
-    { id: 'coin_small', name: 'Монеты', description: '50 монет', icon: '🪙', rarity: 'common', value: 50 },
-    { id: 'star_small', name: 'Звезды', description: '10 звезд', icon: '⭐', rarity: 'common', value: 100 },
-    { id: 'gem_small', name: 'Кристалл', description: 'Маленький кристалл', icon: '💎', rarity: 'common', value: 75 },
+    // Обычные предметы - звезды
+    { id: 'stars_1', name: '1 Звезда', description: '⭐ x1', icon: '⭐', rarity: 'common', value: 100, type: 'stars', amount: 1 },
+    { id: 'stars_2', name: '2 Звезды', description: '⭐ x2', icon: '⭐', rarity: 'common', value: 200, type: 'stars', amount: 2 },
+    { id: 'stars_3', name: '3 Звезды', description: '⭐ x3', icon: '⭐', rarity: 'common', value: 300, type: 'stars', amount: 3 },
     
-    // Редкие предметы
-    { id: 'coin_medium', name: 'Мешок монет', description: '200 монет', icon: '💰', rarity: 'rare', value: 200 },
-    { id: 'star_medium', name: 'Звездный дождь', description: '50 звезд', icon: '🌟', rarity: 'rare', value: 500 },
-    { id: 'key', name: 'Ключ', description: 'Открывает секреты', icon: '🗝️', rarity: 'rare', value: 300 },
+    // Редкие предметы - больше звезд
+    { id: 'stars_5', name: '5 Звезд', description: '⭐ x5', icon: '🌟', rarity: 'rare', value: 500, type: 'stars', amount: 5 },
+    { id: 'stars_10', name: '10 Звезд', description: '⭐ x10', icon: '🌟', rarity: 'rare', value: 1000, type: 'stars', amount: 10 },
+    
+    // Обычные предметы - монеты
+    { id: 'coins_50', name: '50 Монет', description: '🪙 x50', icon: '🪙', rarity: 'common', value: 50, type: 'coins', amount: 50 },
+    { id: 'coins_100', name: '100 Монет', description: '🪙 x100', icon: '🪙', rarity: 'common', value: 100, type: 'coins', amount: 100 },
+    
+    // Редкие предметы - больше монет
+    { id: 'coins_250', name: '250 Монет', description: '🪙 x250', icon: '💰', rarity: 'rare', value: 250, type: 'coins', amount: 250 },
+    { id: 'coins_500', name: '500 Монет', description: '🪙 x500', icon: '💰', rarity: 'rare', value: 500, type: 'coins', amount: 500 },
     
     // Эпические предметы
-    { id: 'treasure', name: 'Сокровище', description: 'Древний артефакт', icon: '🏺', rarity: 'epic', value: 800 },
-    { id: 'crown', name: 'Корона', description: 'Королевская корона', icon: '👑', rarity: 'epic', value: 1000 },
-    { id: 'ring', name: 'Волшебное кольцо', description: 'Кольцо силы', icon: '💍', rarity: 'epic', value: 1200 },
+    { id: 'stars_25', name: '25 Звезд', description: '⭐ x25', icon: '✨', rarity: 'epic', value: 2500, type: 'stars', amount: 25 },
+    { id: 'coins_1000', name: '1000 Монет', description: '🪙 x1000', icon: '💎', rarity: 'epic', value: 1000, type: 'coins', amount: 1000 },
     
     // Легендарные предметы
-    { id: 'dragon', name: 'Дракон', description: 'Легендарный дракон', icon: '🐉', rarity: 'legendary', value: 5000 },
-    { id: 'unicorn', name: 'Единорог', description: 'Мифический единорог', icon: '🦄', rarity: 'legendary', value: 4000 },
-    { id: 'phoenix', name: 'Феникс', description: 'Птица возрождения', icon: '🔥', rarity: 'legendary', value: 6000 }
+    { id: 'jackpot_stars', name: 'ДЖЕКПОТ Звезд!', description: '⭐ x50', icon: '🎯', rarity: 'legendary', value: 5000, type: 'stars', amount: 50 },
+    { id: 'jackpot_coins', name: 'ДЖЕКПОТ Монет!', description: '🪙 x2500', icon: '🏆', rarity: 'legendary', value: 2500, type: 'coins', amount: 2500 }
   ];
 
-  // Данные кейсов
+  // Данные кейсов - только один Кейс Новичка
   const cases = [
     {
-      id: 'starter_case',
-      title: 'Стартовый кейс',
-      description: 'Идеальный выбор для начинающих',
+      id: 'newbie_case',
+      title: 'Кейс Новичка',
+      description: 'Получи звезды и магнум коины для старта!',
       price: 100,
-      possibleItems: gameItems.filter(item => ['common', 'rare'].includes(item.rarity))
-    },
-    {
-      id: 'premium_case',
-      title: 'Премиум кейс',
-      description: 'Повышенные шансы на редкие предметы',
-      price: 500,
-      possibleItems: gameItems.filter(item => ['rare', 'epic'].includes(item.rarity))
-    },
-    {
-      id: 'legendary_case',
-      title: 'Легендарный кейс',
-      description: 'Только самые ценные предметы',
-      price: 1500,
-      possibleItems: gameItems.filter(item => ['epic', 'legendary'].includes(item.rarity))
-    },
-    {
-      id: 'mystery_case',
-      title: 'Мистический кейс',
-      description: 'Любой предмет может выпасть!',
-      price: 750,
       possibleItems: gameItems
     }
   ];
@@ -425,27 +432,76 @@ const Cases = () => {
   };
 
   // Открытие кейса
-  const handleOpenCase = (caseData) => {
+  const handleOpenCase = async (caseData) => {
     if (balance < caseData.price || isOpening) return;
     
-    setBalance(prev => prev - caseData.price);
-    setSelectedCase(caseData);
-    setIsOpening(true);
-    setIsSpinning(true);
+    const webApp = window.Telegram?.WebApp;
+    const userId = webApp?.initDataUnsafe?.user?.id;
     
-    // Выбираем выигрышный предмет
-    const wonItem = getRandomItem(caseData);
-    setSelectedItem(wonItem);
+    if (!userId) {
+      alert('Ошибка: не удалось получить данные пользователя');
+      return;
+    }
+
+    try {
+      // Списываем монеты за открытие кейса
+      setBalance(prev => prev - caseData.price);
+      setSelectedCase(caseData);
+      setIsOpening(true);
+      setIsSpinning(true);
+      
+      // Выбираем выигрышный предмет
+      const wonItem = getRandomItem(caseData);
+      setSelectedItem(wonItem);
+      
+    } catch (error) {
+      console.error('Ошибка открытия кейса:', error);
+      setIsOpening(false);
+      setIsSpinning(false);
+      alert('Ошибка при открытии кейса');
+    }
   };
 
   // Завершение анимации
-  const handleSpinComplete = (item) => {
+  const handleSpinComplete = async (item) => {
     setIsSpinning(false);
-    setTimeout(() => {
-      setIsOpening(false);
-      setShowResult(true);
-      setInventory(prev => [...prev, item]);
-      setBalance(prev => prev + Math.floor(item.value * 0.1)); // Возвращаем 10% стоимости
+    
+    const webApp = window.Telegram?.WebApp;
+    const userId = webApp?.initDataUnsafe?.user?.id;
+    
+    setTimeout(async () => {
+      try {
+        // Отправляем награду на сервер
+        const response = await fetch(`/api/reward/${userId}/case-reward`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            itemType: item.type, // 'stars' или 'coins'
+            amount: item.amount,
+            itemName: item.name
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Обновляем баланс из ответа сервера
+          setBalance(data.coins || balance);
+          setStarBalance(data.stars || starBalance);
+        }
+        
+        setIsOpening(false);
+        setShowResult(true);
+        setInventory(prev => [...prev, item]);
+        
+      } catch (error) {
+        console.error('Ошибка при получении награды:', error);
+        // Все равно показываем результат, но не обновляем баланс
+        setIsOpening(false);
+        setShowResult(true);
+        setInventory(prev => [...prev, item]);
+      }
     }, 1000);
   };
 
@@ -464,6 +520,17 @@ const Cases = () => {
     // Можно добавить логику для автоматического открытия того же кейса
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🎰</div>
+          <div className="text-white text-xl">Загрузка кейсов...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black p-4">
       {/* Заголовок и баланс */}
@@ -473,20 +540,37 @@ const Cases = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          🎰 Магазин кейсов
+          🎰 Кейс Новичка
         </motion.h1>
         
-        <motion.div 
-          className="inline-flex items-center space-x-3 bg-black/30 rounded-2xl px-6 py-3 border border-yellow-400/30"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <span className="text-3xl">🪙</span>
-          <span className="text-2xl font-bold text-yellow-400">
-            {balance.toLocaleString()}
-          </span>
-        </motion.div>
+        {/* Баланс */}
+        <div className="flex justify-center space-x-4 mb-4">
+          <motion.div 
+            className="flex items-center space-x-2 bg-black/30 rounded-2xl px-4 py-2 border border-yellow-400/30"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <span className="text-2xl">🪙</span>
+            <span className="text-lg font-bold text-yellow-400">
+              {balance !== null ? balance.toLocaleString() : '---'}
+            </span>
+          </motion.div>
+          
+          <motion.div 
+            className="flex items-center space-x-2 bg-black/30 rounded-2xl px-4 py-2 border border-blue-400/30"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <span className="text-2xl">⭐</span>
+            <span className="text-lg font-bold text-blue-400">
+              {starBalance !== null ? starBalance.toFixed(1) : '---'}
+            </span>
+          </motion.div>
+        </div>
+        
+        <p className="text-center text-blue-300 mb-2">Открывай кейсы и получай звезды и магнум коины!</p>
       </div>
 
       {/* Рулетка (показывается при открытии кейса) */}
@@ -508,28 +592,25 @@ const Cases = () => {
         </motion.div>
       )}
 
-      {/* Сетка кейсов */}
+      {/* Кейс Новичка */}
       {!isOpening && (
         <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto"
+          className="max-w-md mx-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          {cases.map((caseData, index) => (
-            <motion.div
-              key={caseData.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index }}
-            >
-              <CaseCard 
-                caseData={caseData}
-                onOpen={handleOpenCase}
-                isDisabled={balance < caseData.price}
-              />
-            </motion.div>
-          ))}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <CaseCard 
+              caseData={cases[0]}
+              onOpen={handleOpenCase}
+              isDisabled={balance === null || balance < cases[0].price}
+            />
+          </motion.div>
         </motion.div>
       )}
 
@@ -563,7 +644,7 @@ const Cases = () => {
                 </motion.div>
               );
             })}
-          </div>
+      </div>
         </motion.div>
       )}
 
