@@ -40,10 +40,14 @@ app.get('/', (req, res) => {
         // Получаем список администраторов из переменной окружения
         const adminIds = process.env.ADMIN_IDS || '';
 
+        console.log('🔍 SERVER DEBUG: ADMIN_IDS на сервере:', adminIds);
+        console.log('📊 SERVER DEBUG: Все переменные окружения с ADMIN:', Object.keys(process.env).filter(key => key.includes('ADMIN')));
+
         // Добавляем скрипт с переменной ADMIN_IDS в HTML
         const adminScript = `<script>
             window.ADMIN_IDS = "${adminIds}";
             console.log('📋 ADMIN_IDS переданы в веб-приложение:', window.ADMIN_IDS);
+            console.log('🔍 BROWSER DEBUG: window.ADMIN_IDS установлен как:', window.ADMIN_IDS);
         </script>`;
 
         // Вставляем скрипт перед закрывающим тегом </head>
