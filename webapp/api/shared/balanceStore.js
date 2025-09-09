@@ -4,7 +4,7 @@
 const usersBalance = new Map();
 
 // Инициализация дефолтного баланса
-export function initializeUserBalance(userId) {
+function initializeUserBalance(userId) {
   if (!usersBalance.has(userId)) {
     usersBalance.set(userId, {
       stars: 10,
@@ -18,12 +18,12 @@ export function initializeUserBalance(userId) {
 }
 
 // Получение баланса пользователя
-export function getUserBalance(userId) {
+function getUserBalance(userId) {
   return initializeUserBalance(userId);
 }
 
 // Обновление баланса пользователя
-export function updateUserBalance(userId, type, amount, reason = 'transaction') {
+function updateUserBalance(userId, type, amount, reason = 'transaction') {
   const balance = getUserBalance(userId);
   
   const transaction = {
@@ -85,7 +85,7 @@ export function updateUserBalance(userId, type, amount, reason = 'transaction') 
 }
 
 // Проверка достаточности средств
-export function canAfford(userId, type, amount) {
+function canAfford(userId, type, amount) {
   const balance = getUserBalance(userId);
   
   if (type === 'coins') {
@@ -98,7 +98,7 @@ export function canAfford(userId, type, amount) {
 }
 
 // Списание средств с проверкой
-export function deductBalance(userId, type, amount, reason = 'purchase') {
+function deductBalance(userId, type, amount, reason = 'purchase') {
   if (!canAfford(userId, type, amount)) {
     throw new Error(`Недостаточно средств: требуется ${amount} ${type}`);
   }
@@ -107,24 +107,24 @@ export function deductBalance(userId, type, amount, reason = 'purchase') {
 }
 
 // Добавление средств
-export function addBalance(userId, type, amount, reason = 'reward') {
+function addBalance(userId, type, amount, reason = 'reward') {
   return updateUserBalance(userId, type, amount, reason);
 }
 
 // Получение истории транзакций
-export function getTransactionHistory(userId, limit = 20) {
+function getTransactionHistory(userId, limit = 20) {
   const balance = getUserBalance(userId);
   return balance.history.slice(-limit).reverse(); // Последние транзакции первыми
 }
 
 // Очистка данных (для тестирования)
-export function clearUserData(userId) {
+function clearUserData(userId) {
   usersBalance.delete(userId);
   console.log(`🗑️ Данные пользователя ${userId} очищены`);
 }
 
 // Получение всех пользователей (для админки)
-export function getAllUsers() {
+function getAllUsers() {
   const users = [];
   for (const [userId, balance] of usersBalance.entries()) {
     users.push({
@@ -139,3 +139,16 @@ export function getAllUsers() {
   }
   return users;
 }
+
+// Экспорт функций
+module.exports = {
+  initializeUserBalance,
+  getUserBalance,
+  updateUserBalance,
+  canAfford,
+  deductBalance,
+  addBalance,
+  getTransactionHistory,
+  clearUserData,
+  getAllUsers
+};

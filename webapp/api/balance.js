@@ -33,16 +33,16 @@ try {
 }
 
 // Fallback функции для случая, когда бот недоступен
-import { 
-  getUserBalance as fallbackGetUserBalance, 
-  updateUserBalance as fallbackUpdateUserBalance, 
+const { 
+  getUserBalance: fallbackGetUserBalance, 
+  updateUserBalance: fallbackUpdateUserBalance, 
   canAfford, 
   deductBalance, 
   addBalance,
   getTransactionHistory 
-} from './shared/balanceStore.js';
+} = require('./shared/balanceStore.js');
 
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
   const { method, query, body } = req;
   const { userId } = query;
 
