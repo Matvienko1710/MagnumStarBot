@@ -21,8 +21,17 @@ function App() {
 
     // Check admin status
     const checkAdminStatus = () => {
+      console.log('🔧 Checking admin status...');
       const adminStatus = isAdmin();
+      console.log('✅ Admin status result:', adminStatus);
       setUserIsAdmin(adminStatus);
+      
+      // Дополнительная отладочная информация
+      console.log('📊 Admin Debug Summary:');
+      console.log('- REACT_APP_ADMIN_IDS:', process.env.REACT_APP_ADMIN_IDS);
+      console.log('- Telegram WebApp available:', !!window.Telegram?.WebApp);
+      console.log('- User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+      console.log('- Final userIsAdmin will be:', adminStatus);
     };
 
     checkAdminStatus();
@@ -37,6 +46,12 @@ function App() {
 
   // Компонент для условного рендеринга страниц
   const ConditionalRoute = ({ adminComponent, userComponent, ...props }) => {
+    // Отладочная информация для проверки админского статуса
+    console.log('🔍 ConditionalRoute Debug:');
+    console.log('👤 userIsAdmin:', userIsAdmin);
+    console.log('🎯 adminComponent exists:', !!adminComponent);
+    console.log('📱 WebApp user:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+    
     return userIsAdmin ? adminComponent : (userComponent || <ComingSoon />);
   };
   return (
