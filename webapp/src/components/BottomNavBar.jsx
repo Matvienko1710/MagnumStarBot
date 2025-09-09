@@ -10,7 +10,9 @@ const BottomNavBar = () => {
   useEffect(() => {
     // Проверяем статус админа при загрузке компонента
     const checkAdminStatus = async () => {
+      console.log('🧭 NAV DEBUG: Проверка статуса админа в навигации...');
       const adminStatus = isAdmin();
+      console.log('🎯 NAV DEBUG: Результат проверки админа в навигации:', adminStatus);
       setUserIsAdmin(adminStatus);
     };
 

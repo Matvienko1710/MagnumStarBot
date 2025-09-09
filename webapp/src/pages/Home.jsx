@@ -60,18 +60,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* Информация для администраторов о доступе */}
-      {!userIsAdmin && currentUser?.id && (
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
-          <h3 className="text-yellow-300 font-semibold mb-2">🔑 Для доступа к полным функциям:</h3>
-          <p className="text-white/80 text-sm mb-2">
-            Ваш ID: <code className="bg-black/30 px-2 py-1 rounded text-yellow-300">{currentUser.id}</code>
-          </p>
-          <p className="text-white/60 text-xs">
-            Добавьте этот ID в переменную <code className="bg-black/30 px-1 rounded">ADMIN_IDS</code> на сервере
-          </p>
-        </div>
-      )}
 
       <BalanceCard ref={balanceCardRef} />
       <ClickButton onBalanceUpdate={handleBalanceUpdate} />
