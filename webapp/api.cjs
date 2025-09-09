@@ -178,10 +178,13 @@ router.post('/balance/:userId', async (req, res) => {
             updatedBalance = await updateStars(numericUserId, numericAmount, reason);
         }
 
+        // Получаем актуальный баланс после обновления
+        const currentBalance = await getUserBalance(numericUserId);
+        
         const responseData = {
-            stars: updatedBalance.stars || 0,
-            coins: updatedBalance.coins || 0,
-            totalEarned: updatedBalance.totalEarned || { stars: 0, coins: 0 },
+            stars: currentBalance.stars || 0,
+            coins: currentBalance.coins || 0,
+            totalEarned: currentBalance.totalEarned || { stars: 0, coins: 0 },
             lastUpdate: new Date().toISOString()
         };
 

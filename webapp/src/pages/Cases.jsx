@@ -109,7 +109,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
   useEffect(() => {
     // Создаем массив предметов для рулетки (больше элементов для лучшего эффекта)
     const extendedItems = [];
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 30; i++) { // Уменьшили количество для лучшей производительности
       extendedItems.push(...items.map((item, index) => ({ ...item, id: `${item.id}-${i}-${index}` })));
     }
     setDisplayItems(extendedItems);
@@ -149,11 +149,11 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
           console.log('🔊 Звук остановки');
         };
 
-        // Этап 1: Медленный старт (0.8 секунды)
+        // Этап 1: Медленный старт (1.2 секунды)
         const startAnimation = () => {
           playSpinSound();
           const startTime = Date.now();
-          const startDuration = 800;
+          const startDuration = 1200;
           const startDistance = finalPosition * 0.15;
           
           const animate1 = () => {
@@ -176,10 +176,10 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
           animate1();
         };
         
-        // Этап 2: Быстрое вращение (1.5 секунды)
+        // Этап 2: Быстрое вращение (2.5 секунды)
         const mediumAnimation = () => {
           const mediumTime = Date.now();
-          const mediumDuration = 1500;
+          const mediumDuration = 2500;
           const mediumDistance = finalPosition * 0.7;
           
           const animate2 = () => {
@@ -202,11 +202,11 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
           animate2();
         };
         
-        // Этап 3: Замедление до остановки (2.5 секунды)
+        // Этап 3: Замедление до остановки (3.5 секунды)
         const endAnimation = () => {
           playSlowSound();
           const endTime = Date.now();
-          const endDuration = 2500;
+          const endDuration = 3500;
           const startPos = finalPosition * 0.85;
           const remainingDistance = finalPosition - startPos;
           
@@ -537,7 +537,6 @@ const Cases = () => {
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showResult, setShowResult] = useState(false);
-  const [inventory, setInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [recentWins, setRecentWins] = useState([]); // Последние выигрыши
 
@@ -731,8 +730,8 @@ const Cases = () => {
       }
 
       // Обновляем локальный баланс
-      const coins = deductData.coins || deductData.balance?.coins || 0;
-      const stars = deductData.stars || deductData.balance?.stars || 0;
+      const coins = deductData.coins || deductData.balance?.coins || balance;
+      const stars = deductData.stars || deductData.balance?.stars || starBalance;
       setBalance(coins);
       setStarBalance(stars);
       
@@ -810,14 +809,12 @@ const Cases = () => {
         
         setIsOpening(false);
         setShowResult(true);
-        setInventory(prev => [...prev, item]);
         
       } catch (error) {
         console.error('Ошибка при получении награды:', error);
         // Все равно показываем результат, но не обновляем баланс
         setIsOpening(false);
         setShowResult(true);
-        setInventory(prev => [...prev, item]);
       }
     }, 1000);
   };
@@ -837,138 +834,6 @@ const Cases = () => {
     // Можно добавить логику для автоматического открытия того же кейса
   };
 
-  // Сбор всех предметов из инвентаря
-  const handleCollectAll = async () => {
-    if (inventory.length === 0) return;
-
-    const webApp = window.Telegram?.WebApp;
-    const userId = webApp?.initDataUnsafe?.user?.id;
-
-    if (!userId) {
-      console.error('❌ User ID не найден');
-      return;
-    }
-
-    try {
-      // Считаем общую сумму монет и звезд
-      const totalCoins = inventory.filter(item => item.type === 'coins')
-        .reduce((sum, item) => sum + item.amount, 0);
-      const totalStars = inventory.filter(item => item.type === 'stars')
-        .reduce((sum, item) => sum + item.amount, 0);
-
-      console.log('💰 Собираем из инвентаря:', { totalCoins, totalStars, items: inventory.length });
-
-      // Обновляем баланс монет
-      if (totalCoins > 0) {
-        const coinsResponse = await fetch(`/api/balance/${userId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'coins',
-            amount: totalCoins,
-            reason: 'inventory_collect_all'
-          })
-        });
-
-        if (coinsResponse.ok) {
-          const coinsData = await coinsResponse.json();
-          if (coinsData.success) {
-            const coins = coinsData.coins || coinsData.balance?.coins || 0;
-            setBalance(coins);
-          }
-        }
-      }
-
-      // Обновляем баланс звезд
-      if (totalStars > 0) {
-        const starsResponse = await fetch(`/api/balance/${userId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'stars',
-            amount: totalStars,
-            reason: 'inventory_collect_all'
-          })
-        });
-
-        if (starsResponse.ok) {
-          const starsData = await starsResponse.json();
-          if (starsData.success) {
-            const stars = starsData.stars || starsData.balance?.stars || 0;
-            setStarBalance(stars);
-          }
-        }
-      }
-
-      // Очищаем инвентарь с анимацией
-      setInventory([]);
-      
-      console.log('✅ Всё собрано! Монет:', totalCoins, 'Звезд:', totalStars);
-
-      // Показываем уведомление о сборе
-      if (window.Telegram?.WebApp?.showAlert) {
-        window.Telegram.WebApp.showAlert(
-          `Собрано: ${totalCoins > 0 ? `${totalCoins} монет` : ''}${totalCoins > 0 && totalStars > 0 ? ', ' : ''}${totalStars > 0 ? `${totalStars} звезд` : ''}!`
-        );
-      }
-
-    } catch (error) {
-      console.error('❌ Ошибка сбора предметов:', error);
-    }
-  };
-
-  // Сбор отдельного предмета
-  const handleCollectSingle = async (itemIndex) => {
-    const actualIndex = inventory.length > 12 ? inventory.length - 12 + itemIndex : itemIndex;
-    
-    if (actualIndex >= inventory.length) return;
-
-    const item = inventory[actualIndex];
-    const webApp = window.Telegram?.WebApp;
-    const userId = webApp?.initDataUnsafe?.user?.id;
-
-    if (!userId) {
-      console.error('❌ User ID не найден');
-      return;
-    }
-
-    try {
-      console.log('💰 Собираем предмет:', item);
-
-      // Обновляем баланс через API
-      const response = await fetch(`/api/balance/${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: item.type,
-          amount: item.amount,
-          reason: `inventory_collect_${item.name}`
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Обновляем баланс
-          if (item.type === 'coins') {
-            const coins = data.coins || data.balance?.coins || 0;
-            setBalance(coins);
-          } else {
-            const stars = data.stars || data.balance?.stars || 0;
-            setStarBalance(stars);
-          }
-
-          // Удаляем предмет из инвентаря
-          setInventory(prev => prev.filter((_, index) => index !== actualIndex));
-          
-          console.log('✅ Предмет собран:', item.name, '+' + item.amount, item.type);
-        }
-      }
-
-    } catch (error) {
-      console.error('❌ Ошибка сбора предмета:', error);
-    }
-  };
 
   // Компонент ленты последних выигрышей
   const RecentWinsMarquee = () => {
@@ -1176,17 +1041,6 @@ const Cases = () => {
                 <div className="text-white/60 text-xs mt-1">
                   💡 Заработайте монеты на главной странице!
                 </div>
-                <motion.button
-                  className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm font-medium transition-colors"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setBalance(prev => prev + 500);
-                    console.log('🎁 Добавлено 500 монет для тестирования');
-                  }}
-                >
-                  🎁 Получить 500 монет (тест)
-                </motion.button>
               </motion.div>
             )}
             
@@ -1205,116 +1059,6 @@ const Cases = () => {
         </motion.div>
       )}
 
-      {/* Инвентарь */}
-      {inventory.length > 0 && !isOpening && (
-        <motion.div 
-          className="mt-12 max-w-4xl mx-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">
-              🎒 Ваш инвентарь ({inventory.length})
-            </h2>
-            
-            {/* Кнопка "Забрать всё" */}
-            <motion.button
-              className="relative px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-2 overflow-hidden"
-              whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(16, 185, 129, 0.4)' }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleCollectAll}
-            >
-              {/* Фоновый эффект */}
-              <motion.div 
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full"
-                animate={{ x: ['-100%', '200%'] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              />
-              
-              <motion.span
-                animate={{ rotateZ: [0, 10, -10, 0] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              >
-                💰
-              </motion.span>
-              <span>Забрать всё</span>
-              
-              {/* Показываем отдельно монеты и звезды */}
-              <div className="flex items-center space-x-1">
-                {inventory.filter(item => item.type === 'coins').length > 0 && (
-                  <motion.span
-                    className="text-xs bg-yellow-500/30 px-2 py-1 rounded-full flex items-center space-x-1"
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                  >
-                    <span>🪙</span>
-                    <span>{inventory.filter(item => item.type === 'coins').reduce((sum, item) => sum + item.amount, 0)}</span>
-                  </motion.span>
-                )}
-                {inventory.filter(item => item.type === 'stars').length > 0 && (
-                  <motion.span
-                    className="text-xs bg-blue-500/30 px-2 py-1 rounded-full flex items-center space-x-1"
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-                  >
-                    <span>⭐</span>
-                    <span>{inventory.filter(item => item.type === 'stars').reduce((sum, item) => sum + item.amount, 0)}</span>
-                  </motion.span>
-                )}
-              </div>
-            </motion.button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-            {inventory.slice(-12).map((item, index) => {
-              const rarityConfig = getRarityConfig(item.rarity);
-              return (
-                <motion.div
-                  key={index}
-                  className={`
-                    relative p-3 rounded-lg text-center
-                    bg-gradient-to-br ${rarityConfig.color}
-                    border ${rarityConfig.borderColor}
-                    group hover:scale-105 transition-transform cursor-pointer
-                  `}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -5 }}
-                  onClick={() => handleCollectSingle(index)}
-                >
-                  <div className="text-2xl mb-1">{item.icon}</div>
-                  <div className="text-white text-xs font-medium mb-1">{item.name}</div>
-                  <div className={`text-xs font-bold ${
-                    item.type === 'stars' ? 'text-blue-200' : 'text-yellow-200'
-                  }`}>
-                    +{item.amount}
-                  </div>
-                  
-                  {/* Эффект при наведении */}
-                  <div className="absolute inset-0 bg-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                  
-                  {/* Кнопка сбора отдельного предмета */}
-                  <motion.div 
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                    whileHover={{ scale: 1.2 }}
-                  >
-                    ✓
-                  </motion.div>
-                </motion.div>
-              );
-            })}
-          </div>
-          
-          {inventory.length > 12 && (
-            <div className="text-center mt-4">
-              <div className="text-white/60 text-sm">
-                ... и ещё {inventory.length - 12} предметов
-              </div>
-            </div>
-          )}
-        </motion.div>
-      )}
 
       {/* Модалка результата */}
       <ResultModal 
