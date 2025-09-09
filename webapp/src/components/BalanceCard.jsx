@@ -27,9 +27,10 @@ const BalanceCard = forwardRef((props, ref) => {
       const data = await response.json();
       
       if (data.success) {
-        const stars = data.stars || 0;
-        const coins = data.coins || 0;
-        console.log('✅ Баланс получен:', { stars, coins });
+        // Поддерживаем два формата API: старый (data.balance) и новый (data.stars/coins)
+        const stars = data.stars || data.balance?.stars || 0;
+        const coins = data.coins || data.balance?.coins || 0;
+        console.log('✅ Баланс получен:', { stars, coins, fullData: data });
         setBalance({ stars, coins });
         setError(null);
       } else {

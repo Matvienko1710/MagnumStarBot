@@ -1,6 +1,24 @@
 // API для обработки награды за открытие кейса
+
+// Пытаемся использовать функции бота, если доступны
+let botFunctions = null;
+
+try {
+  // Импортируем функции бота
+  const currency = require('../../bot/utils/currency');
+  botFunctions = {
+    getUserBalance: currency.getUserBalance,
+    updateCoins: currency.updateCoins,
+    updateStars: currency.updateStars
+  };
+  console.log('✅ Функции бота доступны для API награды');
+} catch (error) {
+  console.warn('⚠️ Функции бота недоступны для API награды, используем fallback:', error.message);
+}
+
+// Fallback функции
 import { 
-  getUserBalance, 
+  getUserBalance as fallbackGetUserBalance, 
   addBalance, 
   deductBalance,
   canAfford 
@@ -42,19 +60,43 @@ export default function handler(req, res) {
       rarity
     });
 
-    const updatedBalance = addBalance(
-      numericUserId,
-      type,
-      numericAmount,
-      `case_reward_${item}_${rarity}`
-    );
+    let updatedBalance;
+    const reason = `case_reward_${item}_${rarity}`;
+
+    if (botFunctions) {
+      // Используем функции бота
+      try {
+        if (type === 'coins') {
+          await botFunctions.updateCoins(numericUserId, numericAmount, reason);
+        } else if (type === 'stars') {
+          await botFunctions.updateStars(numericUserId, numericAmount, reason);
+        }
+        
+        // Получаем полный баланс после обновления
+        updatedBalance = await botFunctions.getUserBalance(numericUserId);
+        console.log('🎁 Награда добавлена через бота:', updatedBalance);
+      } catch (error) {
+        console.warn('⚠️ Ошибка добавления награды через бота, используем fallback:', error.message);
+        updatedBalance = addBalance(numericUserId, type, numericAmount, reason);
+      }
+    } else {
+      // Используем fallback хранилище
+      updatedBalance = addBalance(numericUserId, type, numericAmount, reason);
+    }
+
+    const responseData = {
+      stars: updatedBalance.stars || 0,
+      coins: updatedBalance.coins || 0,
+      totalEarned: updatedBalance.totalEarned || { stars: 0, coins: 0 }
+    };
 
     const response = {
       success: true,
       message: 'Reward processed successfully',
-      stars: updatedBalance.stars,
-      coins: updatedBalance.coins,
-      totalEarned: updatedBalance.totalEarned,
+      // Новый формат (прямо в корне)
+      ...responseData,
+      // Старый формат (в объекте balance для совместимости)
+      balance: responseData,
       reward: {
         item,
         type,

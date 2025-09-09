@@ -1,7 +1,41 @@
 // API для работы с балансом пользователей
+
+// Пытаемся использовать функции бота, если доступны
+let botFunctions = null;
+
+try {
+  // Импортируем функции бота с правильным путем
+  const currency = require('../../bot/utils/currency');
+  botFunctions = {
+    getUserBalance: currency.getUserBalance,
+    updateCoins: currency.updateCoins,
+    updateStars: currency.updateStars
+  };
+  console.log('✅ Функции бота доступны, используем их для API баланса');
+} catch (error) {
+  console.warn('⚠️ Функции бота недоступны, используем fallback хранилище:', error.message);
+  console.warn('📍 Попробуем альтернативный путь...');
+  
+  try {
+    // Альтернативный путь для случая, если API находится в другой папке
+    const path = require('path');
+    const botPath = path.resolve(__dirname, '../../bot/utils/currency.js');
+    const currency = require(botPath);
+    botFunctions = {
+      getUserBalance: currency.getUserBalance,
+      updateCoins: currency.updateCoins,
+      updateStars: currency.updateStars
+    };
+    console.log('✅ Функции бота найдены по альтернативному пути');
+  } catch (error2) {
+    console.warn('⚠️ И альтернативный путь не сработал:', error2.message);
+  }
+}
+
+// Fallback функции для случая, когда бот недоступен
 import { 
-  getUserBalance, 
-  updateUserBalance, 
+  getUserBalance as fallbackGetUserBalance, 
+  updateUserBalance as fallbackUpdateUserBalance, 
   canAfford, 
   deductBalance, 
   addBalance,
@@ -30,14 +64,35 @@ export default function handler(req, res) {
   try {
     if (method === 'GET') {
       // Получение баланса
-      const balance = getUserBalance(numericUserId);
+      let balance;
       
+      if (botFunctions) {
+        // Используем функции бота
+        try {
+          balance = await botFunctions.getUserBalance(numericUserId);
+          console.log('📊 Баланс получен от бота:', balance);
+        } catch (error) {
+          console.warn('⚠️ Ошибка получения баланса от бота, используем fallback:', error.message);
+          balance = fallbackGetUserBalance(numericUserId);
+        }
+      } else {
+        // Используем fallback хранилище
+        balance = fallbackGetUserBalance(numericUserId);
+      }
+      
+      const responseData = {
+        stars: balance.stars || 0,
+        coins: balance.coins || 0,
+        totalEarned: balance.totalEarned || { stars: 0, coins: 0 },
+        lastUpdate: balance.lastUpdate || Date.now()
+      };
+
       res.status(200).json({
         success: true,
-        stars: balance.stars,
-        coins: balance.coins,
-        totalEarned: balance.totalEarned,
-        lastUpdate: balance.lastUpdate
+        // Новый формат (прямо в корне)
+        ...responseData,
+        // Старый формат (в объекте balance для совместимости)
+        balance: responseData
       });
       
     } else if (method === 'POST') {
@@ -66,15 +121,43 @@ export default function handler(req, res) {
         });
       }
       
-      const updatedBalance = updateUserBalance(numericUserId, type, numericAmount, reason);
+      let updatedBalance;
       
+      if (botFunctions) {
+        // Используем функции бота
+        try {
+          if (type === 'coins') {
+            updatedBalance = await botFunctions.updateCoins(numericUserId, numericAmount, reason);
+          } else if (type === 'stars') {
+            updatedBalance = await botFunctions.updateStars(numericUserId, numericAmount, reason);
+          }
+          
+          // Получаем полный баланс после обновления
+          updatedBalance = await botFunctions.getUserBalance(numericUserId);
+          console.log('💰 Баланс обновлен через бота:', updatedBalance);
+        } catch (error) {
+          console.warn('⚠️ Ошибка обновления баланса через бота, используем fallback:', error.message);
+          updatedBalance = fallbackUpdateUserBalance(numericUserId, type, numericAmount, reason);
+        }
+      } else {
+        // Используем fallback хранилище
+        updatedBalance = fallbackUpdateUserBalance(numericUserId, type, numericAmount, reason);
+      }
+      
+      const responseData = {
+        stars: updatedBalance.stars || 0,
+        coins: updatedBalance.coins || 0,
+        totalEarned: updatedBalance.totalEarned || { stars: 0, coins: 0 },
+        lastUpdate: updatedBalance.lastUpdate || Date.now()
+      };
+
       res.status(200).json({
         success: true,
         message: 'Balance updated successfully',
-        stars: updatedBalance.stars,
-        coins: updatedBalance.coins,
-        totalEarned: updatedBalance.totalEarned,
-        lastUpdate: updatedBalance.lastUpdate
+        // Новый формат (прямо в корне)
+        ...responseData,
+        // Старый формат (в объекте balance для совместимости)
+        balance: responseData
       });
       
     } else {
