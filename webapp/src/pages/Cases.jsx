@@ -344,33 +344,55 @@ const Cases = () => {
   const [showResult, setShowResult] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [recentWins, setRecentWins] = useState([]); // Последние выигрыши
 
-  // Получение баланса из API
+  // Получение баланса и последних выигрышей из API
   useEffect(() => {
-    const fetchBalance = async () => {
+    const fetchData = async () => {
       try {
         const webApp = window.Telegram?.WebApp;
         const userId = webApp?.initDataUnsafe?.user?.id;
         
+        // Загружаем баланс
         if (userId) {
-          const response = await fetch(`/api/balance/${userId}`);
-          if (response.ok) {
-            const data = await response.json();
+          const balanceResponse = await fetch(`/api/balance/${userId}`);
+          if (balanceResponse.ok) {
+            const data = await balanceResponse.json();
             setBalance(data.coins || 0);
             setStarBalance(data.stars || 0);
           }
         }
+
+        // Загружаем последние выигрыши из бота
+        const winsResponse = await fetch('/api/recent-wins');
+        if (winsResponse.ok) {
+          const winsData = await winsResponse.json();
+          setRecentWins(winsData.wins || []);
+        }
+        
       } catch (error) {
-        console.error('Ошибка загрузки баланса:', error);
+        console.error('Ошибка загрузки данных:', error);
         // Устанавливаем дефолтные значения при ошибке
         setBalance(1000);
         setStarBalance(10);
+        // Добавляем тестовые данные выигрышей
+        setRecentWins([
+          { id: 1, username: 'Player1', item: 'ДЖЕКПОТ Звезд!', amount: 50, type: 'stars', timestamp: Date.now() - 1000 },
+          { id: 2, username: 'Player2', item: '25 Звезд', amount: 25, type: 'stars', timestamp: Date.now() - 5000 },
+          { id: 3, username: 'Player3', item: '1000 Монет', amount: 1000, type: 'coins', timestamp: Date.now() - 10000 },
+          { id: 4, username: 'Player4', item: '10 Звезд', amount: 10, type: 'stars', timestamp: Date.now() - 15000 },
+          { id: 5, username: 'Player5', item: '500 Монет', amount: 500, type: 'coins', timestamp: Date.now() - 20000 }
+        ]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchBalance();
+    fetchData();
+    
+    // Обновляем данные каждые 30 секунд
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Данные предметов для Кейса Новичка
@@ -490,6 +512,21 @@ const Cases = () => {
           setBalance(data.coins || balance);
           setStarBalance(data.stars || starBalance);
         }
+
+        // Добавляем свой выигрыш в ленту активности
+        const webApp = window.Telegram?.WebApp;
+        const currentUser = webApp?.initDataUnsafe?.user;
+        const newWin = {
+          id: Date.now(),
+          username: currentUser?.username || currentUser?.first_name || 'Игрок',
+          item: item.name,
+          amount: item.amount,
+          type: item.type,
+          timestamp: Date.now(),
+          isOwn: true // Помечаем как собственный выигрыш
+        };
+        
+        setRecentWins(prev => [newWin, ...prev.slice(0, 9)]); // Добавляем в начало, оставляем только 10 последних
         
         setIsOpening(false);
         setShowResult(true);
@@ -518,6 +555,102 @@ const Cases = () => {
     setSelectedCase(null);
     setSelectedItem(null);
     // Можно добавить логику для автоматического открытия того же кейса
+  };
+
+  // Компонент ленты последних выигрышей
+  const RecentWinsMarquee = () => {
+    if (recentWins.length === 0) return null;
+
+    const formatTimeAgo = (timestamp) => {
+      const diff = Date.now() - timestamp;
+      const minutes = Math.floor(diff / 60000);
+      if (minutes < 1) return 'только что';
+      if (minutes < 60) return `${minutes}м назад`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}ч назад`;
+      return 'давно';
+    };
+
+    return (
+      <div className="mb-6 overflow-hidden bg-black/20 rounded-xl border border-white/10">
+        <div className="px-4 py-2 border-b border-white/10">
+          <h3 className="text-sm font-bold text-white flex items-center">
+            🔥 Последние выигрыши
+            <motion.div
+              className="ml-2 w-2 h-2 bg-green-400 rounded-full"
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          </h3>
+        </div>
+        
+        <div className="relative h-16 overflow-hidden">
+          <motion.div
+            className="flex absolute items-center h-full"
+            animate={{ x: [0, -100 * recentWins.length] }}
+            transition={{
+              duration: recentWins.length * 8,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          >
+            {/* Дублируем элементы для бесконечного скролла */}
+            {[...recentWins, ...recentWins].map((win, index) => (
+              <motion.div
+                key={`${win.id}-${index}`}
+                className={`
+                  flex items-center space-x-3 px-4 py-2 mx-2 rounded-lg min-w-[280px]
+                  ${win.isOwn 
+                    ? 'bg-yellow-500/20 border border-yellow-400/30' 
+                    : 'bg-white/5 border border-white/10'
+                  }
+                `}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                {/* Иконка */}
+                <div className="text-xl">
+                  {win.type === 'stars' ? '⭐' : '🪙'}
+                </div>
+                
+                {/* Информация */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2">
+                    <span className={`font-bold text-sm truncate ${win.isOwn ? 'text-yellow-300' : 'text-white'}`}>
+                      {win.isOwn ? 'Вы' : win.username}
+                    </span>
+                    <span className="text-white/60 text-xs">
+                      {formatTimeAgo(win.timestamp)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-1">
+                    <span className="text-xs text-white/80">выиграл</span>
+                    <span className={`font-bold text-xs ${
+                      win.type === 'stars' ? 'text-blue-400' : 'text-yellow-400'
+                    }`}>
+                      {win.amount} {win.type === 'stars' ? 'звезд' : 'монет'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Редкость */}
+                {(win.amount >= 1000 || (win.type === 'stars' && win.amount >= 25)) && (
+                  <motion.div
+                    className="text-xs px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-bold"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    {win.amount >= 2000 || (win.type === 'stars' && win.amount >= 50) ? '🏆' : '💎'}
+                  </motion.div>
+                )}
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -572,6 +705,9 @@ const Cases = () => {
         
         <p className="text-center text-blue-300 mb-2">Открывай кейсы и получай звезды и магнум коины!</p>
       </div>
+
+      {/* Лента последних выигрышей */}
+      <RecentWinsMarquee />
 
       {/* Рулетка (показывается при открытии кейса) */}
       {isOpening && selectedCase && (
