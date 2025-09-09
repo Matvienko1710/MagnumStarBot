@@ -88,7 +88,8 @@ const RouletteItem = ({ item, isSelected = false, isSpinning = false }) => {
           imageRendering: 'high-quality',
           backfaceVisibility: 'hidden',
           transform: 'translateZ(0)',
-          willChange: 'transform'
+          willChange: 'transform',
+          opacity: item.icon && item.icon.startsWith('http') ? 1 : 1
         }}
       >
         {item.icon && !item.icon.startsWith('http') && item.icon}
@@ -141,6 +142,7 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
       const loadPromises = imageUrls.map(url => {
         return new Promise((resolve, reject) => {
           const img = new Image();
+          img.crossOrigin = 'anonymous'; // Для CORS
           img.onload = () => {
             loadedCount++;
             setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
@@ -151,6 +153,12 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
             setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
             resolve(); // Продолжаем даже если изображение не загрузилось
           };
+          // Добавляем таймаут для загрузки
+          setTimeout(() => {
+            loadedCount++;
+            setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
+            resolve();
+          }, 5000); // 5 секунд таймаут
           img.src = url;
         });
       });
@@ -204,98 +212,54 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
           console.log('🔊 Звук остановки');
         };
 
-        // Этап 1: Медленный старт (1.2 секунды)
+        // Единая плавная анимация с правильным easing
         const startAnimation = () => {
           playSpinSound();
           const startTime = Date.now();
-          const startDuration = 3000;
-          const startDistance = finalPosition * 0.15;
+          const totalDuration = 15000; // 15 секунд общее время
           
-          const animate1 = () => {
+          const animate = () => {
             const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / startDuration, 1);
+            const progress = Math.min(elapsed / totalDuration, 1);
             
-            // Плавное ускорение
-            const easeProgress = progress * progress;
-            currentPos = startDistance * easeProgress;
-            
-            containerRef.current.style.transform = `translateX(-${currentPos}px)`;
-            setCurrentPosition(currentPos);
-            
-            if (progress < 1) {
-              animationId = requestAnimationFrame(animate1);
+            // Сложная функция easing для реалистичного замедления
+            let easeProgress;
+            if (progress < 0.05) {
+              // Очень медленный старт (0.75 секунды)
+              easeProgress = progress * progress * progress * 20;
+            } else if (progress < 0.6) {
+              // Быстрое вращение (8.25 секунд)
+              const localProgress = (progress - 0.05) / 0.55;
+              easeProgress = 0.000125 + localProgress * 0.7;
             } else {
-              mediumAnimation();
+              // Плавное замедление (6 секунд)
+              const localProgress = (progress - 0.6) / 0.4;
+              const easeOut = 1 - Math.pow(1 - localProgress, 3);
+              easeProgress = 0.700125 + easeOut * 0.299875;
             }
-          };
-          animate1();
-        };
-        
-        // Этап 2: Быстрое вращение (2.5 секунды)
-        const mediumAnimation = () => {
-          const mediumTime = Date.now();
-          const mediumDuration = 6000;
-          const mediumDistance = finalPosition * 0.7;
-          
-          const animate2 = () => {
-            const elapsed = Date.now() - mediumTime;
-            const progress = Math.min(elapsed / mediumDuration, 1);
             
-            // Линейная скорость на пике
-            const startPos = finalPosition * 0.15;
-            currentPos = startPos + (mediumDistance * progress);
+            currentPos = finalPosition * easeProgress;
             
-            containerRef.current.style.transform = `translateX(-${currentPos}px)`;
-            setCurrentPosition(currentPos);
-            
-            if (progress < 1) {
-              animationId = requestAnimationFrame(animate2);
-            } else {
-              endAnimation();
-            }
-          };
-          animate2();
-        };
-        
-        // Этап 3: Замедление до остановки (3.5 секунды)
-        const endAnimation = () => {
-          playSlowSound();
-          const endTime = Date.now();
-          const endDuration = 7000;
-          const startPos = finalPosition * 0.85;
-          const remainingDistance = finalPosition - startPos;
-          
-          const animate3 = () => {
-            const elapsed = Date.now() - endTime;
-            const progress = Math.min(elapsed / endDuration, 1);
-            
-            // Плавное замедление с физикой (кубическая функция с отскоком)
-            const easeProgress = progress < 0.5 
-              ? 4 * progress * progress * progress 
-              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-            currentPos = startPos + (remainingDistance * easeProgress);
-            
-            // Добавляем небольшую вибрацию к концу анимации
+            // Добавляем небольшую вибрацию в конце
             let vibration = 0;
-            if (progress > 0.8) {
-              const vibrateIntensity = (1 - progress) * 5; // Уменьшается к концу
-              vibration = Math.sin(elapsed * 0.03) * vibrateIntensity;
+            if (progress > 0.95) {
+              vibration = Math.sin((progress - 0.95) * Math.PI * 10) * 0.5;
             }
             
             containerRef.current.style.transform = `translateX(-${currentPos + vibration}px)`;
             setCurrentPosition(currentPos);
             
             if (progress < 1) {
-              animationId = requestAnimationFrame(animate3);
+              animationId = requestAnimationFrame(animate);
             } else {
               // Анимация завершена
               playStopSound();
               setTimeout(() => {
                 onSpinComplete(selectedItem);
-              }, 500);
+              }, 2000); // 2 секунды задержка перед показом результата
             }
           };
-          animate3();
+          animate();
         };
         
         startAnimation();
@@ -308,8 +272,8 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         };
       };
       
-      // Начинаем анимацию через небольшую задержку для предзагрузки изображений
-      const timeoutId = setTimeout(animateRoulette, 100);
+      // Начинаем анимацию через задержку для полной предзагрузки изображений
+      const timeoutId = setTimeout(animateRoulette, 500);
       
       return () => {
         clearTimeout(timeoutId);
