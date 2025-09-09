@@ -360,22 +360,28 @@ const Cases = () => {
             const balanceResponse = await fetch(`/api/balance/${userId}`);
             if (balanceResponse.ok) {
               const data = await balanceResponse.json();
-              setBalance(data.coins || 0);
-              setStarBalance(data.stars || 0);
-              console.log('✅ Баланс загружен:', data);
+              if (data.success) {
+                setBalance(data.coins || 0);
+                setStarBalance(data.stars || 0);
+                console.log('✅ Баланс загружен:', data);
+              } else {
+                console.warn('⚠️ API вернул ошибку:', data.error);
+                setBalance(1000);
+                setStarBalance(10);
+              }
             } else {
               console.warn('⚠️ API баланса недоступен, используем дефолтные значения');
-              setBalance(1000); // Дефолтный баланс для тестирования
+              setBalance(1000);
               setStarBalance(10);
             }
           } catch (balanceError) {
             console.warn('⚠️ Ошибка загрузки баланса:', balanceError);
-            setBalance(1000); // Дефолтный баланс для тестирования
+            setBalance(1000);
             setStarBalance(10);
           }
         } else {
           console.warn('⚠️ UserId не найден, используем дефолтные значения');
-          setBalance(1000); // Дефолтный баланс для тестирования
+          setBalance(1000);
           setStarBalance(10);
         }
 
@@ -482,8 +488,38 @@ const Cases = () => {
     }
 
     try {
-      // Списываем монеты за открытие кейса
-      setBalance(prev => prev - caseData.price);
+      // Сначала списываем монеты через API
+      const deductResponse = await fetch(`/api/balance/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'coins',
+          amount: -caseData.price, // Отрицательное значение для списания
+          reason: 'case_purchase'
+        })
+      });
+
+      if (!deductResponse.ok) {
+        console.error('❌ Ошибка списания средств');
+        alert('Ошибка при списании средств');
+        return;
+      }
+
+      const deductData = await deductResponse.json();
+      if (!deductData.success) {
+        console.error('❌ Не удалось списать средства:', deductData.error);
+        alert('Недостаточно средств');
+        return;
+      }
+
+      // Обновляем локальный баланс
+      setBalance(deductData.coins);
+      setStarBalance(deductData.stars);
+      
+      console.log('💰 Средства списаны, новый баланс:', deductData);
+
       setSelectedCase(caseData);
       setIsOpening(true);
       setIsSpinning(true);
@@ -493,7 +529,7 @@ const Cases = () => {
       setSelectedItem(wonItem);
       
     } catch (error) {
-      console.error('Ошибка открытия кейса:', error);
+      console.error('❌ Ошибка открытия кейса:', error);
       setIsOpening(false);
       setIsSpinning(false);
       alert('Ошибка при открытии кейса');
@@ -516,17 +552,25 @@ const Cases = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            itemType: item.type, // 'stars' или 'coins'
+            type: item.type, // 'stars' или 'coins'
             amount: item.amount,
-            itemName: item.name
+            item: item.name,
+            rarity: item.rarity
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
-          // Обновляем баланс из ответа сервера
-          setBalance(data.coins || balance);
-          setStarBalance(data.stars || starBalance);
+          if (data.success) {
+            // Обновляем баланс из ответа сервера
+            setBalance(data.coins || balance);
+            setStarBalance(data.stars || starBalance);
+            console.log('🎁 Награда получена, обновлен баланс:', data);
+          } else {
+            console.error('❌ Ошибка при получении награды:', data.error);
+          }
+        } else {
+          console.error('❌ Ошибка API награды');
         }
 
         // Добавляем свой выигрыш в ленту активности
