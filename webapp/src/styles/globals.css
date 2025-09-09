@@ -11,6 +11,8 @@
     text-rendering: optimizeLegibility;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    /* Ensure proper box-sizing for all elements */
+    box-sizing: border-box;
 }
 
 
@@ -30,6 +32,10 @@
 
 /* Base styles */
 
+*, *::before, *::after {
+    box-sizing: inherit;
+}
+
 html {
     height: 100%;
     overflow-x: hidden;
@@ -37,14 +43,17 @@ html {
 
 body {
     min-height: 100vh;
-    /* Use 100dvh for better mobile viewport handling */
-    min-height: 100dvh;
+    /* 100dvh removed for better browser compatibility */
     margin: 0;
     color: var(--color-text-light);
     background: linear-gradient(to bottom, var(--color-bg-dark), var(--color-bg-dark2));
     font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: none;
+    /* Removed deprecated -webkit-overflow-scrolling: touch */
+    overscroll-behavior-y: contain;
+    /* Better font rendering on mobile */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 
@@ -62,6 +71,8 @@ body {
 .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.1);
+    /* Fallback for browsers that don't support scrollbar-width */
+    overflow: auto;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -79,4 +90,41 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile-specific optimizations */
+
+@media (max-width: 640px) {
+    /* Smaller safe areas for mobile */
+    .pb-safe {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    /* Better touch targets */
+    button, .touch-target {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Prevent zoom on input focus */
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
+/* Better responsive text scaling */
+@media (max-width: 375px) {
+    .text-responsive-sm {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+
+    .text-responsive-base {
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
 }
