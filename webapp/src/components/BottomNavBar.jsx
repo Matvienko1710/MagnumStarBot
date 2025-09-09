@@ -9,7 +9,6 @@ const BottomNavBar = () => {
   const navItems = [
     { path: '/', icon: '🏠', label: 'Home' },
     { path: '/tasks', icon: '📋', label: 'Tasks' },
-    { path: '/exchange', icon: '💱', label: 'Exchange' },
     { path: '/cases', icon: '📦', label: 'Кейсы' }
   ];
 

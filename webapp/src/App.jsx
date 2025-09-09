@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import BottomNavBar from './components/BottomNavBar';
 import Home from './pages/Home';
 import Tasks from './pages/Tasks';
-import Exchange from './pages/Exchange';
 import Cases from './pages/Cases';
 import ComingSoon from './pages/ComingSoon';
 import Loader from './components/Loader';
@@ -42,9 +41,6 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/tasks" element={
                   <ConditionalRoute adminComponent={<Tasks />} />
-                } />
-                <Route path="/exchange" element={
-                  <ConditionalRoute adminComponent={<Exchange />} />
                 } />
                 <Route path="/cases" element={
                   <ConditionalRoute adminComponent={<Cases />} />
