@@ -89,7 +89,11 @@ const RouletteItem = ({ item, isSelected = false, isSpinning = false }) => {
           backfaceVisibility: 'hidden',
           transform: 'translateZ(0)',
           willChange: 'transform',
-          opacity: item.icon && item.icon.startsWith('http') ? 1 : 1
+          opacity: 1,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          fontSize: '48px',
+          lineHeight: '1',
+          textRendering: 'optimizeLegibility'
         }}
       >
         {item.icon && !item.icon.startsWith('http') && item.icon}
@@ -131,39 +135,65 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
         .filter(item => item.icon && item.icon.startsWith('http'))
         .map(item => item.icon);
       
-      if (imageUrls.length === 0) {
+      // Добавляем все элементы для предзагрузки (включая эмодзи)
+      const allItems = items.map(item => item.icon).filter(Boolean);
+      const totalItems = allItems.length;
+      
+      if (totalItems === 0) {
         setImagesLoaded(true);
         return;
       }
       
       let loadedCount = 0;
-      const totalImages = imageUrls.length;
       
+      // Загружаем URL изображения
       const loadPromises = imageUrls.map(url => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
           const img = new Image();
-          img.crossOrigin = 'anonymous'; // Для CORS
+          img.crossOrigin = 'anonymous';
           img.onload = () => {
             loadedCount++;
-            setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
+            setLoadingProgress(Math.round((loadedCount / totalItems) * 100));
             resolve();
           };
           img.onerror = () => {
             loadedCount++;
-            setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
-            resolve(); // Продолжаем даже если изображение не загрузилось
+            setLoadingProgress(Math.round((loadedCount / totalItems) * 100));
+            resolve();
           };
-          // Добавляем таймаут для загрузки
           setTimeout(() => {
             loadedCount++;
-            setLoadingProgress(Math.round((loadedCount / totalImages) * 100));
+            setLoadingProgress(Math.round((loadedCount / totalItems) * 100));
             resolve();
-          }, 5000); // 5 секунд таймаут
+          }, 3000);
           img.src = url;
         });
       });
       
-      await Promise.all(loadPromises);
+      // Предзагружаем эмодзи элементы
+      const emojiPromises = allItems
+        .filter(icon => !icon.startsWith('http'))
+        .map(icon => {
+          return new Promise((resolve) => {
+            // Создаем временный элемент для предзагрузки эмодзи
+            const tempDiv = document.createElement('div');
+            tempDiv.style.fontSize = '48px';
+            tempDiv.textContent = icon;
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            document.body.appendChild(tempDiv);
+            
+            // Небольшая задержка для рендеринга эмодзи
+            setTimeout(() => {
+              loadedCount++;
+              setLoadingProgress(Math.round((loadedCount / totalItems) * 100));
+              document.body.removeChild(tempDiv);
+              resolve();
+            }, 100);
+          });
+        });
+      
+      await Promise.all([...loadPromises, ...emojiPromises]);
       setImagesLoaded(true);
     };
     
@@ -254,6 +284,16 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
             } else {
               // Анимация завершена
               playStopSound();
+              
+              // Принудительная перерисовка элементов
+              if (containerRef.current) {
+                const elements = containerRef.current.querySelectorAll('[data-item]');
+                elements.forEach(el => {
+                  el.style.transform = 'translateZ(0)';
+                  el.style.backfaceVisibility = 'hidden';
+                });
+              }
+              
               setTimeout(() => {
                 onSpinComplete(selectedItem);
               }, 2000); // 2 секунды задержка перед показом результата
@@ -354,12 +394,13 @@ const CaseRoulette = ({ items, isSpinning, onSpinComplete, selectedItem }) => {
           }}
         >
           {displayItems.map((item, index) => (
-            <RouletteItem 
-              key={item.id || index} 
-              item={item}
-              isSelected={selectedItem && item.id === selectedItem.id && !isSpinning}
-              isSpinning={isSpinning}
-            />
+            <div key={item.id || index} data-item>
+              <RouletteItem 
+                item={item}
+                isSelected={selectedItem && item.id === selectedItem.id && !isSpinning}
+                isSpinning={isSpinning}
+              />
+            </div>
           ))}
         </div>
       </div>
