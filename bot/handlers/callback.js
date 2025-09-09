@@ -615,7 +615,7 @@ async function handleMainMenu(ctx) {
         
 
         
-        const mainMenuMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
+        const mainMenuMessage = `🎮 **Добро пожаловать в Magnum Stars!**\n` +
             `💎 Твой путь к наградам уже начался!\n\n` +
             `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
             `👤 **Профиль**\n` +
@@ -630,7 +630,7 @@ async function handleMainMenu(ctx) {
             `🎯 Выберите действие и двигайтесь дальше 🚀`;
         
         // Создаем кнопку WebApp - теперь доступна для всех пользователей
-        const webAppButton = Markup.button.webApp('🚀 Magnum Star - ДОСТУПНО!', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
+        const webAppButton = Markup.button.webApp('🎮 Play Game - ДОСТУПНО!', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
 
         // Создаем основное меню
         const mainMenuButtons = [
@@ -1552,13 +1552,13 @@ async function handleCheckSubscription(ctx) {
             // Подписка подтверждена - показываем главное меню
             const successMessage = `✅ **Подписка подтверждена!**\n\n` +
                 `🎉 Теперь вы можете использовать все функции бота!\n\n` +
-                `🚀 Добро пожаловать в Magnum Stars!`;
+                `🎮 Добро пожаловать в Magnum Stars!`;
             
             // Проверяем, является ли пользователь админом
             const userIsAdmin = isAdmin(userId);
 
             // Создаем кнопку WebApp - теперь доступна для всех пользователей
-            const webAppButton = Markup.button.webApp('🚀 Magnum Star - ДОСТУПНО!', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
+            const webAppButton = Markup.button.webApp('🎮 Play Game - ДОСТУПНО!', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
 
             // Создаем основное меню
             const mainMenuButtons = [
@@ -1583,7 +1583,7 @@ async function handleCheckSubscription(ctx) {
             
         } else {
             // Подписка не подтверждена - показываем мотивирующее сообщение
-            const errorMessage = `🚀 **Перед началом использования Magnum Stars подпишись на наших спонсоров!**\n\n` +
+            const errorMessage = `🎮 **Перед началом использования Magnum Stars подпишись на наших спонсоров!**\n\n` +
                 `📢 Это обязательное условие для доступа к функциям бота.\n\n` +
                 `✅ **После подписки жми «Проверить» и продолжай игру!**`;
             

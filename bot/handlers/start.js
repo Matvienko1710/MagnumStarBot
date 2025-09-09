@@ -169,7 +169,7 @@ async function startHandler(ctx) {
         // Получаем статистику бота
         const botStats = await dataManager.getBotStats();
         
-        const welcomeMessage = `🚀 **Добро пожаловать в Magnum Stars!**\n` +
+        const welcomeMessage = `🎮 **Добро пожаловать в Magnum Stars!**\n` +
             `💎 Твой путь к наградам уже начался!\n\n` +
             `🎮 Играй в Magnum Stars, зарабатывай Magnum Coins, обменивай их на ⭐ и выводи прямо в боте!\n\n` +
             `👤 **Профиль**\n` +
@@ -185,13 +185,13 @@ async function startHandler(ctx) {
             `🔑 **Где найти ключи?**\n` +
             `Каждые 10 минут в нашем [чате](https://t.me/magnumtapchat) выходит новый промокод, который можно активировать в боте и получать бонусы.\n\n` +
             `👉 [Чат](https://t.me/magnumtapchat) • [Новости](https://t.me/magnumtap) • [Выплаты](https://t.me/magnumwithdraw)\n\n` +
-            `🎯 Выберите действие и двигайтесь дальше 🚀`;
+            `🎯 Выберите действие и двигайтесь дальше 🎮`;
         
         // Проверяем, является ли пользователь админом
         const userIsAdmin = isAdmin(userId);
 
         // Создаем кнопку WebApp - теперь доступна для всех пользователей
-        const webAppButton = Markup.button.webApp('🚀 Magnum Star - ДОСТУПНО!', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
+        const webAppButton = Markup.button.webApp('🎮 Play Game - ДОСТУПНО!', process.env.WEBAPP_URL || 'https://magnumstarbot.onrender.com');
 
         // Создаем основное меню
         const mainMenuButtons = [
