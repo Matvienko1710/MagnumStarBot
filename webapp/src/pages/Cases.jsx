@@ -710,9 +710,14 @@ const Cases = () => {
       });
 
       if (!deductResponse.ok) {
-        console.error('❌ Ошибка списания средств');
+        console.error('❌ Ошибка списания средств:', {
+          status: deductResponse.status,
+          statusText: deductResponse.statusText,
+          url: deductResponse.url
+        });
         const errorData = await deductResponse.json().catch(() => ({}));
         const errorMessage = errorData.error || 'Ошибка при списании средств';
+        console.error('❌ Детали ошибки:', errorData);
         alert(`Ошибка: ${errorMessage}`);
         return;
       }

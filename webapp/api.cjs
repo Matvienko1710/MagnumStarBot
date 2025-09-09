@@ -6,6 +6,11 @@ const { getUserBalance, addCoinsForClick, addStarsForAd, updateCoins, updateStar
 
 // API для получения баланса пользователя
 router.get('/balance/:userId', async (req, res) => {
+    console.log('🔍 GET /api/balance/:userId - запрос получен:', {
+        userId: req.params.userId,
+        timestamp: new Date().toISOString()
+    });
+    
     try {
         const { userId } = req.params;
         const numericUserId = parseInt(userId);
@@ -118,6 +123,13 @@ router.post('/reward/:userId/ad-watch', async (req, res) => {
 
 // API для обновления баланса (списание/начисление)
 router.post('/balance/:userId', async (req, res) => {
+    console.log('🔍 POST /api/balance/:userId - запрос получен:', {
+        userId: req.params.userId,
+        body: req.body,
+        headers: req.headers,
+        timestamp: new Date().toISOString()
+    });
+    
     try {
         const { userId } = req.params;
         const { type, amount, reason } = req.body;

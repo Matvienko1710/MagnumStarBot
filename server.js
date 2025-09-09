@@ -18,6 +18,17 @@ app.use((req, res, next) => {
 // Основные middleware
 app.use(express.json());
 
+// Логирование всех API запросов
+app.use('/api', (req, res, next) => {
+    console.log('🌐 API запрос:', {
+        method: req.method,
+        url: req.url,
+        body: req.body,
+        timestamp: new Date().toISOString()
+    });
+    next();
+});
+
 // API роуты вебаппа (должны быть ПЕРЕД статическими файлами)
 const apiRoutes = require('./webapp/api.cjs');
 app.use('/api', apiRoutes);
