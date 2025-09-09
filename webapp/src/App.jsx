@@ -45,7 +45,7 @@ function App() {
         <Loader />
       ) : (
         <Router>
-          <div className="min-h-screen min-h-dvh bg-gradient-to-b from-[#22223B] to-[#4A4E69] safe-all">
+          <div className="min-h-dvh bg-gradient-to-b from-[#22223B] to-[#4A4E69] safe-all">
             <div className="max-w-md mx-auto pb-20 xs:pb-24 sm:pb-20 min-h-screen-safe">
               <Routes>
                 <Route path="/" element={<Home />} />
