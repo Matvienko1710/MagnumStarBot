@@ -1,1 +1,4 @@
 node_modules
+
+# Development workspace - не пушить в репозиторий
+dev/
