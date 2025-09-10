@@ -2,8 +2,9 @@ import mongoose from 'mongoose'
 
 const MONGODB_URI = process.env.MONGODB_URI
 
+// For testing without MongoDB
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local')
+  console.warn('MONGODB_URI not found - running in test mode without database')
 }
 
 /**
@@ -18,6 +19,12 @@ if (!cached) {
 }
 
 async function connectDB() {
+  // Return early if no MongoDB URI
+  if (!MONGODB_URI) {
+    console.warn('MongoDB connection skipped - running in test mode')
+    return null
+  }
+
   if (cached.conn) {
     return cached.conn
   }
