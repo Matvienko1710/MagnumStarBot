@@ -318,7 +318,6 @@ export default function TelegramClickerApp() {
       setGameState((prev) => ({
         ...prev,
         magnumCoins: prev.magnumCoins + 1,
-        stars: prev.stars + 0.0001,
         energy: prev.energy - 1,
         clickAnimating: true,
         energyAnimating: true,
@@ -526,7 +525,7 @@ export default function TelegramClickerApp() {
               className="absolute pointer-events-none reward-popup text-orange-400 font-bold text-base z-10 gpu-accelerated drop-shadow-lg"
               style={{ left: popup.x, top: popup.y }}
             >
-              +1 🪙 +0.0001 ⭐
+              +1 🪙
             </div>
           ))}
         </div>

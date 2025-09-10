@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         success: true,
         user: {
           magnumCoins: 1001,
-          stars: 0.5001,
+          stars: 0.5,
           energy: 99,
           totalClicks: 1,
           level: 1
@@ -39,9 +39,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No energy left' }, { status: 400 })
     }
 
-    // Update user stats
+    // Update user stats - only give Magnum Coins for clicks
     user.magnumCoins += 1
-    user.stars += 0.0001
     user.energy -= 1
     user.totalClicks += 1
     user.level = Math.floor(user.totalClicks / 100) + 1
