@@ -298,15 +298,28 @@ export default function TelegramClickerApp() {
     return () => clearInterval(interval)
   }, [])
 
-  // Check if user can click (max 3 clicks per second)
+  // Check if user can click (max 3 clicks per second) - optimized
   const canClick = useCallback(() => {
+    if (clickTimes.length < 3) return true
+    
     const now = Date.now()
     const oneSecondAgo = now - 1000
-    const recentClicks = clickTimes.filter(time => time > oneSecondAgo)
-    return recentClicks.length < 3
+    let recentCount = 0
+    
+    // Count from the end (most recent clicks)
+    for (let i = clickTimes.length - 1; i >= 0; i--) {
+      if (clickTimes[i] > oneSecondAgo) {
+        recentCount++
+        if (recentCount >= 3) return false
+      } else {
+        break // No need to check older clicks
+      }
+    }
+    
+    return true
   }, [clickTimes])
 
-  // Update click cooldown display
+  // Update click cooldown display (less frequent updates)
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now()
@@ -314,7 +327,7 @@ export default function TelegramClickerApp() {
       const recentClicks = clickTimes.filter(time => time > oneSecondAgo)
       const remainingClicks = 3 - recentClicks.length
       setClickCooldown(Math.max(0, remainingClicks))
-    }, 100)
+    }, 200) // Reduced frequency from 100ms to 200ms
 
     return () => clearInterval(interval)
   }, [clickTimes])
@@ -393,9 +406,13 @@ export default function TelegramClickerApp() {
       // Prevent multiple rapid clicks
       setIsClicking(true)
       
-      // Record click time
+      // Record click time (optimized)
       const now = Date.now()
-      setClickTimes(prev => [...prev, now])
+      setClickTimes(prev => {
+        // Keep only last 10 clicks to prevent memory issues
+        const newTimes = [...prev, now]
+        return newTimes.length > 10 ? newTimes.slice(-10) : newTimes
+      })
       
       // Prevent default touch behavior
       event.preventDefault()
@@ -473,7 +490,7 @@ export default function TelegramClickerApp() {
       setTimeout(() => {
         setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
         setIsClicking(false) // Reset clicking state
-      }, 800)
+      }, 300) // Reduced from 800ms to 300ms
 
       setTimeout(() => {
         setGameState((prev) => ({
@@ -594,12 +611,7 @@ export default function TelegramClickerApp() {
           </span>
         </div>
         <Progress value={(gameState.energy / gameState.maxEnergy) * 100} className="h-2 bg-muted" />
-        <div className="flex justify-between items-center mt-1">
-          <p className="text-xs text-muted-foreground">Восстанавливается: 1 энергия / 30 сек</p>
-          <p className="text-xs text-muted-foreground">
-            Клики: {3 - clickCooldown}/3 в сек
-          </p>
-        </div>
+        <p className="text-xs text-muted-foreground mt-1">Восстанавливается: 1 энергия / 30 сек</p>
       </Card>
 
       {/* Balance Cards */}
@@ -638,11 +650,6 @@ export default function TelegramClickerApp() {
               <span className="text-xs font-bold text-amber-900 mobile-text-sm drop-shadow-md">
                 {gameState.energy > 0 ? "КЛИК" : "НЕТ ЭНЕРГИИ"}
               </span>
-              {!canClick() && (
-                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
-                  Кулдаун: {clickCooldown}/3
-                </div>
-              )}
             </div>
           </Button>
 
