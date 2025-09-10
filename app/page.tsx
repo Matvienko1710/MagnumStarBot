@@ -87,6 +87,11 @@ export default function TelegramClickerApp() {
   const [isClicking, setIsClicking] = useState(false)
   const [clickTimes, setClickTimes] = useState<number[]>([])
   const [clickCooldown, setClickCooldown] = useState(0)
+  const [userInfo, setUserInfo] = useState<{
+    username?: string
+    firstName?: string
+    lastName?: string
+  }>({})
 
   const [upgrades, setUpgrades] = useState<Upgrade[]>([
     {
@@ -157,6 +162,14 @@ export default function TelegramClickerApp() {
           if (userData && userData.id) {
             tgId = userData.id
             console.log('✅ Using Telegram ID from user data:', tgId)
+            
+            // Save user info from Telegram
+            setUserInfo({
+              username: userData.username,
+              firstName: userData.first_name,
+              lastName: userData.last_name
+            })
+            console.log('✅ Telegram user info:', { username: userData.username, firstName: userData.first_name, lastName: userData.last_name })
           } else {
             console.log('❌ No user data or ID found in initDataUnsafe')
             
@@ -177,6 +190,14 @@ export default function TelegramClickerApp() {
                   if (userObj.id) {
                     tgId = userObj.id
                     console.log('✅ Using Telegram ID from parsed initData:', tgId)
+                    
+                    // Save user info from parsed initData
+                    setUserInfo({
+                      username: userObj.username,
+                      firstName: userObj.first_name,
+                      lastName: userObj.last_name
+                    })
+                    console.log('✅ Parsed user info:', { username: userObj.username, firstName: userObj.first_name, lastName: userObj.last_name })
                   }
                 }
               }
@@ -247,6 +268,13 @@ export default function TelegramClickerApp() {
               level: data.user.level || 1,
             })
             
+            // Save user info from API
+            setUserInfo({
+              username: data.user.username,
+              firstName: data.user.firstName,
+              lastName: data.user.lastName
+            })
+            
             // Load upgrades from API and apply effects
             if (data.user.upgrades) {
               setUpgrades(prev => prev.map(upgrade => {
@@ -286,9 +314,9 @@ export default function TelegramClickerApp() {
           },
           body: JSON.stringify({
             telegramId: tgId,
-            username: 'user',
-            firstName: 'User',
-            lastName: 'User',
+            username: userInfo.username || 'user',
+            firstName: userInfo.firstName || 'User',
+            lastName: userInfo.lastName || 'User',
           }),
         })
         
@@ -308,6 +336,13 @@ export default function TelegramClickerApp() {
             lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
             clickPower: data.user.clickPower || 1,
             level: data.user.level || 1,
+          })
+          
+          // Save user info from API
+          setUserInfo({
+            username: data.user.username,
+            firstName: data.user.firstName,
+            lastName: data.user.lastName
           })
           
           // Load upgrades from API
@@ -855,8 +890,18 @@ export default function TelegramClickerApp() {
                 👤
               </div>
               <div>
-                <h3 className="text-lg font-bold text-foreground">Игрок #{Math.floor(Math.random() * 10000)}</h3>
+                <h3 className="text-lg font-bold text-foreground">
+                  {userInfo.firstName && userInfo.lastName 
+                    ? `${userInfo.firstName} ${userInfo.lastName}`
+                    : userInfo.username 
+                    ? `@${userInfo.username}`
+                    : `Игрок #${telegramId?.toString().slice(-4) || '0000'}`
+                  }
+                </h3>
                 <p className="text-sm text-muted-foreground">Уровень {gameState.level}</p>
+                {userInfo.username && (
+                  <p className="text-xs text-muted-foreground">@{userInfo.username}</p>
+                )}
               </div>
             </div>
 
