@@ -15,10 +15,5 @@
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ],
-  "env": {
-    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
-    "TELEGRAM_WEBHOOK_URL": "@telegram_webhook_url",
-    "NEXTAUTH_SECRET": "@nextauth_secret"
-  }
+  ]
 }
