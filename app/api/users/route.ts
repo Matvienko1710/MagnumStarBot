@@ -59,7 +59,9 @@ export async function GET(request: NextRequest) {
         maxEnergy: 100,
         totalClicks: 0,
         level: 1,
-        lastEnergyRestore: new Date()
+        lastEnergyRestore: new Date(),
+        clickPower: 1,
+        upgrades: []
       })
       await user.save()
       console.log('New user created:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
@@ -80,7 +82,9 @@ export async function GET(request: NextRequest) {
         maxEnergy: user.maxEnergy,
         totalClicks: user.totalClicks,
         level: user.level,
-        lastEnergyRestore: user.lastEnergyRestore
+        lastEnergyRestore: user.lastEnergyRestore,
+        clickPower: user.clickPower || 1,
+        upgrades: user.upgrades || []
       }
     })
   } catch (error) {
@@ -135,7 +139,9 @@ export async function POST(request: NextRequest) {
         maxEnergy: 100,
         totalClicks: 0,
         level: 1,
-        lastEnergyRestore: new Date()
+        lastEnergyRestore: new Date(),
+        clickPower: 1,
+        upgrades: []
       })
       await user.save()
       console.log('New user created via POST:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
@@ -154,7 +160,9 @@ export async function POST(request: NextRequest) {
         maxEnergy: user.maxEnergy,
         totalClicks: user.totalClicks,
         level: user.level,
-        lastEnergyRestore: user.lastEnergyRestore
+        lastEnergyRestore: user.lastEnergyRestore,
+        clickPower: user.clickPower || 1,
+        upgrades: user.upgrades || []
       }
     })
   } catch (error) {

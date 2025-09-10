@@ -12,6 +12,11 @@ export interface IUser extends Document {
   totalClicks: number
   level: number
   lastEnergyRestore: Date
+  clickPower?: number
+  upgrades?: Array<{
+    id: string
+    level: number
+  }>
   createdAt: Date
   updatedAt: Date
 }
@@ -28,6 +33,11 @@ const UserSchema = new Schema<IUser>({
   totalClicks: { type: Number, default: 0 },
   level: { type: Number, default: 1 },
   lastEnergyRestore: { type: Date, default: Date.now },
+  clickPower: { type: Number, default: 1 },
+  upgrades: [{
+    id: { type: String, required: true },
+    level: { type: Number, default: 0 }
+  }],
 }, {
   timestamps: true
 })

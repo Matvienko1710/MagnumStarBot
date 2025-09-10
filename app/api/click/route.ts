@@ -29,16 +29,18 @@ export async function POST(request: NextRequest) {
     if (!user) {
       console.log('User not found, creating new user with telegramId:', telegramId)
       // Create new user
-      user = new User({
-        telegramId: telegramIdNum,
-        magnumCoins: 100,
-        stars: 0,
-        energy: 100,
-        maxEnergy: 100,
-        totalClicks: 0,
-        level: 1,
-        lastEnergyRestore: new Date()
-      })
+        user = new User({
+          telegramId: telegramIdNum,
+          magnumCoins: 100,
+          stars: 0,
+          energy: 100,
+          maxEnergy: 100,
+          totalClicks: 0,
+          level: 1,
+          lastEnergyRestore: new Date(),
+          clickPower: 1,
+          upgrades: []
+        })
       await user.save()
       console.log('New user created:', user)
     } else {
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user stats - only give Magnum Coins for clicks
-    user.magnumCoins += 1
+    user.magnumCoins += user.clickPower || 1
     user.energy -= 1
     user.totalClicks += 1
     user.level = Math.floor(user.totalClicks / 100) + 1
@@ -66,7 +68,8 @@ export async function POST(request: NextRequest) {
         stars: user.stars,
         energy: user.energy,
         totalClicks: user.totalClicks,
-        level: user.level
+        level: user.level,
+        clickPower: user.clickPower || 1
       }
     })
   } catch (error) {

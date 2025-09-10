@@ -246,6 +246,19 @@ export default function TelegramClickerApp() {
               clickPower: data.user.clickPower || 1,
               level: data.user.level || 1,
             })
+            
+            // Load upgrades from API and apply effects
+            if (data.user.upgrades) {
+              setUpgrades(prev => prev.map(upgrade => {
+                const savedUpgrade = data.user.upgrades.find((u: any) => u.id === upgrade.id)
+                if (savedUpgrade) {
+                  // Update price based on level
+                  const newPrice = Math.floor(upgrade.price * Math.pow(1.5, savedUpgrade.level))
+                  return { ...upgrade, level: savedUpgrade.level, price: newPrice }
+                }
+                return upgrade
+              }))
+            }
           } else {
             console.log('❌ No user data from API, creating new user')
             // Create new user in API
@@ -296,6 +309,18 @@ export default function TelegramClickerApp() {
             clickPower: data.user.clickPower || 1,
             level: data.user.level || 1,
           })
+          
+          // Load upgrades from API
+          if (data.user.upgrades) {
+            setUpgrades(prev => prev.map(upgrade => {
+              const savedUpgrade = data.user.upgrades.find((u: any) => u.id === upgrade.id)
+              if (savedUpgrade) {
+                const newPrice = Math.floor(upgrade.price * Math.pow(1.5, savedUpgrade.level))
+                return { ...upgrade, level: savedUpgrade.level, price: newPrice }
+              }
+              return upgrade
+            }))
+          }
         } else {
           console.error('❌ Failed to create user - API returned error:', data)
           throw new Error('Failed to create user')
@@ -636,10 +661,11 @@ export default function TelegramClickerApp() {
   }
 
   const buyUpgrade = useCallback(
-    (upgradeId: string) => {
+    async (upgradeId: string) => {
       const upgrade = upgrades.find((u) => u.id === upgradeId)
       if (!upgrade || gameState.magnumCoins < upgrade.price || upgrade.level >= upgrade.maxLevel) return
 
+      // Update local state immediately for responsiveness
       setGameState((prev) => ({
         ...prev,
         magnumCoins: prev.magnumCoins - upgrade.price,
@@ -650,8 +676,32 @@ export default function TelegramClickerApp() {
       setUpgrades((prev) =>
         prev.map((u) => (u.id === upgradeId ? { ...u, level: u.level + 1, price: Math.floor(u.price * 1.5) } : u)),
       )
+
+      // Sync with API
+      if (telegramId) {
+        try {
+          const response = await fetch('/api/upgrades', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              telegramId,
+              upgradeId,
+              level: upgrade.level + 1,
+            }),
+          })
+          
+          const data = await response.json()
+          if (!data.success) {
+            console.warn('Failed to sync upgrade with API:', data.error)
+          }
+        } catch (error) {
+          console.warn('Failed to sync upgrade with API:', error)
+        }
+      }
     },
-    [gameState.magnumCoins, upgrades],
+    [gameState.magnumCoins, upgrades, telegramId],
   )
 
   const renderHomeScreen = () => (
