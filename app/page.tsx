@@ -25,6 +25,10 @@ import {
   Award,
   BarChart3,
   ArrowUp,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
 } from "lucide-react"
 
 interface GameState {
@@ -45,9 +49,12 @@ interface CaseItem {
   name: string
   price: number
   rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
-  rewards: Array<{ type: "coins" | "stars" | "energy"; min: number; max: number }>
+  rewards: Array<{ type: "coins" | "stars" | "energy"; min: number; max: number; chance: number }>
   image: string
   glowColor: string
+  description: string
+  dailyLimit?: number
+  specialOffer?: boolean
 }
 
 interface Upgrade {
@@ -59,6 +66,15 @@ interface Upgrade {
   maxLevel: number
   effect: string
   icon: string
+}
+
+interface HistoryItem {
+  id: string
+  playerName: string
+  caseName: string
+  reward: { type: string; amount: number }
+  rarity: string
+  timestamp: number
 }
 
 export default function TelegramClickerApp() {
@@ -90,6 +106,15 @@ export default function TelegramClickerApp() {
     firstName?: string
     lastName?: string
   }>({})
+
+  const [showCaseOpening, setShowCaseOpening] = useState(false)
+  const [rouletteItems, setRouletteItems] = useState<any[]>([])
+  const [rouletteSpinning, setRouletteSpinning] = useState(false)
+  const [rouletteOffset, setRouletteOffset] = useState(0)
+  const [roulettePhase, setRoulettePhase] = useState<"ready" | "spinning" | "slowing" | "stopped">("ready")
+
+  const [recentDrops, setRecentDrops] = useState<HistoryItem[]>([])
+  const [historyScrollIndex, setHistoryScrollIndex] = useState(0)
 
   const [upgrades, setUpgrades] = useState<Upgrade[]>([
     {
@@ -133,6 +158,51 @@ export default function TelegramClickerApp() {
       icon: "⭐",
     },
   ])
+
+  useEffect(() => {
+    const generateInitialHistory = () => {
+      const playerNames = [
+        "Игрок#1234",
+        "CryptoKing",
+        "MagnumHunter",
+        "LuckyOne",
+        "CoinMaster",
+        "StarCollector",
+        "GoldDigger",
+        "DiamondHands",
+      ]
+      const caseNames = ["Бронзовый кейс", "Серебряный кейс", "Золотой кейс", "Платиновый кейс", "Мифический кейс"]
+      const rarities = ["common", "rare", "epic", "legendary", "mythic"]
+
+      const history: HistoryItem[] = []
+      for (let i = 0; i < 50; i++) {
+        const rarity = rarities[Math.floor(Math.random() * rarities.length)]
+        const baseAmount =
+          rarity === "mythic"
+            ? 50000
+            : rarity === "legendary"
+              ? 15000
+              : rarity === "epic"
+                ? 5000
+                : rarity === "rare"
+                  ? 1000
+                  : 200
+        const amount = Math.floor(baseAmount + Math.random() * baseAmount)
+
+        history.push({
+          id: `drop_${i}`,
+          playerName: playerNames[Math.floor(Math.random() * playerNames.length)],
+          caseName: caseNames[Math.floor(Math.random() * caseNames.length)],
+          reward: { type: "coins", amount },
+          rarity,
+          timestamp: Date.now() - Math.random() * 3600000, // Последний час
+        })
+      }
+      setRecentDrops(history.reverse()) // Новые сверху
+    }
+
+    generateInitialHistory()
+  }, [])
 
   // Initialize app and load user data
   useEffect(() => {
@@ -462,9 +532,11 @@ export default function TelegramClickerApp() {
       name: "Бронзовый кейс",
       price: 100,
       rarity: "common",
+      description: "Базовый кейс для начинающих игроков",
       rewards: [
-        { type: "coins", min: 50, max: 200 },
-        { type: "stars", min: 0.001, max: 0.01 },
+        { type: "coins", min: 50, max: 200, chance: 70 },
+        { type: "coins", min: 200, max: 500, chance: 25 },
+        { type: "coins", min: 500, max: 1000, chance: 5 },
       ],
       image: "🥉",
       glowColor: "rgba(205, 127, 50, 0.5)",
@@ -474,10 +546,11 @@ export default function TelegramClickerApp() {
       name: "Серебряный кейс",
       price: 500,
       rarity: "rare",
+      description: "Улучшенный кейс с лучшими наградами",
       rewards: [
-        { type: "coins", min: 300, max: 800 },
-        { type: "stars", min: 0.01, max: 0.05 },
-        { type: "energy", min: 10, max: 30 },
+        { type: "coins", min: 300, max: 800, chance: 60 },
+        { type: "coins", min: 800, max: 1500, chance: 30 },
+        { type: "coins", min: 1500, max: 3000, chance: 10 },
       ],
       image: "🥈",
       glowColor: "rgba(192, 192, 192, 0.5)",
@@ -487,10 +560,11 @@ export default function TelegramClickerApp() {
       name: "Золотой кейс",
       price: 1000,
       rarity: "epic",
+      description: "Премиум кейс с высокими наградами",
       rewards: [
-        { type: "coins", min: 800, max: 2000 },
-        { type: "stars", min: 0.05, max: 0.15 },
-        { type: "energy", min: 20, max: 50 },
+        { type: "coins", min: 800, max: 2000, chance: 50 },
+        { type: "coins", min: 2000, max: 4000, chance: 35 },
+        { type: "coins", min: 4000, max: 8000, chance: 15 },
       ],
       image: "🥇",
       glowColor: "rgba(255, 215, 0, 0.5)",
@@ -500,10 +574,11 @@ export default function TelegramClickerApp() {
       name: "Платиновый кейс",
       price: 5000,
       rarity: "legendary",
+      description: "Легендарный кейс для опытных игроков",
       rewards: [
-        { type: "coins", min: 3000, max: 8000 },
-        { type: "stars", min: 0.1, max: 0.5 },
-        { type: "energy", min: 50, max: 100 },
+        { type: "coins", min: 3000, max: 8000, chance: 40 },
+        { type: "coins", min: 8000, max: 15000, chance: 35 },
+        { type: "coins", min: 15000, max: 30000, chance: 25 },
       ],
       image: "💎",
       glowColor: "rgba(147, 51, 234, 0.5)",
@@ -513,13 +588,43 @@ export default function TelegramClickerApp() {
       name: "Мифический кейс",
       price: 15000,
       rarity: "mythic",
+      description: "Самый редкий кейс с невероятными наградами",
       rewards: [
-        { type: "coins", min: 10000, max: 25000 },
-        { type: "stars", min: 0.5, max: 2.0 },
-        { type: "energy", min: 100, max: 200 },
+        { type: "coins", min: 10000, max: 25000, chance: 30 },
+        { type: "coins", min: 25000, max: 50000, chance: 40 },
+        { type: "coins", min: 50000, max: 100000, chance: 30 },
       ],
       image: "👑",
       glowColor: "rgba(255, 20, 147, 0.5)",
+    },
+    {
+      id: "daily_bronze",
+      name: "Ежедневный бронзовый",
+      price: 50,
+      rarity: "common",
+      description: "Специальная цена! Только 3 в день",
+      dailyLimit: 3,
+      rewards: [
+        { type: "coins", min: 100, max: 300, chance: 80 },
+        { type: "coins", min: 300, max: 600, chance: 20 },
+      ],
+      image: "📦",
+      glowColor: "rgba(205, 127, 50, 0.3)",
+    },
+    {
+      id: "lucky_box",
+      name: "Коробка удачи",
+      price: 2500,
+      rarity: "epic",
+      description: "Ограниченное предложение!",
+      specialOffer: true,
+      rewards: [
+        { type: "coins", min: 2000, max: 5000, chance: 50 },
+        { type: "coins", min: 5000, max: 10000, chance: 30 },
+        { type: "coins", min: 10000, max: 25000, chance: 20 },
+      ],
+      image: "🍀",
+      glowColor: "rgba(34, 197, 94, 0.5)",
     },
   ]
 
@@ -542,8 +647,7 @@ export default function TelegramClickerApp() {
       // Update local state immediately for maximum responsiveness
       setGameState((prev) => ({
         ...prev,
-        magnumCoins: prev.magnumCoins + 1, // +1 Magnum Coin per click
-        stars: prev.stars + 0.0001 * (1 + (upgrades.find((u) => u.id === "star_multiplier")?.level || 0)), // +0.0001 stars per click
+        magnumCoins: prev.magnumCoins + prev.clickPower, // Use clickPower for coins per click
         energy: prev.energy - 1,
         clickAnimating: true,
         energyAnimating: true,
@@ -577,51 +681,122 @@ export default function TelegramClickerApp() {
     (caseItem: CaseItem) => {
       if (gameState.magnumCoins < caseItem.price) return
 
-      setOpeningCase(true)
       setSelectedCase(caseItem)
-      setCaseOpeningProgress(0)
+      setShowCaseOpening(true)
+      setRoulettePhase("ready")
 
-      const progressInterval = setInterval(() => {
-        setCaseOpeningProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(progressInterval)
-            return 100
+      const items = []
+      const winningIndex = 49 // Выигрышный элемент ближе к концу
+
+      for (let i = 0; i < 100; i++) {
+        let reward, rarity
+
+        if (i === winningIndex) {
+          // Выигрышный элемент
+          reward = caseItem.rewards[Math.floor(Math.random() * caseItem.rewards.length)]
+          rarity = caseItem.rarity
+        } else {
+          // Случайные элементы с весами
+          const rand = Math.random() * 100
+          if (rand < 60) {
+            reward = { type: "coins", min: 10, max: 100, chance: 60 }
+            rarity = "common"
+          } else if (rand < 85) {
+            reward = { type: "coins", min: 100, max: 500, chance: 25 }
+            rarity = "rare"
+          } else if (rand < 95) {
+            reward = { type: "coins", min: 500, max: 1500, chance: 10 }
+            rarity = "epic"
+          } else {
+            reward = { type: "coins", min: 1500, max: 5000, chance: 5 }
+            rarity = "legendary"
           }
-          return prev + 2
-        })
-      }, 40)
+        }
 
-      setTimeout(() => {
-        clearInterval(progressInterval)
-        const rewards = caseItem.rewards.map((reward) => ({
+        const amount = Math.floor(Math.random() * (reward.max - reward.min + 1)) + reward.min
+        items.push({
           type: reward.type,
-          amount: Math.random() * (reward.max - reward.min) + reward.min,
-        }))
-
-        let newCoins = gameState.magnumCoins - caseItem.price
-        let newStars = gameState.stars
-        let newEnergy = gameState.energy
-
-        rewards.forEach((reward) => {
-          if (reward.type === "coins") newCoins += Math.floor(reward.amount)
-          if (reward.type === "stars") newStars += reward.amount
-          if (reward.type === "energy") newEnergy = Math.min(gameState.maxEnergy, newEnergy + Math.floor(reward.amount))
+          amount,
+          rarity,
+          isWinning: i === winningIndex,
         })
+      }
 
-        setGameState((prev) => ({
-          ...prev,
-          magnumCoins: newCoins,
-          stars: newStars,
-          energy: newEnergy,
-        }))
-
-        setCaseResult(rewards)
-        setOpeningCase(false)
-        setCaseOpeningProgress(0)
-      }, 2000)
+      setRouletteItems(items)
+      setRouletteOffset(0)
     },
-    [gameState],
+    [gameState.magnumCoins],
   )
+
+  const spinRoulette = useCallback(() => {
+    if (rouletteSpinning || !selectedCase || roulettePhase !== "ready") return
+
+    setRouletteSpinning(true)
+    setRoulettePhase("spinning")
+
+    // Списываем стоимость кейса
+    setGameState((prev) => ({
+      ...prev,
+      magnumCoins: prev.magnumCoins - selectedCase.price,
+    }))
+
+    const itemWidth = 100
+    const winningIndex = 49
+    const centerPosition = winningIndex * itemWidth
+    const randomOffset = Math.random() * 30 - 15
+    const finalOffset = -(centerPosition + randomOffset - window.innerWidth / 2 + itemWidth / 2)
+
+    const extraSpins = 3 // Уменьшаем количество оборотов
+    const totalOffset = finalOffset - extraSpins * itemWidth * 50 // Уменьшаем множитель
+
+    // Фаза 1: Плавное ускорение (2 сек)
+    setTimeout(() => {
+      setRouletteOffset(totalOffset * 0.2) // Уменьшаем начальное смещение
+    }, 100)
+
+    // Фаза 2: Основное вращение (3 сек)
+    setTimeout(() => {
+      setRoulettePhase("slowing")
+      setRouletteOffset(totalOffset * 0.7) // Более плавный переход
+    }, 2000)
+
+    // Фаза 3: Замедление до финальной позиции (3 сек)
+    setTimeout(() => {
+      setRouletteOffset(totalOffset)
+    }, 5000)
+
+    // Завершение через 8 секунд
+    setTimeout(() => {
+      const winningItem = rouletteItems[winningIndex]
+      setGameState((prev) => ({
+        ...prev,
+        magnumCoins: prev.magnumCoins + winningItem.amount,
+      }))
+
+      const newDrop: HistoryItem = {
+        id: `drop_${Date.now()}`,
+        playerName: `Игрок#${Math.floor(Math.random() * 10000)}`,
+        caseName: selectedCase.name,
+        reward: { type: winningItem.type, amount: winningItem.amount },
+        rarity: winningItem.rarity,
+        timestamp: Date.now(),
+      }
+
+      setRecentDrops((prev) => [newDrop, ...prev.slice(0, 49)])
+
+      setCaseResult([winningItem])
+      setRouletteSpinning(false)
+      setRoulettePhase("stopped")
+
+      // Показываем результат
+      setTimeout(() => {
+        setShowCaseOpening(false)
+        setSelectedCase(null)
+        setCaseResult(null)
+        setRoulettePhase("ready")
+      }, 3000)
+    }, 8000)
+  }, [rouletteSpinning, selectedCase, rouletteItems, roulettePhase])
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(2) + "M"
@@ -646,12 +821,46 @@ export default function TelegramClickerApp() {
     }
   }
 
+  const getRarityIcon = (rarity: string) => {
+    switch (rarity) {
+      case "common":
+        return "⚪"
+      case "rare":
+        return "🔵"
+      case "epic":
+        return "🟣"
+      case "legendary":
+        return "🟡"
+      case "mythic":
+        return "🔴"
+      default:
+        return "⚪"
+    }
+  }
+
+  const getTimeAgo = (timestamp: number) => {
+    const diff = Date.now() - timestamp
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+
+    if (hours > 0) return `${hours}ч назад`
+    if (minutes > 0) return `${minutes}м назад`
+    return "только что"
+  }
+
+  const scrollHistoryLeft = () => {
+    setHistoryScrollIndex((prev) => Math.max(0, prev - 1))
+  }
+
+  const scrollHistoryRight = () => {
+    setHistoryScrollIndex((prev) => Math.min(recentDrops.length - 5, prev + 1))
+  }
+
   const buyUpgrade = useCallback(
-    async (upgradeId: string) => {
+    (upgradeId: string) => {
       const upgrade = upgrades.find((u) => u.id === upgradeId)
       if (!upgrade || gameState.magnumCoins < upgrade.price || upgrade.level >= upgrade.maxLevel) return
 
-      // Update local state immediately for responsiveness
       setGameState((prev) => ({
         ...prev,
         magnumCoins: prev.magnumCoins - upgrade.price,
@@ -662,30 +871,6 @@ export default function TelegramClickerApp() {
       setUpgrades((prev) =>
         prev.map((u) => (u.id === upgradeId ? { ...u, level: u.level + 1, price: Math.floor(u.price * 1.5) } : u)),
       )
-
-      // Sync with API
-      if (telegramId) {
-        try {
-          const response = await fetch('/api/upgrades', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              telegramId,
-              upgradeId,
-              level: upgrade.level + 1,
-            }),
-          })
-          
-          const data = await response.json()
-          if (!data.success) {
-            console.warn('Failed to sync upgrade with API:', data.error)
-          }
-        } catch (error) {
-          console.warn('Failed to sync upgrade with API:', error)
-        }
-      }
     },
     [gameState.magnumCoins, upgrades, telegramId],
   )
