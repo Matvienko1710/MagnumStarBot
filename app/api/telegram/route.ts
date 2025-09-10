@@ -5,6 +5,9 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN!)
 
 // Start command
 bot.start((ctx) => {
+  const webAppUrl = process.env.NEXTAUTH_URL || 'https://magnmstartbot1.vercel.app'
+  console.log('Start command received, webAppUrl:', webAppUrl)
+  
   ctx.reply(
     '🎮 Добро пожаловать в Magnum Clicker!\n\n' +
     'Зарабатывайте криптовалюту кликами в стиле Binance и Revolut! Кликайте, открывайте кейсы и получайте награды. Начните зарабатывать прямо сейчас!',
@@ -13,7 +16,7 @@ bot.start((ctx) => {
         inline_keyboard: [[
           {
             text: '🎮 Play Game',
-            web_app: { url: process.env.NEXTAUTH_URL || 'https://magnum-clicker.vercel.app' }
+            web_app: { url: webAppUrl }
           }
         ]]
       }
@@ -23,6 +26,8 @@ bot.start((ctx) => {
 
 // Help command
 bot.help((ctx) => {
+  const webAppUrl = process.env.NEXTAUTH_URL || 'https://magnmstartbot1.vercel.app'
+  
   ctx.reply(
     '🎮 Magnum Clicker - Помощь\n\n' +
     'Кликайте для заработка монет, открывайте кейсы за награды, повышайте уровень! Используйте кнопку ниже для начала игры.',
@@ -31,7 +36,7 @@ bot.help((ctx) => {
         inline_keyboard: [[
           {
             text: '🎮 Play Game',
-            web_app: { url: process.env.NEXTAUTH_URL || 'https://magnum-clicker.vercel.app' }
+            web_app: { url: webAppUrl }
           }
         ]]
       }
@@ -41,6 +46,8 @@ bot.help((ctx) => {
 
 // Handle all other messages
 bot.on('text', (ctx) => {
+  const webAppUrl = process.env.NEXTAUTH_URL || 'https://magnmstartbot1.vercel.app'
+  
   ctx.reply(
     'Используйте /start для начала игры или /help для помощи!',
     {
@@ -48,7 +55,7 @@ bot.on('text', (ctx) => {
         inline_keyboard: [[
           {
             text: '🎮 Play Game',
-            web_app: { url: process.env.NEXTAUTH_URL || 'https://magnum-clicker.vercel.app' }
+            web_app: { url: webAppUrl }
           }
         ]]
       }
@@ -59,6 +66,7 @@ bot.on('text', (ctx) => {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('Telegram webhook received:', JSON.stringify(body, null, 2))
     
     // Process the update
     await bot.handleUpdate(body)
