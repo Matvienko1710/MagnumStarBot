@@ -20,6 +20,11 @@ import {
   Target,
   Clock,
   TrendingUp,
+  X,
+  Settings,
+  Award,
+  BarChart3,
+  ArrowUp,
 } from "lucide-react"
 
 interface GameState {
@@ -29,9 +34,10 @@ interface GameState {
   maxEnergy: number
   clickAnimating: boolean
   energyAnimating: boolean
-  rewardPopups: Array<{ id: number; x: number; y: number }>
   totalClicks: number
   lastEnergyRestore: number
+  clickPower: number
+  level: number
 }
 
 interface CaseItem {
@@ -44,6 +50,17 @@ interface CaseItem {
   glowColor: string
 }
 
+interface Upgrade {
+  id: string
+  name: string
+  description: string
+  price: number
+  level: number
+  maxLevel: number
+  effect: string
+  icon: string
+}
+
 export default function TelegramClickerApp() {
   const [gameState, setGameState] = useState<GameState>({
     magnumCoins: 0,
@@ -52,231 +69,63 @@ export default function TelegramClickerApp() {
     maxEnergy: 100,
     clickAnimating: false,
     energyAnimating: false,
-    rewardPopups: [],
     totalClicks: 0,
     lastEnergyRestore: Date.now(),
+    clickPower: 1,
+    level: 1,
   })
 
   const [activeTab, setActiveTab] = useState("home")
   const [selectedCase, setSelectedCase] = useState<CaseItem | null>(null)
   const [openingCase, setOpeningCase] = useState(false)
   const [caseResult, setCaseResult] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [telegramId, setTelegramId] = useState<number | null>(null)
-  const [isClicking, setIsClicking] = useState(false)
-  const [clickTimes, setClickTimes] = useState<number[]>([])
-  const [clickCooldown, setClickCooldown] = useState(0)
+  const [caseOpeningProgress, setCaseOpeningProgress] = useState(0)
+  const [showProfile, setShowProfile] = useState(false)
+  const [showUpgrades, setShowUpgrades] = useState(false)
 
-  // Initialize app and load user data
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Get Telegram WebApp data
-        let tgId: number | null = null
-        
-        console.log('=== TELEGRAM WEBAPP DEBUG ===')
-        console.log('window.Telegram exists:', typeof window !== 'undefined' && !!window.Telegram)
-        console.log('window.Telegram.WebApp exists:', typeof window !== 'undefined' && !!window.Telegram?.WebApp)
-        
-        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-          const tg = window.Telegram.WebApp
-          console.log('Telegram WebApp object:', tg)
-          console.log('initDataUnsafe:', tg.initDataUnsafe)
-          console.log('initData:', tg.initData)
-          
-          tg.ready()
-          tg.expand()
-          
-          const userData = tg.initDataUnsafe?.user
-          console.log('Telegram user data:', userData)
-          
-          if (userData && userData.id) {
-            tgId = userData.id
-            console.log('✅ Using Telegram ID from user data:', tgId)
-          } else {
-            console.log('❌ No user data or ID found in initDataUnsafe')
-            
-            // Try to parse initData manually
-            try {
-              const initData = tg.initData
-              console.log('Raw initData:', initData)
-              
-              if (initData) {
-                const urlParams = new URLSearchParams(initData)
-                const userParam = urlParams.get('user')
-                console.log('User param from initData:', userParam)
-                
-                if (userParam) {
-                  const userObj = JSON.parse(decodeURIComponent(userParam))
-                  console.log('Parsed user object:', userObj)
-                  
-                  if (userObj.id) {
-                    tgId = userObj.id
-                    console.log('✅ Using Telegram ID from parsed initData:', tgId)
-                  }
-                }
-              }
-            } catch (error) {
-              console.error('Error parsing initData:', error)
-            }
-          }
-        }
-        
-        // Fallback for development/testing
-        if (!tgId) {
-          // Try to get from localStorage first
-          const savedId = localStorage.getItem('telegram-user-id')
-          if (savedId) {
-            tgId = parseInt(savedId)
-            console.log('✅ Using saved Telegram ID from localStorage:', tgId)
-          } else {
-            // Only create fallback ID if we're not in Telegram WebApp
-            const isInTelegram = typeof window !== 'undefined' && window.Telegram?.WebApp
-            if (!isInTelegram) {
-              tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
-              localStorage.setItem('telegram-user-id', tgId.toString())
-              console.log('⚠️ Using fallback ID for non-Telegram environment:', tgId)
-            } else {
-              console.log('❌ No Telegram ID available and we are in Telegram WebApp - this should not happen')
-              // Don't create a user if we can't get Telegram ID in Telegram WebApp
-              setLoading(false)
-              return
-            }
-          }
-        } else {
-          // Save the ID to localStorage for consistency
-          localStorage.setItem('telegram-user-id', tgId.toString())
-          console.log('💾 Saved Telegram ID to localStorage:', tgId)
-        }
-        
-        // Validate Telegram ID
-        if (!tgId || tgId < 100000000 || tgId > 999999999) {
-          console.error('❌ Invalid Telegram ID:', tgId, '- must be a 9-digit number')
-          setLoading(false)
-          return
-        }
-        
-        console.log('=== FINAL TELEGRAM ID:', tgId, '===')
-        
-        setTelegramId(tgId)
-        
-        // Try to load from API first
-        try {
-          console.log('🔍 Fetching user data from API...')
-          const response = await fetch(`/api/users?telegramId=${tgId}`)
-          const data = await response.json()
-          
-          console.log('📡 API response:', data)
-          
-          if (data.success && data.user) {
-            console.log('✅ Loaded data from MongoDB:', data.user)
-            setGameState({
-              magnumCoins: data.user.magnumCoins || 0,
-              stars: data.user.stars || 0,
-              energy: data.user.energy || 100,
-              maxEnergy: data.user.maxEnergy || 100,
-              clickAnimating: false,
-              energyAnimating: false,
-              rewardPopups: [],
-              totalClicks: data.user.totalClicks || 0,
-              lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
-            })
-          } else {
-            console.log('❌ No user data from API, creating new user')
-            // Create new user in API
-            await createNewUser(tgId)
-          }
-        } catch (error) {
-          console.warn('⚠️ API not available, loading from localStorage:', error)
-          loadFromLocalStorage()
-        }
-      } catch (error) {
-        console.error('Error initializing app:', error)
-        loadFromLocalStorage()
-      } finally {
-        setLoading(false)
-      }
-    }
+  const [upgrades, setUpgrades] = useState<Upgrade[]>([
+    {
+      id: "click_power",
+      name: "Сила клика",
+      description: "Увеличивает количество монет за клик",
+      price: 100,
+      level: 0,
+      maxLevel: 50,
+      effect: "+1 монета за клик",
+      icon: "💪",
+    },
+    {
+      id: "energy_capacity",
+      name: "Емкость энергии",
+      description: "Увеличивает максимальную энергию",
+      price: 200,
+      level: 0,
+      maxLevel: 25,
+      effect: "+10 максимальной энергии",
+      icon: "🔋",
+    },
+    {
+      id: "energy_regen",
+      name: "Восстановление энергии",
+      description: "Ускоряет восстановление энергии",
+      price: 500,
+      level: 0,
+      maxLevel: 20,
+      effect: "Восстановление каждые 25 сек",
+      icon: "⚡",
+    },
+    {
+      id: "star_multiplier",
+      name: "Множитель звезд",
+      description: "Увеличивает получение звезд за клик",
+      price: 1000,
+      level: 0,
+      maxLevel: 15,
+      effect: "+0.0001 звезды за клик",
+      icon: "⭐",
+    },
+  ])
 
-    const createNewUser = async (tgId: number) => {
-      try {
-        console.log('🆕 Creating new user with ID:', tgId)
-        const response = await fetch('/api/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            telegramId: tgId,
-            username: 'user',
-            firstName: 'User',
-            lastName: 'User',
-          }),
-        })
-        
-        const data = await response.json()
-        console.log('📡 Create user API response:', data)
-        
-        if (data.success && data.user) {
-          console.log('✅ Created new user in MongoDB:', data.user)
-          setGameState({
-            magnumCoins: data.user.magnumCoins || 100,
-            stars: data.user.stars || 0,
-            energy: data.user.energy || 100,
-            maxEnergy: data.user.maxEnergy || 100,
-            clickAnimating: false,
-            energyAnimating: false,
-            rewardPopups: [],
-            totalClicks: data.user.totalClicks || 0,
-            lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
-          })
-        } else {
-          console.error('❌ Failed to create user - API returned error:', data)
-          throw new Error('Failed to create user')
-        }
-      } catch (error) {
-        console.error('❌ Failed to create user in API:', error)
-        loadFromLocalStorage()
-      }
-    }
-
-    const loadFromLocalStorage = () => {
-      try {
-        const saved = localStorage.getItem('magnum-clicker-game-state')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          setGameState(prev => ({
-            ...prev,
-            ...parsed,
-            clickAnimating: false,
-            energyAnimating: false,
-            rewardPopups: [],
-          }))
-        }
-      } catch (error) {
-        console.error('Error loading from localStorage:', error)
-      }
-    }
-
-    initializeApp()
-  }, [])
-
-  // Save to localStorage whenever gameState changes
-  useEffect(() => {
-    if (!loading) {
-      const stateToSave = {
-        magnumCoins: gameState.magnumCoins,
-        stars: gameState.stars,
-        energy: gameState.energy,
-        maxEnergy: gameState.maxEnergy,
-        totalClicks: gameState.totalClicks,
-        lastEnergyRestore: gameState.lastEnergyRestore,
-      }
-      localStorage.setItem('magnum-clicker-game-state', JSON.stringify(stateToSave))
-    }
-  }, [gameState.magnumCoins, gameState.stars, gameState.energy, gameState.totalClicks, gameState.lastEnergyRestore, loading])
-
-  // Energy restoration
   useEffect(() => {
     const interval = setInterval(() => {
       setGameState((prev) => {
@@ -297,40 +146,6 @@ export default function TelegramClickerApp() {
 
     return () => clearInterval(interval)
   }, [])
-
-  // Check if user can click (max 3 clicks per second) - optimized
-  const canClick = useCallback(() => {
-    if (clickTimes.length < 3) return true
-    
-    const now = Date.now()
-    const oneSecondAgo = now - 1000
-    let recentCount = 0
-    
-    // Count from the end (most recent clicks)
-    for (let i = clickTimes.length - 1; i >= 0; i--) {
-      if (clickTimes[i] > oneSecondAgo) {
-        recentCount++
-        if (recentCount >= 3) return false
-      } else {
-        break // No need to check older clicks
-      }
-    }
-    
-    return true
-  }, [clickTimes])
-
-  // Update click cooldown display (less frequent updates)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now()
-      const oneSecondAgo = now - 1000
-      const recentClicks = clickTimes.filter(time => time > oneSecondAgo)
-      const remainingClicks = 3 - recentClicks.length
-      setClickCooldown(Math.max(0, remainingClicks))
-    }, 200) // Reduced frequency from 100ms to 200ms
-
-    return () => clearInterval(interval)
-  }, [clickTimes])
 
   const cases: CaseItem[] = [
     {
@@ -400,117 +215,53 @@ export default function TelegramClickerApp() {
   ]
 
   const handleClick = useCallback(
-    async (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-      if (gameState.energy <= 0 || isClicking || !canClick()) return
+    (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+      if (gameState.energy <= 0) return
 
-      // Prevent multiple rapid clicks
-      setIsClicking(true)
-      
-      // Record click time (optimized)
-      const now = Date.now()
-      setClickTimes(prev => {
-        // Keep only last 10 clicks to prevent memory issues
-        const newTimes = [...prev, now]
-        return newTimes.length > 10 ? newTimes.slice(-10) : newTimes
-      })
-      
-      // Prevent default touch behavior
       event.preventDefault()
 
-      const rect = event.currentTarget.getBoundingClientRect()
-      let x: number, y: number
-
-      // Handle both mouse and touch events
-      if ("touches" in event && event.touches.length > 0) {
-        x = event.touches[0].clientX - rect.left
-        y = event.touches[0].clientY - rect.top
-      } else if ("clientX" in event) {
-        x = event.clientX - rect.left
-        y = event.clientY - rect.top
-      } else {
-        x = rect.width / 2
-        y = rect.height / 2
-      }
-
-      // Haptic feedback for mobile devices
       if ("vibrate" in navigator) {
         navigator.vibrate(50)
       }
 
-      // Update local state immediately for responsiveness
       setGameState((prev) => ({
         ...prev,
-        magnumCoins: prev.magnumCoins + 1,
+        magnumCoins: prev.magnumCoins + prev.clickPower,
+        stars: prev.stars + 0.0001 * (1 + upgrades.find((u) => u.id === "star_multiplier")?.level || 0),
         energy: prev.energy - 1,
         clickAnimating: true,
         energyAnimating: true,
         totalClicks: prev.totalClicks + 1,
-        rewardPopups: [...prev.rewardPopups, { id: Date.now(), x, y }],
+        level: Math.floor((prev.totalClicks + 1) / 100) + 1,
       }))
-
-      // Try to sync with API in background (but don't update state to avoid double counting)
-      if (telegramId) {
-        try {
-          const response = await fetch('/api/click', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ telegramId }),
-          })
-          
-          const data = await response.json()
-          if (data.success && data.user) {
-            // Only update if there's a significant difference (API error recovery)
-            setGameState(prev => {
-              const apiCoins = data.user.magnumCoins
-              const localCoins = prev.magnumCoins
-              const difference = Math.abs(apiCoins - localCoins)
-              
-              // Only sync if difference is more than 1 (indicating API error)
-              if (difference > 1) {
-                console.log('Syncing with API due to significant difference:', { apiCoins, localCoins })
-                return {
-                  ...prev,
-                  magnumCoins: data.user.magnumCoins,
-                  stars: data.user.stars,
-                  energy: data.user.energy,
-                  totalClicks: data.user.totalClicks,
-                  level: data.user.level,
-                }
-              }
-              return prev
-            })
-          }
-        } catch (error) {
-          console.warn('Failed to sync click with API:', error)
-        }
-      }
 
       setTimeout(() => {
         setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
-        setIsClicking(false) // Reset clicking state
-      }, 300) // Reduced from 800ms to 300ms
-
-      setTimeout(() => {
-        setGameState((prev) => ({
-          ...prev,
-          rewardPopups: prev.rewardPopups.filter((popup) => popup.id !== Date.now()),
-        }))
-      }, 1200)
+      }, 300)
     },
-    [gameState.energy, telegramId, isClicking, canClick],
+    [gameState.energy, gameState.clickPower, upgrades],
   )
 
   const openCase = useCallback(
-    async (caseItem: CaseItem) => {
+    (caseItem: CaseItem) => {
       if (gameState.magnumCoins < caseItem.price) return
 
       setOpeningCase(true)
       setSelectedCase(caseItem)
+      setCaseOpeningProgress(0)
 
-      // Simulate case opening animation
-      setTimeout(async () => {
+      const progressInterval = setInterval(() => {
+        setCaseOpeningProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(progressInterval)
+            return 100
+          }
+          return prev + 2
+        })
+      }, 40)
+
+      setTimeout(() => {
+        clearInterval(progressInterval)
         const rewards = caseItem.rewards.map((reward) => ({
           type: reward.type,
           amount: Math.random() * (reward.max - reward.min) + reward.min,
@@ -526,7 +277,6 @@ export default function TelegramClickerApp() {
           if (reward.type === "energy") newEnergy = Math.min(gameState.maxEnergy, newEnergy + Math.floor(reward.amount))
         })
 
-        // Update local state
         setGameState((prev) => ({
           ...prev,
           magnumCoins: newCoins,
@@ -534,33 +284,12 @@ export default function TelegramClickerApp() {
           energy: newEnergy,
         }))
 
-        // Sync with API if available
-        if (telegramId) {
-          try {
-            // Update user data in API
-            await fetch('/api/users', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                telegramId,
-                magnumCoins: newCoins,
-                stars: newStars,
-                energy: newEnergy,
-                totalClicks: gameState.totalClicks,
-              }),
-            })
-          } catch (error) {
-            console.warn('Failed to sync case opening with API:', error)
-          }
-        }
-
         setCaseResult(rewards)
         setOpeningCase(false)
+        setCaseOpeningProgress(0)
       }, 2000)
     },
-    [gameState, telegramId],
+    [gameState],
   )
 
   const formatNumber = (num: number) => {
@@ -586,21 +315,39 @@ export default function TelegramClickerApp() {
     }
   }
 
+  const buyUpgrade = useCallback(
+    (upgradeId: string) => {
+      const upgrade = upgrades.find((u) => u.id === upgradeId)
+      if (!upgrade || gameState.magnumCoins < upgrade.price || upgrade.level >= upgrade.maxLevel) return
+
+      setGameState((prev) => ({
+        ...prev,
+        magnumCoins: prev.magnumCoins - upgrade.price,
+        clickPower: upgradeId === "click_power" ? prev.clickPower + 1 : prev.clickPower,
+        maxEnergy: upgradeId === "energy_capacity" ? prev.maxEnergy + 10 : prev.maxEnergy,
+      }))
+
+      setUpgrades((prev) =>
+        prev.map((u) => (u.id === upgradeId ? { ...u, level: u.level + 1, price: Math.floor(u.price * 1.5) } : u)),
+      )
+    },
+    [gameState.magnumCoins, upgrades],
+  )
+
   const renderHomeScreen = () => (
     <div className="flex-1 flex flex-col mobile-safe-area mobile-compact space-y-4 relative touch-optimized no-overscroll">
-      {/* Profile Button */}
-      <div className="absolute top-4 right-4 z-10">
+      <div className="flex justify-end pt-2 px-4">
         <Button
           variant="ghost"
           size="sm"
           className="mobile-button w-10 h-10 rounded-full bg-card/50 backdrop-blur-md border border-border/50 hover:bg-accent/20 touch-optimized"
+          onClick={() => setShowProfile(true)}
         >
           <User className="w-5 h-5 text-foreground" />
         </Button>
       </div>
 
-      {/* Energy Bar */}
-      <Card className="card-gradient p-4 hw-accelerated">
+      <Card className="card-gradient p-4 hw-accelerated mx-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <Zap className={`w-5 h-5 text-energy ${gameState.energyAnimating ? "energy-drain" : ""}`} />
@@ -614,8 +361,7 @@ export default function TelegramClickerApp() {
         <p className="text-xs text-muted-foreground mt-1">Восстанавливается: 1 энергия / 30 сек</p>
       </Card>
 
-      {/* Balance Cards */}
-      <div className="grid grid-cols-2 mobile-grid-compact">
+      <div className="grid grid-cols-2 mobile-grid-compact px-4">
         <Card className="card-gradient p-4 text-center hw-accelerated">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <Coins className="w-5 h-5 text-accent" />
@@ -633,61 +379,173 @@ export default function TelegramClickerApp() {
         </Card>
       </div>
 
-      {/* Clicker Button */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center px-4">
         <div className="relative">
           <Button
             onClick={handleClick}
             onTouchStart={handleClick}
-            disabled={gameState.energy <= 0 || !canClick()}
-            className={`magnum-coin w-40 h-40 rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mobile-clicker gpu-accelerated ${
-              gameState.clickAnimating ? "coin-bounce" : ""
+            disabled={gameState.energy <= 0}
+            className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 border-4 border-amber-300 shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              gameState.clickAnimating ? "scale-95" : "scale-100"
             }`}
             size="lg"
           >
-            <div className="flex flex-col items-center space-y-2 relative z-10">
-              <div className="text-4xl font-black text-amber-900 drop-shadow-lg">M</div>
-              <span className="text-xs font-bold text-amber-900 mobile-text-sm drop-shadow-md">
-                {gameState.energy > 0 ? "КЛИК" : "НЕТ ЭНЕРГИИ"}
-              </span>
-            </div>
+            <div className="text-6xl">🪙</div>
           </Button>
-
-          {/* Reward Popups */}
-          {gameState.rewardPopups.map((popup) => (
-            <div
-              key={popup.id}
-              className="absolute pointer-events-none reward-popup text-orange-400 font-bold text-base z-10 gpu-accelerated drop-shadow-lg"
-              style={{ left: popup.x, top: popup.y }}
-            >
-              +1 🪙
-            </div>
-          ))}
         </div>
       </div>
 
-      {/* Stats */}
-      <Card className="card-gradient p-4 hw-accelerated">
-        <div className="grid grid-cols-3 mobile-grid-compact text-center">
-          <div>
-            <p className="text-muted-foreground text-xs">Всего кликов</p>
-            <p className="text-lg font-bold text-foreground">{formatNumber(gameState.totalClicks)}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Сила клика</p>
-            <p className="text-lg font-bold text-accent">1.0001</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Уровень</p>
-            <p className="text-lg font-bold text-primary">{Math.floor(gameState.totalClicks / 100) + 1}</p>
-          </div>
+      <div className="px-4">
+        <Button
+          onClick={() => setShowUpgrades(true)}
+          className="w-full bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary h-14 text-lg font-bold"
+        >
+          <ArrowUp className="w-6 h-6 mr-2" />
+          Улучшения
+        </Button>
+      </div>
+
+      {showUpgrades && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="card-gradient p-6 max-w-md w-full max-h-[80vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-foreground flex items-center space-x-2">
+                <ArrowUp className="w-6 h-6 text-primary" />
+                <span>Улучшения</span>
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowUpgrades(false)} className="w-8 h-8 rounded-full">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-center space-x-2 p-3 rounded-lg bg-accent/10">
+              <Coins className="w-5 h-5 text-accent" />
+              <span className="text-foreground">Баланс:</span>
+              <span className="font-bold text-accent">{formatNumber(gameState.magnumCoins)} MC</span>
+            </div>
+
+            <div className="space-y-3">
+              {upgrades.map((upgrade) => (
+                <Card key={upgrade.id} className="p-4 bg-card/50 border border-border/50">
+                  <div className="flex items-start space-x-3">
+                    <div className="text-2xl">{upgrade.icon}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-bold text-foreground">{upgrade.name}</h3>
+                        <span className="text-xs text-muted-foreground">
+                          Ур. {upgrade.level}/{upgrade.maxLevel}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{upgrade.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-accent">{upgrade.effect}</span>
+                        <Button
+                          size="sm"
+                          onClick={() => buyUpgrade(upgrade.id)}
+                          disabled={gameState.magnumCoins < upgrade.price || upgrade.level >= upgrade.maxLevel}
+                          className="bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary"
+                        >
+                          {upgrade.level >= upgrade.maxLevel ? "МАКС" : `${upgrade.price} MC`}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <Progress value={(upgrade.level / upgrade.maxLevel) * 100} className="h-1 bg-muted" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center space-x-2 mb-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Совет</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Улучшайте силу клика для быстрого заработка монет, а затем увеличивайте энергию для долгой игры!
+              </p>
+            </div>
+          </Card>
         </div>
-      </Card>
+      )}
+
+      {showProfile && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <Card className="card-gradient p-6 max-w-sm mx-4 w-full space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-foreground">Профиль игрока</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowProfile(false)} className="w-8 h-8 rounded-full">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl mx-auto">
+                👤
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Игрок #{Math.floor(Math.random() * 10000)}</h3>
+                <p className="text-sm text-muted-foreground">Уровень {gameState.level}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10">
+                <div className="flex items-center space-x-2">
+                  <Coins className="w-5 h-5 text-accent" />
+                  <span className="text-foreground">Всего заработано</span>
+                </div>
+                <span className="font-bold text-accent">{formatNumber(gameState.magnumCoins)}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10">
+                <div className="flex items-center space-x-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <span className="text-foreground">Звезды</span>
+                </div>
+                <span className="font-bold text-yellow-500">{formatNumber(gameState.stars)}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
+                <div className="flex items-center space-x-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  <span className="text-foreground">Всего кликов</span>
+                </div>
+                <span className="font-bold text-primary">{formatNumber(gameState.totalClicks)}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-purple-500/10">
+                <div className="flex items-center space-x-2">
+                  <Award className="w-5 h-5 text-purple-400" />
+                  <span className="text-foreground">Сила клика</span>
+                </div>
+                <span className="font-bold text-purple-400">{gameState.clickPower}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button className="w-full bg-gradient-to-r from-primary to-accent" disabled>
+                <Settings className="w-4 h-4 mr-2" />
+                Настройки (скоро)
+              </Button>
+              <Button variant="outline" className="w-full bg-transparent" disabled>
+                <Trophy className="w-4 h-4 mr-2" />
+                Достижения (скоро)
+              </Button>
+            </div>
+
+            <div className="text-center pt-4 border-t border-border/50">
+              <p className="text-xs text-muted-foreground">Играет с {new Date().toLocaleDateString("ru-RU")}</p>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   )
 
   const renderCasesScreen = () => (
-    <div className="flex-1 mobile-safe-area mobile-compact space-y-4 mobile-scroll no-overscroll">
+    <div className="flex-1 mobile-safe-area mobile-compact space-y-4 overflow-y-auto mobile-scroll no-overscroll pb-4">
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-bold text-foreground flex items-center justify-center space-x-2">
           <Package className="w-6 h-6 text-primary" />
@@ -696,7 +554,6 @@ export default function TelegramClickerApp() {
         <p className="text-sm text-muted-foreground">Откройте кейсы и получите награды!</p>
       </div>
 
-      {/* Balance Display */}
       <Card className="card-gradient p-4 hw-accelerated">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -707,7 +564,6 @@ export default function TelegramClickerApp() {
         </div>
       </Card>
 
-      {/* Cases Grid */}
       <div className="space-y-3">
         {cases.map((caseItem, index) => (
           <Card
@@ -718,12 +574,10 @@ export default function TelegramClickerApp() {
             onClick={() => openCase(caseItem)}
           >
             <div className="flex items-center space-x-4">
-              {/* Case Image */}
               <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl border border-border/50">
                 {caseItem.image}
               </div>
 
-              {/* Case Info */}
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
                   <h3 className="font-bold text-foreground">{caseItem.name}</h3>
@@ -747,7 +601,6 @@ export default function TelegramClickerApp() {
                 </div>
               </div>
 
-              {/* Price and Button */}
               <div className="text-right space-y-2">
                 <div className="text-lg font-bold text-accent">{caseItem.price} MC</div>
                 <Button
@@ -760,7 +613,6 @@ export default function TelegramClickerApp() {
               </div>
             </div>
 
-            {/* Rarity Indicator */}
             <div
               className="mt-3 h-1 rounded-full bg-gradient-to-r from-transparent via-current to-transparent opacity-30"
               style={{ color: caseItem.glowColor.replace("0.5", "1") }}
@@ -769,31 +621,52 @@ export default function TelegramClickerApp() {
         ))}
       </div>
 
-      {/* Case Opening Modal */}
       {openingCase && selectedCase && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <Card className="card-gradient p-8 text-center space-y-6 max-w-sm mx-4">
-            <div className="text-6xl animate-spin">{selectedCase.image}</div>
-            <h2 className="text-xl font-bold text-foreground">Открываем {selectedCase.name}...</h2>
-            <div className="w-full bg-muted rounded-full h-2">
+            <div className="relative">
               <div
-                className="bg-gradient-to-r from-primary to-accent h-2 rounded-full animate-pulse"
-                style={{ width: "100%" }}
-              />
+                className={`text-6xl transition-transform duration-500 ${caseOpeningProgress > 50 ? "animate-bounce" : "animate-pulse"}`}
+              >
+                {selectedCase.image}
+              </div>
+              {caseOpeningProgress > 75 && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-4xl animate-spin">✨</div>
+                </div>
+              )}
             </div>
+            <h2 className="text-xl font-bold text-foreground">Открываем {selectedCase.name}...</h2>
+            <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-primary via-accent to-primary h-3 rounded-full transition-all duration-100 ease-out relative"
+                style={{ width: `${caseOpeningProgress}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full"></div>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {caseOpeningProgress < 30 && "Подготавливаем кейс..."}
+              {caseOpeningProgress >= 30 && caseOpeningProgress < 70 && "Открываем замок..."}
+              {caseOpeningProgress >= 70 && caseOpeningProgress < 95 && "Извлекаем награды..."}
+              {caseOpeningProgress >= 95 && "Почти готово!"}
+            </p>
           </Card>
         </div>
       )}
 
-      {/* Case Result Modal */}
       {caseResult && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <Card className="card-gradient p-8 text-center space-y-6 max-w-sm mx-4">
-            <div className="text-4xl">🎉</div>
+            <div className="text-4xl animate-bounce">🎉</div>
             <h2 className="text-xl font-bold text-foreground">Поздравляем!</h2>
             <div className="space-y-2">
               {caseResult.map((reward: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between p-2 rounded bg-accent/10">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2 rounded bg-accent/10 animate-fade-in"
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
                   <span className="text-foreground">
                     {reward.type === "coins" && "🪙 Монеты"}
                     {reward.type === "stars" && "⭐ Звезды"}
@@ -810,7 +683,6 @@ export default function TelegramClickerApp() {
         </div>
       )}
 
-      {/* Daily Cases Section */}
       <Card className="card-gradient p-4 hw-accelerated">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-foreground flex items-center space-x-2">
@@ -842,7 +714,6 @@ export default function TelegramClickerApp() {
         </div>
       </Card>
 
-      {/* Special Offers */}
       <Card className="card-gradient p-4 hw-accelerated">
         <h3 className="font-bold text-foreground mb-4 flex items-center space-x-2">
           <Sparkles className="w-5 h-5 text-yellow-400" />
@@ -874,7 +745,6 @@ export default function TelegramClickerApp() {
         </div>
       </Card>
 
-      {/* Statistics */}
       <Card className="card-gradient p-4 hw-accelerated">
         <h3 className="font-bold text-foreground mb-4 flex items-center space-x-2">
           <TrendingUp className="w-5 h-5 text-accent" />
@@ -1008,23 +878,10 @@ export default function TelegramClickerApp() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
-          <p className="text-foreground">Загрузка игры...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen gradient-bg flex flex-col relative touch-optimized no-overscroll">
-      {/* Main Content */}
       <div className="flex-1 mobile-scroll">{renderContent()}</div>
 
-      {/* Bottom Navigation */}
       <nav className="border-t border-border bg-card/50 backdrop-blur-md mobile-nav">
         <div className="grid grid-cols-4 gap-1">
           {[
