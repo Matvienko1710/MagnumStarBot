@@ -61,7 +61,104 @@ export default function TelegramClickerApp() {
   const [selectedCase, setSelectedCase] = useState<CaseItem | null>(null)
   const [openingCase, setOpeningCase] = useState(false)
   const [caseResult, setCaseResult] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [telegramId, setTelegramId] = useState<number | null>(null)
 
+  // Initialize app and load user data
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Get Telegram WebApp data
+        let tgId: number | null = null
+        
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp
+          tg.ready()
+          tg.expand()
+          
+          const userData = tg.initDataUnsafe?.user
+          if (userData) {
+            tgId = userData.id
+          }
+        }
+        
+        // Fallback for development/testing
+        if (!tgId) {
+          tgId = 123456789
+        }
+        
+        setTelegramId(tgId)
+        
+        // Try to load from API first
+        try {
+          const response = await fetch(`/api/users?telegramId=${tgId}`)
+          const data = await response.json()
+          
+          if (data.success && data.user) {
+            setGameState({
+              magnumCoins: data.user.magnumCoins || 0,
+              stars: data.user.stars || 0,
+              energy: data.user.energy || 100,
+              maxEnergy: data.user.maxEnergy || 100,
+              clickAnimating: false,
+              energyAnimating: false,
+              rewardPopups: [],
+              totalClicks: data.user.totalClicks || 0,
+              lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
+            })
+          } else {
+            // Load from localStorage as fallback
+            loadFromLocalStorage()
+          }
+        } catch (error) {
+          console.warn('API not available, loading from localStorage:', error)
+          loadFromLocalStorage()
+        }
+      } catch (error) {
+        console.error('Error initializing app:', error)
+        loadFromLocalStorage()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const loadFromLocalStorage = () => {
+      try {
+        const saved = localStorage.getItem('magnum-clicker-game-state')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          setGameState(prev => ({
+            ...prev,
+            ...parsed,
+            clickAnimating: false,
+            energyAnimating: false,
+            rewardPopups: [],
+          }))
+        }
+      } catch (error) {
+        console.error('Error loading from localStorage:', error)
+      }
+    }
+
+    initializeApp()
+  }, [])
+
+  // Save to localStorage whenever gameState changes
+  useEffect(() => {
+    if (!loading) {
+      const stateToSave = {
+        magnumCoins: gameState.magnumCoins,
+        stars: gameState.stars,
+        energy: gameState.energy,
+        maxEnergy: gameState.maxEnergy,
+        totalClicks: gameState.totalClicks,
+        lastEnergyRestore: gameState.lastEnergyRestore,
+      }
+      localStorage.setItem('magnum-clicker-game-state', JSON.stringify(stateToSave))
+    }
+  }, [gameState.magnumCoins, gameState.stars, gameState.energy, gameState.totalClicks, gameState.lastEnergyRestore, loading])
+
+  // Energy restoration
   useEffect(() => {
     const interval = setInterval(() => {
       setGameState((prev) => {
@@ -151,7 +248,7 @@ export default function TelegramClickerApp() {
   ]
 
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    async (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
       if (gameState.energy <= 0) return
 
       // Prevent default touch behavior
@@ -177,6 +274,7 @@ export default function TelegramClickerApp() {
         navigator.vibrate(50)
       }
 
+      // Update local state immediately for responsiveness
       setGameState((prev) => ({
         ...prev,
         magnumCoins: prev.magnumCoins + 1,
@@ -187,6 +285,21 @@ export default function TelegramClickerApp() {
         totalClicks: prev.totalClicks + 1,
         rewardPopups: [...prev.rewardPopups, { id: Date.now(), x, y }],
       }))
+
+      // Try to sync with API in background
+      if (telegramId) {
+        try {
+          await fetch('/api/click', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ telegramId }),
+          })
+        } catch (error) {
+          console.warn('Failed to sync click with API:', error)
+        }
+      }
 
       setTimeout(() => {
         setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
@@ -199,7 +312,7 @@ export default function TelegramClickerApp() {
         }))
       }, 1200)
     },
-    [gameState.energy],
+    [gameState.energy, telegramId],
   )
 
   const openCase = useCallback(
@@ -683,6 +796,17 @@ export default function TelegramClickerApp() {
       default:
         return renderHomeScreen()
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+          <p className="text-foreground">Загрузка игры...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
