@@ -2,6 +2,14 @@ import mongoose from 'mongoose'
 
 const MONGODB_URI = process.env.MONGODB_URI
 
+// Extend the global object to include mongoose
+declare global {
+  var mongoose: {
+    conn: typeof mongoose | null
+    promise: Promise<typeof mongoose> | null
+  } | undefined
+}
+
 if (!MONGODB_URI) {
   console.warn('MONGODB_URI not found - running in test mode without database')
 } else {
