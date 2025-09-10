@@ -16,11 +16,6 @@ if (!MONGODB_URI) {
   console.log('MongoDB URI found - connecting to database')
 }
 
-/**
- * Global is used here to maintain a cached connection across hot reloads
- * in development. This prevents connections growing exponentially
- * during API Route usage.
- */
 let cached = global.mongoose
 
 if (!cached) {
@@ -28,7 +23,6 @@ if (!cached) {
 }
 
 async function connectDB() {
-  // Return early if no MongoDB URI
   if (!MONGODB_URI) {
     console.warn('MongoDB connection skipped - running in test mode')
     return null
@@ -38,12 +32,12 @@ async function connectDB() {
     return cached.conn
   }
 
-  if (!cached.promise) {
+  if (!cached?.promise) {
     const opts = {
       bufferCommands: false,
     }
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts)
+    cached.promise = mongoose.connect(MONGODB_URI, opts) as Promise<typeof mongoose>
   }
 
   try {
