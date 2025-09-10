@@ -64,6 +64,8 @@ export default function TelegramClickerApp() {
   const [loading, setLoading] = useState(true)
   const [telegramId, setTelegramId] = useState<number | null>(null)
   const [isClicking, setIsClicking] = useState(false)
+  const [clickTimes, setClickTimes] = useState<number[]>([])
+  const [clickCooldown, setClickCooldown] = useState(0)
 
   // Initialize app and load user data
   useEffect(() => {
@@ -296,6 +298,27 @@ export default function TelegramClickerApp() {
     return () => clearInterval(interval)
   }, [])
 
+  // Check if user can click (max 3 clicks per second)
+  const canClick = useCallback(() => {
+    const now = Date.now()
+    const oneSecondAgo = now - 1000
+    const recentClicks = clickTimes.filter(time => time > oneSecondAgo)
+    return recentClicks.length < 3
+  }, [clickTimes])
+
+  // Update click cooldown display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      const oneSecondAgo = now - 1000
+      const recentClicks = clickTimes.filter(time => time > oneSecondAgo)
+      const remainingClicks = 3 - recentClicks.length
+      setClickCooldown(Math.max(0, remainingClicks))
+    }, 100)
+
+    return () => clearInterval(interval)
+  }, [clickTimes])
+
   const cases: CaseItem[] = [
     {
       id: "bronze",
@@ -365,10 +388,14 @@ export default function TelegramClickerApp() {
 
   const handleClick = useCallback(
     async (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-      if (gameState.energy <= 0 || isClicking) return
+      if (gameState.energy <= 0 || isClicking || !canClick()) return
 
       // Prevent multiple rapid clicks
       setIsClicking(true)
+      
+      // Record click time
+      const now = Date.now()
+      setClickTimes(prev => [...prev, now])
       
       // Prevent default touch behavior
       event.preventDefault()
@@ -455,7 +482,7 @@ export default function TelegramClickerApp() {
         }))
       }, 1200)
     },
-    [gameState.energy, telegramId, isClicking],
+    [gameState.energy, telegramId, isClicking, canClick],
   )
 
   const openCase = useCallback(
@@ -567,7 +594,12 @@ export default function TelegramClickerApp() {
           </span>
         </div>
         <Progress value={(gameState.energy / gameState.maxEnergy) * 100} className="h-2 bg-muted" />
-        <p className="text-xs text-muted-foreground mt-1">Восстанавливается: 1 энергия / 30 сек</p>
+        <div className="flex justify-between items-center mt-1">
+          <p className="text-xs text-muted-foreground">Восстанавливается: 1 энергия / 30 сек</p>
+          <p className="text-xs text-muted-foreground">
+            Клики: {3 - clickCooldown}/3 в сек
+          </p>
+        </div>
       </Card>
 
       {/* Balance Cards */}
@@ -595,7 +627,7 @@ export default function TelegramClickerApp() {
           <Button
             onClick={handleClick}
             onTouchStart={handleClick}
-            disabled={gameState.energy <= 0}
+            disabled={gameState.energy <= 0 || !canClick()}
             className={`magnum-coin w-40 h-40 rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mobile-clicker gpu-accelerated ${
               gameState.clickAnimating ? "coin-bounce" : ""
             }`}
@@ -606,6 +638,11 @@ export default function TelegramClickerApp() {
               <span className="text-xs font-bold text-amber-900 mobile-text-sm drop-shadow-md">
                 {gameState.energy > 0 ? "КЛИК" : "НЕТ ЭНЕРГИИ"}
               </span>
+              {!canClick() && (
+                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                  Кулдаун: {clickCooldown}/3
+                </div>
+              )}
             </div>
           </Button>
 
