@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Trophy, Target, Clock } from "lucide-react"
 
-export default function EventsPage() {
+import type { EventsPageProps } from "@/lib/types"
+
+export default function EventsPage({ gameState }: EventsPageProps) {
   return (
     <div className="flex-1 flex items-center justify-center mobile-safe-area mobile-compact coming-soon-bg">
       <Card className="coming-soon-card p-8 text-center space-y-6 max-w-md mx-auto coming-soon-float hw-accelerated">

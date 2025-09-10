@@ -10,132 +10,17 @@ import CaseOpeningScreen from "@/components/case-opening-screen"
 import EventsPage from "@/components/events-page"
 import WalletPage from "@/components/wallet-page"
 
-interface GameState {
-  magnumCoins: number
-  stars: number
-  energy: number
-  maxEnergy: number
-  clickAnimating: boolean
-  energyAnimating: boolean
-  totalClicks: number
-  lastEnergyRestore: number
-  clickPower: number
-  level: number
-  experience: number
-  experienceToNext: number
-  prestigeLevel: number
-  dailyStreak: number
-  lastLoginDate: string
-  achievements: string[]
-  inventory: InventoryItem[]
-  dailyRewards: DailyReward[]
-  lastDailyReward: string
-  autoClicker: AutoClickerState
-  boosts: BoostState[]
-  statistics: GameStatistics
-  telegramId?: number
-  username?: string
-  firstName?: string
-  lastName?: string
-}
-
-interface CaseItem {
-  id: string
-  name: string
-  price: number
-  rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
-  rewards: Array<{
-    type: "coins" | "stars" | "energy" | "boost" | "item"
-    min: number
-    max: number
-    chance: number
-    itemId?: string
-  }>
-  image: string
-  glowColor: string
-  description: string
-  dailyLimit?: number
-  specialOffer?: boolean
-  category: "standard" | "premium" | "event" | "seasonal"
-  unlockLevel: number
-  tags: string[]
-  animation: string
-}
-
-interface Upgrade {
-  id: string
-  name: string
-  description: string
-  price: number
-  level: number
-  maxLevel: number
-  effect: string
-  icon: string
-  category: "click" | "energy" | "passive" | "special"
-  unlockLevel: number
-  prerequisite?: string
-  multiplier: number
-}
-
-interface HistoryItem {
-  id: string
-  playerName: string
-  caseName: string
-  reward: { type: string; amount: number; itemName?: string }
-  rarity: string
-  timestamp: number
-  playerId: string
-  location: string
-  isRare: boolean
-}
-
-interface InventoryItem {
-  id: string
-  name: string
-  type: "boost" | "decoration" | "tool" | "collectible"
-  rarity: string
-  quantity: number
-  description: string
-  icon: string
-  effects?: { [key: string]: number }
-}
-
-interface DailyReward {
-  day: number
-  type: "coins" | "stars" | "energy" | "boost" | "case"
-  amount: number
-  claimed: boolean
-  special?: boolean
-}
-
-interface AutoClickerState {
-  active: boolean
-  level: number
-  clicksPerSecond: number
-  duration: number
-  remaining: number
-}
-
-interface BoostState {
-  id: string
-  name: string
-  type: "click_multiplier" | "energy_regen" | "coin_rain" | "lucky_chance"
-  multiplier: number
-  duration: number
-  remaining: number
-  icon: string
-}
-
-interface GameStatistics {
-  totalEarned: number
-  totalSpent: number
-  casesOpened: number
-  rareItemsFound: number
-  daysPlayed: number
-  maxClickStreak: number
-  currentClickStreak: number
-  prestigeCount: number
-}
+import type { 
+  GameState, 
+  CaseItem, 
+  Upgrade, 
+  HistoryItem, 
+  InventoryItem, 
+  DailyReward, 
+  AutoClickerState, 
+  BoostState, 
+  GameStatistics 
+} from "@/lib/types"
 
 export default function TelegramClickerApp() {
   const [gameState, setGameState] = useState<GameState>({

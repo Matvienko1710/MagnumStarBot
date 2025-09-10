@@ -8,46 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Coins, Zap, ArrowUp, User, X, Settings, Trophy, BarChart3, Award } from "lucide-react"
 
-interface GameState {
-  magnumCoins: number
-  stars: number
-  energy: number
-  maxEnergy: number
-  clickAnimating: boolean
-  energyAnimating: boolean
-  totalClicks: number
-  lastEnergyRestore: number
-  clickPower: number
-  level: number
-  experience: number
-  experienceToNext: number
-  boosts: { type: string; multiplier: number; remaining: number; icon: string; name: string }[]
-  autoClicker: { level: number; clicksPerSecond: number }
-  statistics: { totalEarned: number; totalSpent: number; currentClickStreak: number; maxClickStreak: number }
-}
-
-interface Upgrade {
-  id: string
-  name: string
-  description: string
-  price: number
-  level: number
-  maxLevel: number
-  effect: string
-  icon: string
-  multiplier: number
-}
-
-interface HomePageProps {
-  gameState: GameState
-  setGameState: React.Dispatch<React.SetStateAction<GameState>>
-  upgrades: Upgrade[]
-  setUpgrades: React.Dispatch<React.SetStateAction<Upgrade[]>>
-  showProfile: boolean
-  setShowProfile: (show: boolean) => void
-  showUpgrades: boolean
-  setShowUpgrades: (show: boolean) => void
-}
+import type { HomePageProps } from "@/lib/types"
 
 export default function HomePage({
   gameState,

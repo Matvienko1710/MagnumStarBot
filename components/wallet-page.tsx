@@ -4,22 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Coins, TrendingUp } from "lucide-react"
 
-interface GameState {
-  magnumCoins: number
-  stars: number
-  energy: number
-  maxEnergy: number
-  clickAnimating: boolean
-  energyAnimating: boolean
-  totalClicks: number
-  lastEnergyRestore: number
-  clickPower: number
-  level: number
-}
-
-interface WalletPageProps {
-  gameState: GameState
-}
+import type { WalletPageProps } from "@/lib/types"
 
 export default function WalletPage({ gameState }: WalletPageProps) {
   const formatNumber = (num: number) => {

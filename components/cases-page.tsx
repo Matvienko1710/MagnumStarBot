@@ -3,49 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Package, Coins, Sparkles, ChevronLeft, ChevronRight, BarChart3 } from "lucide-react"
 
-interface GameState {
-  magnumCoins: number
-  stars: number
-  energy: number
-  maxEnergy: number
-  clickAnimating: boolean
-  energyAnimating: boolean
-  totalClicks: number
-  lastEnergyRestore: number
-  clickPower: number
-  level: number
-}
-
-interface CaseItem {
-  id: string
-  name: string
-  price: number
-  rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
-  rewards: Array<{ type: "coins" | "stars" | "energy"; min: number; max: number; chance: number }>
-  image: string
-  glowColor: string
-  description: string
-  dailyLimit?: number
-  specialOffer?: boolean
-}
-
-interface HistoryItem {
-  id: string
-  playerName: string
-  caseName: string
-  reward: { type: string; amount: number }
-  rarity: string
-  timestamp: number
-}
-
-interface CasesPageProps {
-  gameState: GameState
-  cases: CaseItem[]
-  recentDrops: HistoryItem[]
-  historyScrollIndex: number
-  setHistoryScrollIndex: (index: number) => void
-  openCase: (caseItem: CaseItem) => void
-}
+import type { CasesPageProps } from "@/lib/types"
 
 export default function CasesPage({
   gameState,

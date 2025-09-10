@@ -4,29 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft, Gift, Crown, Star } from "lucide-react"
 
-interface CaseItem {
-  id: string
-  name: string
-  price: number
-  rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
-  rewards: Array<{ type: "coins" | "stars" | "energy"; min: number; max: number; chance: number }>
-  image: string
-  glowColor: string
-  description: string
-  dailyLimit?: number
-  specialOffer?: boolean
-}
-
-interface CaseOpeningScreenProps {
-  selectedCase: CaseItem | null
-  rouletteItems: any[]
-  rouletteSpinning: boolean
-  rouletteOffset: number
-  roulettePhase: "ready" | "spinning" | "slowing" | "stopped"
-  caseResult: any
-  onClose: () => void
-  spinRoulette: () => void
-}
+import type { CaseItem, CaseOpeningScreenProps } from "@/lib/types"
 
 export default function CaseOpeningScreen({
   selectedCase,
