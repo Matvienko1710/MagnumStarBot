@@ -755,7 +755,29 @@ const Cases = () => {
     { id: 'jackpot_coins', name: 'ДЖЕКПОТ Монет!', description: '💰 x2500', icon: '🏆', rarity: 'legendary', value: 2500, type: 'coins', amount: 2500 }
   ];
 
-  // Данные кейсов - только один Кейс Новичка
+  // Предметы для StartPack кейса
+  const startPackItems = [
+    // Обычные предметы - стартовые бонусы
+    { id: 'start_stars_5', name: '5 Звезд', description: '⭐ x5', icon: '⭐', rarity: 'common', value: 500, type: 'stars', amount: 5 },
+    { id: 'start_coins_200', name: '200 Монет', description: '💰 x200', icon: '💰', rarity: 'common', value: 200, type: 'coins', amount: 200 },
+    { id: 'start_stars_10', name: '10 Звезд', description: '⭐ x10', icon: '⭐', rarity: 'common', value: 1000, type: 'stars', amount: 10 },
+    
+    // Редкие предметы - хорошие бонусы
+    { id: 'start_stars_20', name: '20 Звезд', description: '⭐ x20', icon: '🌟', rarity: 'rare', value: 2000, type: 'stars', amount: 20 },
+    { id: 'start_coins_500', name: '500 Монет', description: '💰 x500', icon: '💰', rarity: 'rare', value: 500, type: 'coins', amount: 500 },
+    { id: 'start_stars_30', name: '30 Звезд', description: '⭐ x30', icon: '🌟', rarity: 'rare', value: 3000, type: 'stars', amount: 30 },
+    
+    // Эпические предметы - отличные бонусы
+    { id: 'start_stars_50', name: '50 Звезд', description: '⭐ x50', icon: '✨', rarity: 'epic', value: 5000, type: 'stars', amount: 50 },
+    { id: 'start_coins_1000', name: '1000 Монет', description: '💰 x1000', icon: '💎', rarity: 'epic', value: 1000, type: 'coins', amount: 1000 },
+    { id: 'start_stars_75', name: '75 Звезд', description: '⭐ x75', icon: '✨', rarity: 'epic', value: 7500, type: 'stars', amount: 75 },
+    
+    // Легендарные предметы - мега бонусы
+    { id: 'start_jackpot_stars', name: '100 ЗВЕЗД!', description: '⭐ x100', icon: '🎯', rarity: 'legendary', value: 10000, type: 'stars', amount: 100 },
+    { id: 'start_jackpot_coins', name: '2500 МОНЕТ!', description: '💰 x2500', icon: '🏆', rarity: 'legendary', value: 2500, type: 'coins', amount: 2500 }
+  ];
+
+  // Данные кейсов
   const cases = [
     {
       id: 'newbie_case',
@@ -763,6 +785,13 @@ const Cases = () => {
       description: 'Получи звезды и магнум коины для старта!',
       price: 100,
       possibleItems: gameItems
+    },
+    {
+      id: 'startpack_case',
+      title: 'StartPack',
+      description: 'Стартовый пакет с отличными наградами!',
+      price: 500,
+      possibleItems: startPackItems
     }
   ];
 
