@@ -43,9 +43,7 @@ async function connectDB() {
       bufferCommands: false,
     }
 
-    cached!.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance: typeof mongoose) => {
-      return mongooseInstance
-    })
+    cached!.promise = mongoose.connect(MONGODB_URI, opts)
   }
 
   try {
