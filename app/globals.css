@@ -436,3 +436,80 @@
   -webkit-perspective: 1000px;
   perspective: 1000px;
 }
+
+/* Adding missing animations for case opening and rewards */
+@keyframes reward-popup {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.8);
+  }
+}
+
+@keyframes energy-drain {
+  0% {
+    transform: scale(1);
+    color: var(--color-energy);
+  }
+  50% {
+    transform: scale(0.9);
+    color: #ef4444;
+  }
+  100% {
+    transform: scale(1);
+    color: var(--color-energy);
+  }
+}
+
+@keyframes case-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 107, 53, 0.6), 0 0 60px rgba(74, 144, 226, 0.3);
+  }
+}
+
+@keyframes coming-soon-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 179, 71, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 179, 71, 0.8);
+  }
+}
+
+/* Adding animate-fade-in utility class */
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
