@@ -82,6 +82,11 @@ export default function TelegramClickerApp() {
   const [caseOpeningProgress, setCaseOpeningProgress] = useState(0)
   const [showProfile, setShowProfile] = useState(false)
   const [showUpgrades, setShowUpgrades] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [telegramId, setTelegramId] = useState<number | null>(null)
+  const [isClicking, setIsClicking] = useState(false)
+  const [clickTimes, setClickTimes] = useState<number[]>([])
+  const [clickCooldown, setClickCooldown] = useState(0)
 
   const [upgrades, setUpgrades] = useState<Upgrade[]>([
     {
@@ -125,6 +130,252 @@ export default function TelegramClickerApp() {
       icon: "⭐",
     },
   ])
+
+  // Initialize app and load user data
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Get Telegram WebApp data
+        let tgId: number | null = null
+        
+        console.log('=== TELEGRAM WEBAPP DEBUG ===')
+        console.log('window.Telegram exists:', typeof window !== 'undefined' && !!window.Telegram)
+        console.log('window.Telegram.WebApp exists:', typeof window !== 'undefined' && !!window.Telegram?.WebApp)
+        
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp
+          console.log('Telegram WebApp object:', tg)
+          console.log('initDataUnsafe:', tg.initDataUnsafe)
+          console.log('initData:', tg.initData)
+          
+          tg.ready()
+          tg.expand()
+          
+          const userData = tg.initDataUnsafe?.user
+          console.log('Telegram user data:', userData)
+          
+          if (userData && userData.id) {
+            tgId = userData.id
+            console.log('✅ Using Telegram ID from user data:', tgId)
+          } else {
+            console.log('❌ No user data or ID found in initDataUnsafe')
+            
+            // Try to parse initData manually
+            try {
+              const initData = tg.initData
+              console.log('Raw initData:', initData)
+              
+              if (initData) {
+                const urlParams = new URLSearchParams(initData)
+                const userParam = urlParams.get('user')
+                console.log('User param from initData:', userParam)
+                
+                if (userParam) {
+                  const userObj = JSON.parse(decodeURIComponent(userParam))
+                  console.log('Parsed user object:', userObj)
+                  
+                  if (userObj.id) {
+                    tgId = userObj.id
+                    console.log('✅ Using Telegram ID from parsed initData:', tgId)
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error parsing initData:', error)
+            }
+          }
+        }
+        
+        // Fallback for development/testing
+        if (!tgId) {
+          // Try to get from localStorage first
+          const savedId = localStorage.getItem('telegram-user-id')
+          if (savedId) {
+            tgId = parseInt(savedId)
+            console.log('✅ Using saved Telegram ID from localStorage:', tgId)
+          } else {
+            // Only create fallback ID if we're not in Telegram WebApp
+            const isInTelegram = typeof window !== 'undefined' && window.Telegram?.WebApp
+            if (!isInTelegram) {
+              tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
+              localStorage.setItem('telegram-user-id', tgId.toString())
+              console.log('⚠️ Using fallback ID for non-Telegram environment:', tgId)
+            } else {
+              console.log('❌ No Telegram ID available and we are in Telegram WebApp - this should not happen')
+              // Don't create a user if we can't get Telegram ID in Telegram WebApp
+              setLoading(false)
+              return
+            }
+          }
+        } else {
+          // Save the ID to localStorage for consistency
+          localStorage.setItem('telegram-user-id', tgId.toString())
+          console.log('💾 Saved Telegram ID to localStorage:', tgId)
+        }
+        
+        // Validate Telegram ID
+        if (!tgId || tgId < 100000000 || tgId > 999999999) {
+          console.error('❌ Invalid Telegram ID:', tgId, '- must be a 9-digit number')
+          setLoading(false)
+          return
+        }
+        
+        console.log('=== FINAL TELEGRAM ID:', tgId, '===')
+        
+        setTelegramId(tgId)
+        
+        // Try to load from API first
+        try {
+          console.log('🔍 Fetching user data from API...')
+          const response = await fetch(`/api/users?telegramId=${tgId}`)
+          const data = await response.json()
+          
+          console.log('📡 API response:', data)
+          
+          if (data.success && data.user) {
+            console.log('✅ Loaded data from MongoDB:', data.user)
+            setGameState({
+              magnumCoins: data.user.magnumCoins || 0,
+              stars: data.user.stars || 0,
+              energy: data.user.energy || 100,
+              maxEnergy: data.user.maxEnergy || 100,
+              clickAnimating: false,
+              energyAnimating: false,
+              totalClicks: data.user.totalClicks || 0,
+              lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
+              clickPower: data.user.clickPower || 1,
+              level: data.user.level || 1,
+            })
+          } else {
+            console.log('❌ No user data from API, creating new user')
+            // Create new user in API
+            await createNewUser(tgId)
+          }
+        } catch (error) {
+          console.warn('⚠️ API not available, loading from localStorage:', error)
+          loadFromLocalStorage()
+        }
+      } catch (error) {
+        console.error('Error initializing app:', error)
+        loadFromLocalStorage()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const createNewUser = async (tgId: number) => {
+      try {
+        console.log('🆕 Creating new user with ID:', tgId)
+        const response = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            telegramId: tgId,
+            username: 'user',
+            firstName: 'User',
+            lastName: 'User',
+          }),
+        })
+        
+        const data = await response.json()
+        console.log('📡 Create user API response:', data)
+        
+        if (data.success && data.user) {
+          console.log('✅ Created new user in MongoDB:', data.user)
+          setGameState({
+            magnumCoins: data.user.magnumCoins || 100,
+            stars: data.user.stars || 0,
+            energy: data.user.energy || 100,
+            maxEnergy: data.user.maxEnergy || 100,
+            clickAnimating: false,
+            energyAnimating: false,
+            totalClicks: data.user.totalClicks || 0,
+            lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
+            clickPower: data.user.clickPower || 1,
+            level: data.user.level || 1,
+          })
+        } else {
+          console.error('❌ Failed to create user - API returned error:', data)
+          throw new Error('Failed to create user')
+        }
+      } catch (error) {
+        console.error('❌ Failed to create user in API:', error)
+        loadFromLocalStorage()
+      }
+    }
+
+    const loadFromLocalStorage = () => {
+      try {
+        const saved = localStorage.getItem('magnum-clicker-game-state')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          setGameState(prev => ({
+            ...prev,
+            ...parsed,
+            clickAnimating: false,
+            energyAnimating: false,
+          }))
+        }
+      } catch (error) {
+        console.error('Error loading from localStorage:', error)
+      }
+    }
+
+    initializeApp()
+  }, [])
+
+  // Save game state to localStorage
+  useEffect(() => {
+    if (!loading) {
+      const stateToSave = {
+        magnumCoins: gameState.magnumCoins,
+        stars: gameState.stars,
+        energy: gameState.energy,
+        maxEnergy: gameState.maxEnergy,
+        totalClicks: gameState.totalClicks,
+        lastEnergyRestore: gameState.lastEnergyRestore,
+        clickPower: gameState.clickPower,
+        level: gameState.level,
+      }
+      localStorage.setItem('magnum-clicker-game-state', JSON.stringify(stateToSave))
+    }
+  }, [gameState.magnumCoins, gameState.stars, gameState.energy, gameState.totalClicks, gameState.lastEnergyRestore, gameState.clickPower, gameState.level, loading])
+
+  // Check if user can click (max 3 clicks per second) - optimized
+  const canClick = useCallback(() => {
+    if (clickTimes.length < 3) return true
+    
+    const now = Date.now()
+    const oneSecondAgo = now - 1000
+    let recentCount = 0
+    
+    // Count from the end (most recent clicks)
+    for (let i = clickTimes.length - 1; i >= 0; i--) {
+      if (clickTimes[i] > oneSecondAgo) {
+        recentCount++
+        if (recentCount >= 3) return false
+      } else {
+        break // No need to check older clicks
+      }
+    }
+    
+    return true
+  }, [clickTimes])
+
+  // Update click cooldown display (less frequent updates)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      const oneSecondAgo = now - 1000
+      const recentClicks = clickTimes.filter(time => time > oneSecondAgo)
+      const remainingClicks = 3 - recentClicks.length
+      setClickCooldown(Math.max(0, remainingClicks))
+    }, 200) // Reduced frequency from 100ms to 200ms
+
+    return () => clearInterval(interval)
+  }, [clickTimes])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -215,19 +466,48 @@ export default function TelegramClickerApp() {
   ]
 
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-      if (gameState.energy <= 0) return
+    async (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+      if (gameState.energy <= 0 || isClicking || !canClick()) return
 
+      // Prevent multiple rapid clicks
+      setIsClicking(true)
+      
+      // Record click time (optimized)
+      const now = Date.now()
+      setClickTimes(prev => {
+        // Keep only last 10 clicks to prevent memory issues
+        const newTimes = [...prev, now]
+        return newTimes.length > 10 ? newTimes.slice(-10) : newTimes
+      })
+      
+      // Prevent default touch behavior
       event.preventDefault()
 
+      const rect = event.currentTarget.getBoundingClientRect()
+      let x: number, y: number
+
+      // Handle both mouse and touch events
+      if ("touches" in event && event.touches.length > 0) {
+        x = event.touches[0].clientX - rect.left
+        y = event.touches[0].clientY - rect.top
+      } else if ("clientX" in event) {
+        x = event.clientX - rect.left
+        y = event.clientY - rect.top
+      } else {
+        x = rect.width / 2
+        y = rect.height / 2
+      }
+
+      // Haptic feedback for mobile devices
       if ("vibrate" in navigator) {
         navigator.vibrate(50)
       }
 
+      // Update local state immediately for responsiveness
       setGameState((prev) => ({
         ...prev,
         magnumCoins: prev.magnumCoins + prev.clickPower,
-        stars: prev.stars + 0.0001 * (1 + upgrades.find((u) => u.id === "star_multiplier")?.level || 0),
+        stars: prev.stars + 0.0001 * (1 + (upgrades.find((u) => u.id === "star_multiplier")?.level || 0)),
         energy: prev.energy - 1,
         clickAnimating: true,
         energyAnimating: true,
@@ -235,11 +515,51 @@ export default function TelegramClickerApp() {
         level: Math.floor((prev.totalClicks + 1) / 100) + 1,
       }))
 
+      // Try to sync with API in background (but don't update state to avoid double counting)
+      if (telegramId) {
+        try {
+          const response = await fetch('/api/click', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ telegramId }),
+          })
+          
+          const data = await response.json()
+          if (data.success && data.user) {
+            // Only update if there's a significant difference (API error recovery)
+            setGameState(prev => {
+              const apiCoins = data.user.magnumCoins
+              const localCoins = prev.magnumCoins
+              const difference = Math.abs(apiCoins - localCoins)
+              
+              // Only sync if difference is more than 1 (indicating API error)
+              if (difference > 1) {
+                console.log('Syncing with API due to significant difference:', { apiCoins, localCoins })
+                return {
+                  ...prev,
+                  magnumCoins: data.user.magnumCoins,
+                  stars: data.user.stars,
+                  energy: data.user.energy,
+                  totalClicks: data.user.totalClicks,
+                  level: data.user.level,
+                }
+              }
+              return prev
+            })
+          }
+        } catch (error) {
+          console.warn('Failed to sync click with API:', error)
+        }
+      }
+
       setTimeout(() => {
         setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
-      }, 300)
+        setIsClicking(false) // Reset clicking state
+      }, 300) // Reduced from 800ms to 300ms
     },
-    [gameState.energy, gameState.clickPower, upgrades],
+    [gameState.energy, telegramId, isClicking, canClick, upgrades],
   )
 
   const openCase = useCallback(
@@ -876,6 +1196,21 @@ export default function TelegramClickerApp() {
       default:
         return renderHomeScreen()
     }
+  }
+
+  // Show loading screen while initializing
+  if (loading) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="card-gradient p-8 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl mx-auto animate-spin">
+            🪙
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Загрузка...</h2>
+          <p className="text-sm text-muted-foreground">Инициализация игры</p>
+        </Card>
+      </div>
+    )
   }
 
   return (
