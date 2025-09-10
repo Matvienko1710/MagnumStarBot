@@ -29,8 +29,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
       }
 
+    console.log('Searching for user with telegramId:', telegramIdNum)
     let user = await User.findOne({ telegramId: telegramIdNum })
-    console.log('Found user in database:', user ? { telegramId: user.telegramId, magnumCoins: user.magnumCoins } : 'No user found')
+    console.log('Found user in database:', user ? { telegramId: user.telegramId, magnumCoins: user.magnumCoins, stars: user.stars, energy: user.energy } : 'No user found')
+    
+    // Also try to find any users with similar IDs for debugging
+    const allUsers = await User.find({}).limit(5)
+    console.log('All users in database (first 5):', allUsers.map(u => ({ telegramId: u.telegramId, magnumCoins: u.magnumCoins })))
     
     if (!user) {
       console.log('Creating new user with telegramId:', telegramId)

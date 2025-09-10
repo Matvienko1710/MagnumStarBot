@@ -249,11 +249,12 @@ export default function TelegramClickerApp() {
         
         // Try to load from API first
         try {
-          console.log('🔍 Fetching user data from API...')
+          console.log('🔍 Fetching user data from API with telegramId:', tgId)
           const response = await fetch(`/api/users?telegramId=${tgId}`)
           const data = await response.json()
           
           console.log('📡 API response:', data)
+          console.log('📡 Response status:', response.status)
           
           if (data.success && data.user) {
             console.log('✅ Loaded data from MongoDB:', data.user)
