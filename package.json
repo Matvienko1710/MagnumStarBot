@@ -11,7 +11,9 @@
     "dev": "nodemon server.js",
     "build": "cd webapp && npm install && npm run build",
     "postinstall": "npm run build",
-    "vercel-build": "cd webapp && npm install && npm run build"
+    "vercel-build": "cd webapp && npm install && npm run build",
+    "set-webhook": "node scripts/set-webhook.js",
+    "delete-webhook": "node scripts/delete-webhook.js"
   },
   "keywords": [
     "telegram",

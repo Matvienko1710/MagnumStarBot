@@ -958,8 +958,14 @@ async function handleMyTitles(ctx) {
 
 
 
+// Для webhook режима
+function registerCallbackHandler(bot) {
+    bot.on('callback_query', callbackHandler);
+}
+
 module.exports = {
     callbackHandler,
+    register: registerCallbackHandler,
     handleKeyCreation,
     handleTitleKeyCreation,
     userStates

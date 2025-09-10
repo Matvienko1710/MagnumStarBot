@@ -303,4 +303,11 @@ async function startHandler(ctx) {
     }
 }
 
+// Для webhook режима
+function registerStartHandler(bot) {
+    bot.start(startHandler);
+}
+
+// Для обычного режима
 module.exports = startHandler;
+module.exports.register = registerStartHandler;

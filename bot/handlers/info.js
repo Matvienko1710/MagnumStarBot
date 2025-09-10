@@ -1065,4 +1065,11 @@ async function publishPost(ctx, postData) {
     }
 }
 
+// Для webhook режима
+function registerInfoHandler(bot) {
+    bot.on('text', infoHandler);
+}
+
+// Для обычного режима
 module.exports = infoHandler;
+module.exports.register = registerInfoHandler;
