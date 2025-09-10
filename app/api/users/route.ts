@@ -7,7 +7,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const telegramId = searchParams.get('telegramId')
     
+    console.log('GET /api/users called with telegramId:', telegramId)
+    
     if (!telegramId) {
+      console.log('No telegramId provided')
       return NextResponse.json({ error: 'Telegram ID is required' }, { status: 400 })
     }
 
@@ -36,8 +39,10 @@ export async function GET(request: NextRequest) {
     }
 
     let user = await User.findOne({ telegramId: parseInt(telegramId) })
+    console.log('Found user in database:', user ? { telegramId: user.telegramId, magnumCoins: user.magnumCoins } : 'No user found')
     
     if (!user) {
+      console.log('Creating new user with telegramId:', telegramId)
       // Create new user
       user = new User({
         telegramId: parseInt(telegramId),
@@ -50,6 +55,9 @@ export async function GET(request: NextRequest) {
         lastEnergyRestore: new Date()
       })
       await user.save()
+      console.log('New user created:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
+    } else {
+      console.log('Using existing user:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
     }
 
     return NextResponse.json({
@@ -81,19 +89,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { telegramId, username, firstName, lastName } = body
 
+    console.log('POST /api/users called with:', { telegramId, username, firstName, lastName })
+
     if (!telegramId) {
+      console.log('No telegramId provided in POST')
       return NextResponse.json({ error: 'Telegram ID is required' }, { status: 400 })
     }
 
     let user = await User.findOne({ telegramId })
+    console.log('Found user for POST:', user ? { telegramId: user.telegramId, magnumCoins: user.magnumCoins } : 'No user found')
     
     if (user) {
+      console.log('Updating existing user:', telegramId)
       // Update existing user
       user.username = username
       user.firstName = firstName
       user.lastName = lastName
       await user.save()
+      console.log('User updated:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
     } else {
+      console.log('Creating new user via POST:', telegramId)
       // Create new user
       user = new User({
         telegramId,
@@ -109,6 +124,7 @@ export async function POST(request: NextRequest) {
         lastEnergyRestore: new Date()
       })
       await user.save()
+      console.log('New user created via POST:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
     }
 
     return NextResponse.json({

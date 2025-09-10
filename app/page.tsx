@@ -72,8 +72,16 @@ export default function TelegramClickerApp() {
         // Get Telegram WebApp data
         let tgId: number | null = null
         
+        console.log('=== TELEGRAM WEBAPP DEBUG ===')
+        console.log('window.Telegram exists:', typeof window !== 'undefined' && !!window.Telegram)
+        console.log('window.Telegram.WebApp exists:', typeof window !== 'undefined' && !!window.Telegram?.WebApp)
+        
         if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
           const tg = window.Telegram.WebApp
+          console.log('Telegram WebApp object:', tg)
+          console.log('initDataUnsafe:', tg.initDataUnsafe)
+          console.log('initData:', tg.initData)
+          
           tg.ready()
           tg.expand()
           
@@ -82,25 +90,68 @@ export default function TelegramClickerApp() {
           
           if (userData && userData.id) {
             tgId = userData.id
-            console.log('Using Telegram ID:', tgId)
+            console.log('✅ Using Telegram ID from user data:', tgId)
+          } else {
+            console.log('❌ No user data or ID found in initDataUnsafe')
+            
+            // Try to parse initData manually
+            try {
+              const initData = tg.initData
+              console.log('Raw initData:', initData)
+              
+              if (initData) {
+                const urlParams = new URLSearchParams(initData)
+                const userParam = urlParams.get('user')
+                console.log('User param from initData:', userParam)
+                
+                if (userParam) {
+                  const userObj = JSON.parse(decodeURIComponent(userParam))
+                  console.log('Parsed user object:', userObj)
+                  
+                  if (userObj.id) {
+                    tgId = userObj.id
+                    console.log('✅ Using Telegram ID from parsed initData:', tgId)
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error parsing initData:', error)
+            }
           }
         }
         
         // Fallback for development/testing
         if (!tgId) {
-          tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
-          console.log('Using fallback ID:', tgId)
+          // Try to get from localStorage first
+          const savedId = localStorage.getItem('telegram-user-id')
+          if (savedId) {
+            tgId = parseInt(savedId)
+            console.log('✅ Using saved Telegram ID from localStorage:', tgId)
+          } else {
+            tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
+            localStorage.setItem('telegram-user-id', tgId.toString())
+            console.log('⚠️ Using fallback ID and saving to localStorage:', tgId)
+          }
+        } else {
+          // Save the ID to localStorage for consistency
+          localStorage.setItem('telegram-user-id', tgId.toString())
+          console.log('💾 Saved Telegram ID to localStorage:', tgId)
         }
+        
+        console.log('=== FINAL TELEGRAM ID:', tgId, '===')
         
         setTelegramId(tgId)
         
         // Try to load from API first
         try {
+          console.log('🔍 Fetching user data from API...')
           const response = await fetch(`/api/users?telegramId=${tgId}`)
           const data = await response.json()
           
+          console.log('📡 API response:', data)
+          
           if (data.success && data.user) {
-            console.log('Loaded data from MongoDB:', data.user)
+            console.log('✅ Loaded data from MongoDB:', data.user)
             setGameState({
               magnumCoins: data.user.magnumCoins || 0,
               stars: data.user.stars || 0,
@@ -113,12 +164,12 @@ export default function TelegramClickerApp() {
               lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
             })
           } else {
-            console.log('No user data from API, creating new user')
+            console.log('❌ No user data from API, creating new user')
             // Create new user in API
             await createNewUser(tgId)
           }
         } catch (error) {
-          console.warn('API not available, loading from localStorage:', error)
+          console.warn('⚠️ API not available, loading from localStorage:', error)
           loadFromLocalStorage()
         }
       } catch (error) {
@@ -131,6 +182,7 @@ export default function TelegramClickerApp() {
 
     const createNewUser = async (tgId: number) => {
       try {
+        console.log('🆕 Creating new user with ID:', tgId)
         const response = await fetch('/api/users', {
           method: 'POST',
           headers: {
@@ -145,8 +197,10 @@ export default function TelegramClickerApp() {
         })
         
         const data = await response.json()
+        console.log('📡 Create user API response:', data)
+        
         if (data.success && data.user) {
-          console.log('Created new user in MongoDB:', data.user)
+          console.log('✅ Created new user in MongoDB:', data.user)
           setGameState({
             magnumCoins: data.user.magnumCoins || 100,
             stars: data.user.stars || 0,
@@ -159,10 +213,11 @@ export default function TelegramClickerApp() {
             lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
           })
         } else {
+          console.error('❌ Failed to create user - API returned error:', data)
           throw new Error('Failed to create user')
         }
       } catch (error) {
-        console.error('Failed to create user in API:', error)
+        console.error('❌ Failed to create user in API:', error)
         loadFromLocalStorage()
       }
     }
