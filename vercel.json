@@ -27,8 +27,12 @@
       "dest": "/api/index.js"
     },
     {
+      "src": "/assets/(.*)",
+      "dest": "/webapp/dist/assets/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/webapp/dist/$1"
+      "dest": "/webapp/dist/index.html"
     }
   ],
   "env": {
