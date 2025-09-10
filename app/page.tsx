@@ -84,9 +84,6 @@ export default function TelegramClickerApp() {
   const [showUpgrades, setShowUpgrades] = useState(false)
   const [loading, setLoading] = useState(true)
   const [telegramId, setTelegramId] = useState<number | null>(null)
-  const [isClicking, setIsClicking] = useState(false)
-  const [clickTimes, setClickTimes] = useState<number[]>([])
-  const [clickCooldown, setClickCooldown] = useState(0)
   const [userInfo, setUserInfo] = useState<{
     username?: string
     firstName?: string
@@ -403,39 +400,6 @@ export default function TelegramClickerApp() {
     }
   }, [gameState.magnumCoins, gameState.stars, gameState.energy, gameState.totalClicks, gameState.lastEnergyRestore, gameState.clickPower, gameState.level, loading])
 
-  // Check if user can click (max 3 clicks per second) - optimized
-  const canClick = useCallback(() => {
-    if (clickTimes.length < 3) return true
-    
-    const now = Date.now()
-    const oneSecondAgo = now - 1000
-    let recentCount = 0
-    
-    // Count from the end (most recent clicks)
-    for (let i = clickTimes.length - 1; i >= 0; i--) {
-      if (clickTimes[i] > oneSecondAgo) {
-        recentCount++
-        if (recentCount >= 3) return false
-      } else {
-        break // No need to check older clicks
-      }
-    }
-    
-    return true
-  }, [clickTimes])
-
-  // Update click cooldown display (less frequent updates)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now()
-      const oneSecondAgo = now - 1000
-      const recentClicks = clickTimes.filter(time => time > oneSecondAgo)
-      const remainingClicks = 3 - recentClicks.length
-      setClickCooldown(Math.max(0, remainingClicks))
-    }, 200) // Reduced frequency from 100ms to 200ms
-
-    return () => clearInterval(interval)
-  }, [clickTimes])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -526,44 +490,18 @@ export default function TelegramClickerApp() {
   ]
 
   const handleClick = useCallback(
-    async (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-      if (gameState.energy <= 0 || isClicking || !canClick()) return
+    (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+      if (gameState.energy <= 0) return
 
-      // Prevent multiple rapid clicks
-      setIsClicking(true)
-      
-      // Record click time (optimized)
-      const now = Date.now()
-      setClickTimes(prev => {
-        // Keep only last 10 clicks to prevent memory issues
-        const newTimes = [...prev, now]
-        return newTimes.length > 10 ? newTimes.slice(-10) : newTimes
-      })
-      
       // Prevent default touch behavior
       event.preventDefault()
 
-      const rect = event.currentTarget.getBoundingClientRect()
-      let x: number, y: number
-
-      // Handle both mouse and touch events
-      if ("touches" in event && event.touches.length > 0) {
-        x = event.touches[0].clientX - rect.left
-        y = event.touches[0].clientY - rect.top
-      } else if ("clientX" in event) {
-        x = event.clientX - rect.left
-        y = event.clientY - rect.top
-      } else {
-        x = rect.width / 2
-        y = rect.height / 2
-      }
-
       // Haptic feedback for mobile devices
       if ("vibrate" in navigator) {
-        navigator.vibrate(50)
+        navigator.vibrate(30)
       }
 
-      // Update local state immediately for responsiveness
+      // Update local state immediately for maximum responsiveness
       setGameState((prev) => ({
         ...prev,
         magnumCoins: prev.magnumCoins + prev.clickPower,
@@ -575,51 +513,25 @@ export default function TelegramClickerApp() {
         level: Math.floor((prev.totalClicks + 1) / 100) + 1,
       }))
 
-      // Try to sync with API in background (but don't update state to avoid double counting)
-      if (telegramId) {
-        try {
-          const response = await fetch('/api/click', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ telegramId }),
-          })
-          
-          const data = await response.json()
-          if (data.success && data.user) {
-            // Only update if there's a significant difference (API error recovery)
-            setGameState(prev => {
-              const apiCoins = data.user.magnumCoins
-              const localCoins = prev.magnumCoins
-              const difference = Math.abs(apiCoins - localCoins)
-              
-              // Only sync if difference is more than 1 (indicating API error)
-              if (difference > 1) {
-                console.log('Syncing with API due to significant difference:', { apiCoins, localCoins })
-                return {
-                  ...prev,
-                  magnumCoins: data.user.magnumCoins,
-                  stars: data.user.stars,
-                  energy: data.user.energy,
-                  totalClicks: data.user.totalClicks,
-                  level: data.user.level,
-                }
-              }
-              return prev
-            })
-          }
-        } catch (error) {
-          console.warn('Failed to sync click with API:', error)
-        }
-      }
-
+      // Reset animation quickly
       setTimeout(() => {
         setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
-        setIsClicking(false) // Reset clicking state
-      }, 300) // Reduced from 800ms to 300ms
+      }, 150)
+
+      // Sync with API in background (non-blocking)
+      if (telegramId) {
+        fetch('/api/click', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ telegramId }),
+        }).catch(error => {
+          console.warn('Failed to sync click with API:', error)
+        })
+      }
     },
-    [gameState.energy, telegramId, isClicking, canClick, upgrades],
+    [gameState.energy, telegramId, upgrades],
   )
 
   const openCase = useCallback(
