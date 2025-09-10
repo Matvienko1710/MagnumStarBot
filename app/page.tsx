@@ -1,35 +1,14 @@
 "use client"
 
-import type React from "react"
-import { useState, useCallback, useEffect } from "react"
-import { Card } from "@/components/ui/card"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import {
-  Coins,
-  Star,
-  Home,
-  Package,
-  Calendar,
-  Wallet,
-  Zap,
-  User,
-  Gift,
-  Trophy,
-  Sparkles,
-  Target,
-  Clock,
-  TrendingUp,
-  X,
-  Settings,
-  Award,
-  BarChart3,
-  ArrowUp,
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Crown,
-} from "lucide-react"
+import { Home, Package, Calendar, Wallet } from "lucide-react"
+
+import HomePage from "@/components/home-page"
+import CasesPage from "@/components/cases-page"
+import CaseOpeningScreen from "@/components/case-opening-screen"
+import EventsPage from "@/components/events-page"
+import WalletPage from "@/components/wallet-page"
 
 interface GameState {
   magnumCoins: number
@@ -42,6 +21,22 @@ interface GameState {
   lastEnergyRestore: number
   clickPower: number
   level: number
+  experience: number
+  experienceToNext: number
+  prestigeLevel: number
+  dailyStreak: number
+  lastLoginDate: string
+  achievements: string[]
+  inventory: InventoryItem[]
+  dailyRewards: DailyReward[]
+  lastDailyReward: string
+  autoClicker: AutoClickerState
+  boosts: BoostState[]
+  statistics: GameStatistics
+  telegramId?: number
+  username?: string
+  firstName?: string
+  lastName?: string
 }
 
 interface CaseItem {
@@ -49,12 +44,22 @@ interface CaseItem {
   name: string
   price: number
   rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
-  rewards: Array<{ type: "coins" | "stars" | "energy"; min: number; max: number; chance: number }>
+  rewards: Array<{
+    type: "coins" | "stars" | "energy" | "boost" | "item"
+    min: number
+    max: number
+    chance: number
+    itemId?: string
+  }>
   image: string
   glowColor: string
   description: string
   dailyLimit?: number
   specialOffer?: boolean
+  category: "standard" | "premium" | "event" | "seasonal"
+  unlockLevel: number
+  tags: string[]
+  animation: string
 }
 
 interface Upgrade {
@@ -66,15 +71,70 @@ interface Upgrade {
   maxLevel: number
   effect: string
   icon: string
+  category: "click" | "energy" | "passive" | "special"
+  unlockLevel: number
+  prerequisite?: string
+  multiplier: number
 }
 
 interface HistoryItem {
   id: string
   playerName: string
   caseName: string
-  reward: { type: string; amount: number }
+  reward: { type: string; amount: number; itemName?: string }
   rarity: string
   timestamp: number
+  playerId: string
+  location: string
+  isRare: boolean
+}
+
+interface InventoryItem {
+  id: string
+  name: string
+  type: "boost" | "decoration" | "tool" | "collectible"
+  rarity: string
+  quantity: number
+  description: string
+  icon: string
+  effects?: { [key: string]: number }
+}
+
+interface DailyReward {
+  day: number
+  type: "coins" | "stars" | "energy" | "boost" | "case"
+  amount: number
+  claimed: boolean
+  special?: boolean
+}
+
+interface AutoClickerState {
+  active: boolean
+  level: number
+  clicksPerSecond: number
+  duration: number
+  remaining: number
+}
+
+interface BoostState {
+  id: string
+  name: string
+  type: "click_multiplier" | "energy_regen" | "coin_rain" | "lucky_chance"
+  multiplier: number
+  duration: number
+  remaining: number
+  icon: string
+}
+
+interface GameStatistics {
+  totalEarned: number
+  totalSpent: number
+  casesOpened: number
+  rareItemsFound: number
+  daysPlayed: number
+  maxClickStreak: number
+  currentClickStreak: number
+  prestigeCount: number
 }
 
 export default function TelegramClickerApp() {
@@ -89,24 +149,41 @@ export default function TelegramClickerApp() {
     lastEnergyRestore: Date.now(),
     clickPower: 1,
     level: 1,
+    experience: 0,
+    experienceToNext: 100,
+    prestigeLevel: 0,
+    dailyStreak: 0,
+    lastLoginDate: new Date().toDateString(),
+    achievements: [],
+    inventory: [],
+    dailyRewards: [],
+    lastDailyReward: "",
+    autoClicker: {
+      active: false,
+      level: 0,
+      clicksPerSecond: 0,
+      duration: 0,
+      remaining: 0,
+    },
+    boosts: [],
+    statistics: {
+      totalEarned: 0,
+      totalSpent: 0,
+      casesOpened: 0,
+      rareItemsFound: 0,
+      daysPlayed: 1,
+      maxClickStreak: 0,
+      currentClickStreak: 0,
+      prestigeCount: 0,
+    },
   })
 
   const [activeTab, setActiveTab] = useState("home")
   const [selectedCase, setSelectedCase] = useState<CaseItem | null>(null)
   const [openingCase, setOpeningCase] = useState(false)
   const [caseResult, setCaseResult] = useState<any>(null)
-  const [caseOpeningProgress, setCaseOpeningProgress] = useState(0)
   const [showProfile, setShowProfile] = useState(false)
   const [showUpgrades, setShowUpgrades] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [telegramId, setTelegramId] = useState<number | null>(null)
-  const [isClicking, setIsClicking] = useState(false)
-  const [userInfo, setUserInfo] = useState<{
-    username?: string
-    firstName?: string
-    lastName?: string
-  }>({})
-
   const [showCaseOpening, setShowCaseOpening] = useState(false)
   const [rouletteItems, setRouletteItems] = useState<any[]>([])
   const [rouletteSpinning, setRouletteSpinning] = useState(false)
@@ -116,566 +193,394 @@ export default function TelegramClickerApp() {
   const [recentDrops, setRecentDrops] = useState<HistoryItem[]>([])
   const [historyScrollIndex, setHistoryScrollIndex] = useState(0)
 
-  const [upgrades, setUpgrades] = useState<Upgrade[]>([
-    {
-      id: "click_power",
-      name: "Сила клика",
-      description: "Увеличивает количество монет за клик",
-      price: 100,
-      level: 0,
-      maxLevel: 50,
-      effect: "+1 монета за клик",
-      icon: "💪",
-    },
-    {
-      id: "energy_capacity",
-      name: "Емкость энергии",
-      description: "Увеличивает максимальную энергию",
-      price: 200,
-      level: 0,
-      maxLevel: 25,
-      effect: "+10 максимальной энергии",
-      icon: "🔋",
-    },
-    {
-      id: "energy_regen",
-      name: "Восстановление энергии",
-      description: "Ускоряет восстановление энергии",
-      price: 500,
-      level: 0,
-      maxLevel: 20,
-      effect: "Восстановление каждые 25 сек",
-      icon: "⚡",
-    },
-    {
-      id: "star_multiplier",
-      name: "Множитель звезд",
-      description: "Увеличивает получение звезд за клик",
-      price: 1000,
-      level: 0,
-      maxLevel: 15,
-      effect: "+0.0001 звезды за клик",
-      icon: "⭐",
-    },
-  ])
+  const [showInventory, setShowInventory] = useState(false)
+  const [showDailyRewards, setShowDailyRewards] = useState(false)
+  const [showAchievements, setShowAchievements] = useState(false)
+  const [showStatistics, setShowStatistics] = useState(false)
+  const [coinRainActive, setCoinRainActive] = useState(false)
+  const [coinRainCoins, setCoinRainCoins] = useState<Array<{ id: number; x: number; y: number; collected: boolean }>>(
+    [],
+  )
+
+  // Telegram API integration
+  useEffect(() => {
+    const initTelegram = () => {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        const tg = window.Telegram.WebApp
+        tg.ready()
+        tg.expand()
+        const userData = tg.initDataUnsafe?.user
+        
+        console.log('Telegram user data:', userData)
+        
+        if (userData) {
+          fetchUser(userData.id, userData)
+        } else {
+          // Fallback for testing
+          fetchUser(123456789)
+        }
+      } else {
+        // Fallback for development
+        fetchUser(123456789)
+      }
+    }
+    initTelegram()
+  }, [])
+
+  const fetchUser = async (telegramId: number, telegramUser?: any) => {
+    try {
+      console.log('Fetching user with telegramId:', telegramId)
+      const response = await fetch(`/api/users?telegramId=${telegramId}`)
+      const data = await response.json()
+      
+      console.log('User fetch response:', data)
+      
+      if (data.success) {
+        setGameState(prev => ({
+          ...prev,
+          ...data.user,
+          telegramId: telegramId,
+          username: telegramUser?.username || data.user.username,
+          firstName: telegramUser?.first_name || data.user.firstName,
+          lastName: telegramUser?.last_name || data.user.lastName,
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error)
+    }
+  }
+
+  const handleClick = async () => {
+    if (gameState.energy <= 0) return
+
+    try {
+      const response = await fetch('/api/click', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ telegramId: gameState.telegramId || 123456789 }),
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        setGameState(prev => ({
+          ...prev,
+          ...data.user,
+          clickAnimating: true,
+          energyAnimating: true,
+        }))
+        
+        setTimeout(() => {
+          setGameState(prev => ({ ...prev, clickAnimating: false, energyAnimating: false }))
+        }, 300)
+      }
+    } catch (error) {
+      console.error('Error clicking:', error)
+    }
+  }
+
+  // Save to localStorage as backup
+  useEffect(() => {
+    if (gameState.telegramId) {
+      localStorage.setItem('magnumClickerState', JSON.stringify(gameState))
+    }
+  }, [gameState])
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedState = localStorage.getItem('magnumClickerState')
+    if (savedState && !gameState.telegramId) {
+      try {
+        const parsedState = JSON.parse(savedState)
+        setGameState(prev => ({ ...prev, ...parsedState }))
+      } catch (error) {
+        console.error('Error loading saved state:', error)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const generateInitialHistory = () => {
-      const playerNames = [
+      const names = [
         "Игрок#1234",
-        "CryptoKing",
-        "MagnumHunter",
-        "LuckyOne",
-        "CoinMaster",
-        "StarCollector",
-        "GoldDigger",
-        "DiamondHands",
+        "Игрок#5678",
+        "Игрок#9012",
+        "Игрок#3456",
+        "Игрок#7890",
+        "Игрок#2468",
+        "Игрок#1357",
+        "Игрок#8642",
       ]
-      const caseNames = ["Бронзовый кейс", "Серебряный кейс", "Золотой кейс", "Платиновый кейс", "Мифический кейс"]
+      const caseNames = ["Стартовый кейс", "Золотой кейс", "Платиновый кейс", "Легендарный кейс", "Мифический кейс"]
       const rarities = ["common", "rare", "epic", "legendary", "mythic"]
+      const locations = ["Москва", "СПб", "Казань", "Екб", "Новосибирск", "Краснодар"]
 
       const history: HistoryItem[] = []
       for (let i = 0; i < 50; i++) {
         const rarity = rarities[Math.floor(Math.random() * rarities.length)]
-        const baseAmount =
-          rarity === "mythic"
-            ? 50000
-            : rarity === "legendary"
-              ? 15000
-              : rarity === "epic"
-                ? 5000
-                : rarity === "rare"
-                  ? 1000
-                  : 200
-        const amount = Math.floor(baseAmount + Math.random() * baseAmount)
+        const amount = Math.floor(Math.random() * 10000) + 100
+        const isRare = rarity === "legendary" || rarity === "mythic"
 
         history.push({
-          id: `drop_${i}`,
-          playerName: playerNames[Math.floor(Math.random() * playerNames.length)],
+          id: `initial_${i}`,
+          playerName: names[Math.floor(Math.random() * names.length)],
           caseName: caseNames[Math.floor(Math.random() * caseNames.length)],
-          reward: { type: "coins", amount },
+          reward: {
+            type: "coins",
+            amount,
+            itemName: isRare ? `Редкий предмет #${i}` : undefined,
+          },
           rarity,
-          timestamp: Date.now() - Math.random() * 3600000, // Последний час
+          timestamp: Date.now() - Math.random() * 3600000,
+          playerId: `player_${Math.floor(Math.random() * 100000)}`,
+          location: locations[Math.floor(Math.random() * locations.length)],
+          isRare,
         })
       }
-      setRecentDrops(history.reverse()) // Новые сверху
+      setRecentDrops(history)
+    }
+
+    const initializeDailyRewards = () => {
+      const rewards: DailyReward[] = []
+      for (let day = 1; day <= 7; day++) {
+        let reward: DailyReward
+        if (day === 7) {
+          reward = { day, type: "case", amount: 1, claimed: false, special: true }
+        } else if (day % 3 === 0) {
+          reward = { day, type: "stars", amount: day * 10, claimed: false }
+        } else if (day % 2 === 0) {
+          reward = { day, type: "energy", amount: 50, claimed: false }
+        } else {
+          reward = { day, type: "coins", amount: day * 100, claimed: false }
+        }
+        rewards.push(reward)
+      }
+
+      setGameState((prev) => ({ ...prev, dailyRewards: rewards }))
     }
 
     generateInitialHistory()
-  }, [])
+    initializeDailyRewards()
 
-  // Initialize app and load user data
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Get Telegram WebApp data
-        let tgId: number | null = null
-        
-        console.log('=== TELEGRAM WEBAPP DEBUG ===')
-        console.log('window.Telegram exists:', typeof window !== 'undefined' && !!window.Telegram)
-        console.log('window.Telegram.WebApp exists:', typeof window !== 'undefined' && !!window.Telegram?.WebApp)
-        
-        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-          const tg = window.Telegram.WebApp
-          console.log('Telegram WebApp object:', tg)
-          console.log('initDataUnsafe:', tg.initDataUnsafe)
-          console.log('initData:', tg.initData)
-          
-          tg.ready()
-          tg.expand()
-          
-          const userData = tg.initDataUnsafe?.user
-          console.log('Telegram user data:', userData)
-          
-          if (userData && userData.id) {
-            tgId = userData.id
-            console.log('✅ Using Telegram ID from user data:', tgId)
-            
-            // Save user info from Telegram
-            const userInfoData = {
-              username: userData.username,
-              firstName: userData.first_name,
-              lastName: userData.last_name
-            }
-            setUserInfo(userInfoData)
-            console.log('✅ Telegram user info:', userInfoData)
-            console.log('✅ Full userData object:', userData)
-          } else {
-            console.log('❌ No user data or ID found in initDataUnsafe')
-            
-            // Try to parse initData manually
-            try {
-              const initData = tg.initData
-              console.log('Raw initData:', initData)
-              
-              if (initData) {
-                const urlParams = new URLSearchParams(initData)
-                const userParam = urlParams.get('user')
-                console.log('User param from initData:', userParam)
-                
-                if (userParam) {
-                  const userObj = JSON.parse(decodeURIComponent(userParam))
-                  console.log('Parsed user object:', userObj)
-                  
-                  if (userObj.id) {
-                    tgId = userObj.id
-                    console.log('✅ Using Telegram ID from parsed initData:', tgId)
-                    
-                    // Save user info from parsed initData
-                    const parsedUserInfo = {
-                      username: userObj.username,
-                      firstName: userObj.first_name,
-                      lastName: userObj.last_name
-                    }
-                    setUserInfo(parsedUserInfo)
-                    console.log('✅ Parsed user info:', parsedUserInfo)
-                    console.log('✅ Full parsed userObj:', userObj)
-                  }
-                }
-              }
-            } catch (error) {
-              console.error('Error parsing initData:', error)
-            }
-          }
-        }
-        
-        // Fallback for development/testing
-        if (!tgId) {
-          // Try to get from localStorage first
-          const savedId = localStorage.getItem('telegram-user-id')
-          if (savedId) {
-            tgId = parseInt(savedId)
-            console.log('✅ Using saved Telegram ID from localStorage:', tgId)
-          } else {
-            // Only create fallback ID if we're not in Telegram WebApp
-            const isInTelegram = typeof window !== 'undefined' && window.Telegram?.WebApp
-            if (!isInTelegram) {
-              tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
-              localStorage.setItem('telegram-user-id', tgId.toString())
-              console.log('⚠️ Using fallback ID for non-Telegram environment:', tgId)
-            } else {
-              console.log('❌ No Telegram ID available and we are in Telegram WebApp - this should not happen')
-              // Don't create a user if we can't get Telegram ID in Telegram WebApp
-              setLoading(false)
-              return
-            }
-          }
-        } else {
-          // Save the ID to localStorage for consistency
-          localStorage.setItem('telegram-user-id', tgId.toString())
-          console.log('💾 Saved Telegram ID to localStorage:', tgId)
-        }
-        
-        // Validate Telegram ID
-        if (!tgId || tgId < 100000000 || tgId > 999999999) {
-          console.error('❌ Invalid Telegram ID:', tgId, '- must be a 9-digit number')
-          setLoading(false)
-          return
-        }
-        
-        console.log('=== FINAL TELEGRAM ID:', tgId, '===')
-        
-        setTelegramId(tgId)
-        
-        // Try to load from API first
-        try {
-          console.log('🔍 Fetching user data from API with telegramId:', tgId)
-          const response = await fetch(`/api/users?telegramId=${tgId}`)
-          const data = await response.json()
-          
-          console.log('📡 API response:', data)
-          console.log('📡 Response status:', response.status)
-          
-          if (data.success && data.user) {
-            console.log('✅ Loaded data from MongoDB:', data.user)
-            console.log('User stats:', {
-              magnumCoins: data.user.magnumCoins,
-              stars: data.user.stars,
-              energy: data.user.energy,
-              maxEnergy: data.user.maxEnergy,
-              totalClicks: data.user.totalClicks,
-              level: data.user.level,
-              clickPower: data.user.clickPower
-            })
-            
-            setGameState({
-              magnumCoins: data.user.magnumCoins || 0,
-              stars: data.user.stars || 0,
-              energy: data.user.energy || 100,
-              maxEnergy: data.user.maxEnergy || 100,
-              clickAnimating: false,
-              energyAnimating: false,
-              totalClicks: data.user.totalClicks || 0,
-              lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
-              clickPower: data.user.clickPower || 1,
-              level: data.user.level || 1,
-            })
-            
-            // Save user info from API
-            setUserInfo({
-              username: data.user.username,
-              firstName: data.user.firstName,
-              lastName: data.user.lastName
-            })
-            
-            // Load upgrades from API and apply effects
-            if (data.user.upgrades && data.user.upgrades.length > 0) {
-              console.log('Loading upgrades from API:', data.user.upgrades)
-              setUpgrades(prev => prev.map(upgrade => {
-                const savedUpgrade = data.user.upgrades.find((u: any) => u.id === upgrade.id)
-                if (savedUpgrade) {
-                  // Update price based on level
-                  const newPrice = Math.floor(upgrade.price * Math.pow(1.5, savedUpgrade.level))
-                  console.log(`Upgrade ${upgrade.id}: level ${savedUpgrade.level}, price ${newPrice}`)
-                  return { ...upgrade, level: savedUpgrade.level, price: newPrice }
-                }
-                return upgrade
-              }))
-            } else {
-              console.log('No upgrades found in API data')
-            }
-          } else {
-            console.log('❌ No user data from API, creating new user')
-            // Create new user in API
-            await createNewUser(tgId)
-          }
-        } catch (error) {
-          console.warn('⚠️ API not available, loading from localStorage:', error)
-          loadFromLocalStorage()
-        }
-      } catch (error) {
-        console.error('Error initializing app:', error)
-        loadFromLocalStorage()
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    const createNewUser = async (tgId: number) => {
-      try {
-        console.log('🆕 Creating new user with ID:', tgId)
-        const response = await fetch('/api/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            telegramId: tgId,
-            username: userInfo.username || 'user',
-            firstName: userInfo.firstName || 'User',
-            lastName: userInfo.lastName || 'User',
-          }),
-        })
-        
-        const data = await response.json()
-        console.log('📡 Create user API response:', data)
-        
-        if (data.success && data.user) {
-          console.log('✅ Created/Found user in MongoDB:', data.user)
-          console.log('User stats from createNewUser:', {
-            magnumCoins: data.user.magnumCoins,
-            stars: data.user.stars,
-            energy: data.user.energy,
-            maxEnergy: data.user.maxEnergy,
-            totalClicks: data.user.totalClicks,
-            level: data.user.level,
-            clickPower: data.user.clickPower
-          })
-          
-          setGameState({
-            magnumCoins: data.user.magnumCoins || 100,
-            stars: data.user.stars || 0,
-            energy: data.user.energy || 100,
-            maxEnergy: data.user.maxEnergy || 100,
-            clickAnimating: false,
-            energyAnimating: false,
-            totalClicks: data.user.totalClicks || 0,
-            lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
-            clickPower: data.user.clickPower || 1,
-            level: data.user.level || 1,
-          })
-          
-          // Save user info from API
-          setUserInfo({
-            username: data.user.username,
-            firstName: data.user.firstName,
-            lastName: data.user.lastName
-          })
-          
-          // Load upgrades from API
-          if (data.user.upgrades && data.user.upgrades.length > 0) {
-            console.log('Loading upgrades from createNewUser:', data.user.upgrades)
-            setUpgrades(prev => prev.map(upgrade => {
-              const savedUpgrade = data.user.upgrades.find((u: any) => u.id === upgrade.id)
-              if (savedUpgrade) {
-                const newPrice = Math.floor(upgrade.price * Math.pow(1.5, savedUpgrade.level))
-                console.log(`Upgrade ${upgrade.id}: level ${savedUpgrade.level}, price ${newPrice}`)
-                return { ...upgrade, level: savedUpgrade.level, price: newPrice }
-              }
-              return upgrade
-            }))
-          } else {
-            console.log('No upgrades found in createNewUser')
-          }
-        } else {
-          console.error('❌ Failed to create user - API returned error:', data)
-          throw new Error('Failed to create user')
-        }
-      } catch (error) {
-        console.error('❌ Failed to create user in API:', error)
-        loadFromLocalStorage()
-      }
-    }
-
-    const loadFromLocalStorage = () => {
-      try {
-        const saved = localStorage.getItem('magnum-clicker-game-state')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          setGameState(prev => ({
-            ...prev,
-            ...parsed,
-            clickAnimating: false,
-            energyAnimating: false,
-          }))
-        }
-      } catch (error) {
-        console.error('Error loading from localStorage:', error)
-      }
-    }
-
-    initializeApp()
-  }, [])
-
-  // Save game state to localStorage
-  useEffect(() => {
-    if (!loading) {
-      const stateToSave = {
-        magnumCoins: gameState.magnumCoins,
-        stars: gameState.stars,
-        energy: gameState.energy,
-        maxEnergy: gameState.maxEnergy,
-        totalClicks: gameState.totalClicks,
-        lastEnergyRestore: gameState.lastEnergyRestore,
-        clickPower: gameState.clickPower,
-        level: gameState.level,
-      }
-      localStorage.setItem('magnum-clicker-game-state', JSON.stringify(stateToSave))
-    }
-  }, [gameState.magnumCoins, gameState.stars, gameState.energy, gameState.totalClicks, gameState.lastEnergyRestore, gameState.clickPower, gameState.level, loading])
-
-
-  useEffect(() => {
-    const interval = setInterval(() => {
+    const energyInterval = setInterval(() => {
       setGameState((prev) => {
         const now = Date.now()
         const timeDiff = now - prev.lastEnergyRestore
-        const energyToRestore = Math.floor(timeDiff / 30000) // 1 energy per 30 seconds
+        const energyToRestore = Math.floor(timeDiff / 30000)
 
+        const newState = { ...prev }
+
+        // Восстановление энергии
         if (energyToRestore > 0 && prev.energy < prev.maxEnergy) {
-          return {
-            ...prev,
-            energy: Math.min(prev.maxEnergy, prev.energy + energyToRestore),
-            lastEnergyRestore: now,
+          newState.energy = Math.min(prev.maxEnergy, prev.energy + energyToRestore)
+          newState.lastEnergyRestore = now
+        }
+
+        // Автокликер
+        if (prev.autoClicker.active && prev.autoClicker.remaining > 0) {
+          const autoClicks = Math.floor(timeDiff / 1000) * prev.autoClicker.clicksPerSecond
+          if (autoClicks > 0) {
+            newState.magnumCoins += autoClicks * prev.clickPower
+            newState.autoClicker.remaining = Math.max(0, prev.autoClicker.remaining - Math.floor(timeDiff / 1000))
+            newState.statistics.totalEarned += autoClicks * prev.clickPower
           }
         }
-        return prev
+
+        // Обновление бустов
+        newState.boosts = prev.boosts
+          .map((boost) => ({
+            ...boost,
+            remaining: Math.max(0, boost.remaining - Math.floor(timeDiff / 1000)),
+          }))
+          .filter((boost) => boost.remaining > 0)
+
+        return newState
       })
     }, 1000)
 
-    return () => clearInterval(interval)
+    return () => clearInterval(energyInterval)
   }, [])
 
-  const cases: CaseItem[] = [
+  const [cases] = useState<CaseItem[]>([
     {
-      id: "bronze",
-      name: "Бронзовый кейс",
+      id: "starter",
+      name: "Стартовый кейс",
       price: 100,
       rarity: "common",
-      description: "Базовый кейс для начинающих игроков",
       rewards: [
         { type: "coins", min: 50, max: 200, chance: 70 },
         { type: "coins", min: 200, max: 500, chance: 25 },
-        { type: "coins", min: 500, max: 1000, chance: 5 },
+        { type: "boost", min: 1, max: 1, chance: 5, itemId: "click_boost_small" },
       ],
-      image: "🥉",
-      glowColor: "rgba(205, 127, 50, 0.5)",
+      image: "📦",
+      glowColor: "rgba(156, 163, 175, 0.5)",
+      description: "Идеальный выбор для новичков",
+      category: "standard",
+      unlockLevel: 1,
+      tags: ["новичок", "базовый"],
+      animation: "bounce",
     },
     {
-      id: "silver",
-      name: "Серебряный кейс",
+      id: "golden",
+      name: "Золотой кейс",
       price: 500,
       rarity: "rare",
-      description: "Улучшенный кейс с лучшими наградами",
       rewards: [
-        { type: "coins", min: 300, max: 800, chance: 60 },
+        { type: "coins", min: 300, max: 800, chance: 50 },
         { type: "coins", min: 800, max: 1500, chance: 30 },
-        { type: "coins", min: 1500, max: 3000, chance: 10 },
+        { type: "stars", min: 5, max: 15, chance: 15 },
+        { type: "boost", min: 1, max: 1, chance: 5, itemId: "energy_boost" },
       ],
-      image: "🥈",
-      glowColor: "rgba(192, 192, 192, 0.5)",
-    },
-    {
-      id: "gold",
-      name: "Золотой кейс",
-      price: 1000,
-      rarity: "epic",
-      description: "Премиум кейс с высокими наградами",
-      rewards: [
-        { type: "coins", min: 800, max: 2000, chance: 50 },
-        { type: "coins", min: 2000, max: 4000, chance: 35 },
-        { type: "coins", min: 4000, max: 8000, chance: 15 },
-      ],
-      image: "🥇",
-      glowColor: "rgba(255, 215, 0, 0.5)",
+      image: "🟨",
+      glowColor: "rgba(59, 130, 246, 0.5)",
+      description: "Больше шансов на хорошие награды",
+      dailyLimit: 5,
+      category: "standard",
+      unlockLevel: 5,
+      tags: ["популярный", "золото"],
+      animation: "glow",
     },
     {
       id: "platinum",
       name: "Платиновый кейс",
-      price: 5000,
-      rarity: "legendary",
-      description: "Легендарный кейс для опытных игроков",
+      price: 1500,
+      rarity: "epic",
       rewards: [
-        { type: "coins", min: 3000, max: 8000, chance: 40 },
-        { type: "coins", min: 8000, max: 15000, chance: 35 },
-        { type: "coins", min: 15000, max: 30000, chance: 25 },
+        { type: "coins", min: 1000, max: 3000, chance: 40 },
+        { type: "coins", min: 3000, max: 6000, chance: 30 },
+        { type: "stars", min: 10, max: 30, chance: 20 },
+        { type: "boost", min: 1, max: 1, chance: 10, itemId: "coin_rain" },
       ],
       image: "💎",
       glowColor: "rgba(147, 51, 234, 0.5)",
+      description: "Премиальные награды для опытных игроков",
+      category: "premium",
+      unlockLevel: 10,
+      tags: ["премиум", "платина"],
+      animation: "pulse",
+    },
+    {
+      id: "legendary",
+      name: "Легендарный кейс",
+      price: 5000,
+      rarity: "legendary",
+      rewards: [
+        { type: "coins", min: 5000, max: 15000, chance: 50 },
+        { type: "coins", min: 15000, max: 30000, chance: 25 },
+        { type: "stars", min: 25, max: 75, chance: 15 },
+        { type: "boost", min: 1, max: 1, chance: 10, itemId: "mega_multiplier" },
+      ],
+      image: "👑",
+      glowColor: "rgba(245, 158, 11, 0.5)",
+      description: "Эксклюзивные награды высшего уровня",
+      specialOffer: true,
+      category: "premium",
+      unlockLevel: 20,
+      tags: ["легендарный", "эксклюзив"],
+      animation: "rotate",
     },
     {
       id: "mythic",
       name: "Мифический кейс",
       price: 15000,
       rarity: "mythic",
-      description: "Самый редкий кейс с невероятными наградами",
       rewards: [
-        { type: "coins", min: 10000, max: 25000, chance: 30 },
-        { type: "coins", min: 25000, max: 50000, chance: 40 },
-        { type: "coins", min: 50000, max: 100000, chance: 30 },
+        { type: "coins", min: 10000, max: 50000, chance: 40 },
+        { type: "stars", min: 50, max: 200, chance: 30 },
+        { type: "boost", min: 1, max: 1, chance: 20, itemId: "auto_clicker" },
+        { type: "item", min: 1, max: 1, chance: 10, itemId: "mythic_artifact" },
       ],
-      image: "👑",
-      glowColor: "rgba(255, 20, 147, 0.5)",
+      image: "🌟",
+      glowColor: "rgba(168, 85, 247, 0.8)",
+      description: "Невероятно редкие и мощные награды",
+      category: "event",
+      unlockLevel: 50,
+      tags: ["мифический", "артефакт"],
+      animation: "sparkle",
+    },
+  ])
+
+  const [upgrades, setUpgrades] = useState<Upgrade[]>([
+    {
+      id: "click_power",
+      name: "Сила клика",
+      description: "Увеличивает количество монет за клик",
+      price: 100,
+      level: 1,
+      maxLevel: 100,
+      effect: "+1 монета за клик",
+      icon: "💪",
+      category: "click",
+      unlockLevel: 1,
+      multiplier: 1.5,
     },
     {
-      id: "daily_bronze",
-      name: "Ежедневный бронзовый",
-      price: 50,
-      rarity: "common",
-      description: "Специальная цена! Только 3 в день",
-      dailyLimit: 3,
-      rewards: [
-        { type: "coins", min: 100, max: 300, chance: 80 },
-        { type: "coins", min: 300, max: 600, chance: 20 },
-      ],
-      image: "📦",
-      glowColor: "rgba(205, 127, 50, 0.3)",
+      id: "energy_capacity",
+      name: "Емкость энергии",
+      description: "Увеличивает максимальную энергию",
+      price: 200,
+      level: 1,
+      maxLevel: 50,
+      effect: "+10 максимальной энергии",
+      icon: "🔋",
+      category: "energy",
+      unlockLevel: 1,
+      multiplier: 1.6,
     },
     {
-      id: "lucky_box",
-      name: "Коробка удачи",
-      price: 2500,
-      rarity: "epic",
-      description: "Ограниченное предложение!",
-      specialOffer: true,
-      rewards: [
-        { type: "coins", min: 2000, max: 5000, chance: 50 },
-        { type: "coins", min: 5000, max: 10000, chance: 30 },
-        { type: "coins", min: 10000, max: 25000, chance: 20 },
-      ],
-      image: "🍀",
-      glowColor: "rgba(34, 197, 94, 0.5)",
+      id: "energy_regen",
+      name: "Восстановление энергии",
+      description: "Ускоряет восстановление энергии",
+      price: 300,
+      level: 1,
+      maxLevel: 30,
+      effect: "+20% скорости восстановления",
+      icon: "⚡",
+      category: "energy",
+      unlockLevel: 3,
+      multiplier: 1.7,
     },
-  ]
-
-  const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      if (gameState.energy <= 0 || isClicking) return
-
-      // Prevent double clicks
-      setIsClicking(true)
-
-      // Prevent default behavior
-      event.preventDefault()
-      event.stopPropagation()
-
-      // Haptic feedback for mobile devices
-      if ("vibrate" in navigator) {
-        navigator.vibrate(30)
-      }
-
-      // Update local state immediately for maximum responsiveness
-      setGameState((prev) => ({
-        ...prev,
-        magnumCoins: prev.magnumCoins + prev.clickPower, // Use clickPower for coins per click
-        energy: prev.energy - 1,
-        clickAnimating: true,
-        energyAnimating: true,
-        totalClicks: prev.totalClicks + 1,
-        level: Math.floor((prev.totalClicks + 1) / 100) + 1,
-      }))
-
-      // Reset animation and clicking state
-      setTimeout(() => {
-        setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
-        setIsClicking(false)
-      }, 200)
-
-      // Sync with API in background (non-blocking)
-      if (telegramId) {
-        fetch('/api/click', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ telegramId }),
-        }).catch(error => {
-          console.warn('Failed to sync click with API:', error)
-        })
-      }
+    {
+      id: "star_multiplier",
+      name: "Множитель звезд",
+      description: "Увеличивает получение звезд из кейсов",
+      price: 500,
+      level: 1,
+      maxLevel: 25,
+      effect: "+10% звезд из кейсов",
+      icon: "⭐",
+      category: "special",
+      unlockLevel: 5,
+      multiplier: 1.8,
     },
-    [gameState.energy, telegramId, upgrades, isClicking],
-  )
+    {
+      id: "auto_clicker",
+      name: "Автокликер",
+      description: "Автоматически кликает за вас",
+      price: 2000,
+      level: 0,
+      maxLevel: 20,
+      effect: "+1 клик в секунду",
+      icon: "🤖",
+      category: "passive",
+      unlockLevel: 15,
+      multiplier: 2.0,
+    },
+    {
+      id: "luck_boost",
+      name: "Удача",
+      description: "Увеличивает шанс редких наград",
+      price: 1000,
+      level: 0,
+      maxLevel: 15,
+      effect: "+5% шанс редких наград",
+      icon: "🍀",
+      category: "special",
+      unlockLevel: 10,
+      multiplier: 1.9,
+    },
+  ])
 
   const openCase = useCallback(
     (caseItem: CaseItem) => {
@@ -686,30 +591,43 @@ export default function TelegramClickerApp() {
       setRoulettePhase("ready")
 
       const items = []
-      const winningIndex = 49 // Выигрышный элемент ближе к концу
+      const winningIndex = 49
 
+      // Генерируем 100 предметов для рулетки
       for (let i = 0; i < 100; i++) {
         let reward, rarity
 
         if (i === winningIndex) {
-          // Выигрышный элемент
-          reward = caseItem.rewards[Math.floor(Math.random() * caseItem.rewards.length)]
+          // Выигрышный предмет
+          const totalChance = caseItem.rewards.reduce((sum, r) => sum + r.chance, 0)
+          let random = Math.random() * totalChance
+
+          for (const r of caseItem.rewards) {
+            random -= r.chance
+            if (random <= 0) {
+              reward = r
+              break
+            }
+          }
           rarity = caseItem.rarity
         } else {
-          // Случайные элементы с весами
+          // Обычные предметы
           const rand = Math.random() * 100
-          if (rand < 60) {
-            reward = { type: "coins", min: 10, max: 100, chance: 60 }
+          if (rand < 50) {
+            reward = { type: "coins", min: 10, max: 100, chance: 50 }
             rarity = "common"
-          } else if (rand < 85) {
+          } else if (rand < 75) {
             reward = { type: "coins", min: 100, max: 500, chance: 25 }
             rarity = "rare"
-          } else if (rand < 95) {
-            reward = { type: "coins", min: 500, max: 1500, chance: 10 }
+          } else if (rand < 90) {
+            reward = { type: "coins", min: 500, max: 1500, chance: 15 }
             rarity = "epic"
-          } else {
-            reward = { type: "coins", min: 1500, max: 5000, chance: 5 }
+          } else if (rand < 98) {
+            reward = { type: "coins", min: 1500, max: 5000, chance: 8 }
             rarity = "legendary"
+          } else {
+            reward = { type: "stars", min: 10, max: 50, chance: 2 }
+            rarity = "mythic"
           }
         }
 
@@ -719,6 +637,7 @@ export default function TelegramClickerApp() {
           amount,
           rarity,
           isWinning: i === winningIndex,
+          itemId: reward.itemId,
         })
       }
 
@@ -734,52 +653,93 @@ export default function TelegramClickerApp() {
     setRouletteSpinning(true)
     setRoulettePhase("spinning")
 
-    // Списываем стоимость кейса
+    // Списываем монеты
     setGameState((prev) => ({
       ...prev,
       magnumCoins: prev.magnumCoins - selectedCase.price,
+      statistics: {
+        ...prev.statistics,
+        totalSpent: prev.statistics.totalSpent + selectedCase.price,
+        casesOpened: prev.statistics.casesOpened + 1,
+      },
     }))
 
-    const itemWidth = 100
+    const itemWidth = 120 // Увеличиваем ширину для лучшей видимости
     const winningIndex = 49
     const centerPosition = winningIndex * itemWidth
-    const randomOffset = Math.random() * 30 - 15
+    const randomOffset = Math.random() * 40 - 20 // Больше случайности
     const finalOffset = -(centerPosition + randomOffset - window.innerWidth / 2 + itemWidth / 2)
 
-    const extraSpins = 3 // Уменьшаем количество оборотов
-    const totalOffset = finalOffset - extraSpins * itemWidth * 50 // Уменьшаем множитель
+    // Добавляем больше оборотов для эффектности
+    const extraSpins = 4
+    const totalOffset = finalOffset - extraSpins * itemWidth * 100
 
-    // Фаза 1: Плавное ускорение (2 сек)
+    // Фаза 1: Медленный старт (1 секунда)
     setTimeout(() => {
-      setRouletteOffset(totalOffset * 0.2) // Уменьшаем начальное смещение
+      setRouletteOffset(totalOffset * 0.1)
     }, 100)
 
-    // Фаза 2: Основное вращение (3 сек)
+    // Фаза 2: Ускорение (2 секунды)
+    setTimeout(() => {
+      setRouletteOffset(totalOffset * 0.4)
+    }, 1000)
+
+    // Фаза 3: Максимальная скорость (2 секунды)
+    setTimeout(() => {
+      setRouletteOffset(totalOffset * 0.7)
+    }, 3000)
+
+    // Фаза 4: Замедление (3 секунды)
     setTimeout(() => {
       setRoulettePhase("slowing")
-      setRouletteOffset(totalOffset * 0.7) // Более плавный переход
-    }, 2000)
-
-    // Фаза 3: Замедление до финальной позиции (3 сек)
-    setTimeout(() => {
-      setRouletteOffset(totalOffset)
+      setRouletteOffset(totalOffset * 0.9)
     }, 5000)
 
-    // Завершение через 8 секунд
+    // Фаза 5: Финальная остановка (2 секунды)
+    setTimeout(() => {
+      setRouletteOffset(totalOffset)
+    }, 7000)
+
+    // Показ результата (через 9 секунд)
     setTimeout(() => {
       const winningItem = rouletteItems[winningIndex]
-      setGameState((prev) => ({
-        ...prev,
-        magnumCoins: prev.magnumCoins + winningItem.amount,
-      }))
 
+      // Начисляем награду
+      setGameState((prev) => {
+        const newState = { ...prev }
+
+        if (winningItem.type === "coins") {
+          newState.magnumCoins += winningItem.amount
+          newState.statistics.totalEarned += winningItem.amount
+        } else if (winningItem.type === "stars") {
+          newState.stars += winningItem.amount
+        } else if (winningItem.type === "energy") {
+          newState.energy = Math.min(prev.maxEnergy, prev.energy + winningItem.amount)
+        }
+
+        // Проверяем на редкий предмет
+        if (winningItem.rarity === "legendary" || winningItem.rarity === "mythic") {
+          newState.statistics.rareItemsFound += 1
+        }
+
+        return newState
+      })
+
+      // Добавляем в историю
       const newDrop: HistoryItem = {
         id: `drop_${Date.now()}`,
         playerName: `Игрок#${Math.floor(Math.random() * 10000)}`,
         caseName: selectedCase.name,
-        reward: { type: winningItem.type, amount: winningItem.amount },
+        reward: {
+          type: winningItem.type,
+          amount: winningItem.amount,
+          itemName: winningItem.itemId ? `Предмет: ${winningItem.itemId}` : undefined,
+        },
         rarity: winningItem.rarity,
         timestamp: Date.now(),
+        playerId: `player_${Math.floor(Math.random() * 100000)}`,
+        location: "Ваш город",
+        isRare: winningItem.rarity === "legendary" || winningItem.rarity === "mythic",
       }
 
       setRecentDrops((prev) => [newDrop, ...prev.slice(0, 49)])
@@ -788,700 +748,116 @@ export default function TelegramClickerApp() {
       setRouletteSpinning(false)
       setRoulettePhase("stopped")
 
-      // Показываем результат
+      // Закрываем через 4 секунды
       setTimeout(() => {
         setShowCaseOpening(false)
         setSelectedCase(null)
         setCaseResult(null)
         setRoulettePhase("ready")
-      }, 3000)
-    }, 8000)
-  }, [rouletteSpinning, selectedCase, rouletteItems, roulettePhase])
+      }, 4000)
+    }, 9000)
+  }, [rouletteSpinning, selectedCase, roulettePhase, rouletteItems])
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(2) + "M"
-    if (num >= 1000) return (num / 1000).toFixed(2) + "K"
-    return num.toFixed(num < 1 ? 4 : 0)
+  const closeCaseOpening = () => {
+    setShowCaseOpening(false)
+    setSelectedCase(null)
+    setRouletteSpinning(false)
+    setRoulettePhase("ready")
   }
-
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case "common":
-        return "text-gray-400"
-      case "rare":
-        return "text-blue-400"
-      case "epic":
-        return "text-purple-400"
-      case "legendary":
-        return "text-yellow-400"
-      case "mythic":
-        return "text-pink-400"
-      default:
-        return "text-gray-400"
-    }
-  }
-
-  const getRarityIcon = (rarity: string) => {
-    switch (rarity) {
-      case "common":
-        return "⚪"
-      case "rare":
-        return "🔵"
-      case "epic":
-        return "🟣"
-      case "legendary":
-        return "🟡"
-      case "mythic":
-        return "🔴"
-      default:
-        return "⚪"
-    }
-  }
-
-  const getTimeAgo = (timestamp: number) => {
-    const diff = Date.now() - timestamp
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-
-    if (hours > 0) return `${hours}ч назад`
-    if (minutes > 0) return `${minutes}м назад`
-    return "только что"
-  }
-
-  const scrollHistoryLeft = () => {
-    setHistoryScrollIndex((prev) => Math.max(0, prev - 1))
-  }
-
-  const scrollHistoryRight = () => {
-    setHistoryScrollIndex((prev) => Math.min(recentDrops.length - 5, prev + 1))
-  }
-
-  const buyUpgrade = useCallback(
-    (upgradeId: string) => {
-      const upgrade = upgrades.find((u) => u.id === upgradeId)
-      if (!upgrade || gameState.magnumCoins < upgrade.price || upgrade.level >= upgrade.maxLevel) return
-
-      setGameState((prev) => ({
-        ...prev,
-        magnumCoins: prev.magnumCoins - upgrade.price,
-        clickPower: upgradeId === "click_power" ? prev.clickPower + 1 : prev.clickPower,
-        maxEnergy: upgradeId === "energy_capacity" ? prev.maxEnergy + 10 : prev.maxEnergy,
-      }))
-
-      setUpgrades((prev) =>
-        prev.map((u) => (u.id === upgradeId ? { ...u, level: u.level + 1, price: Math.floor(u.price * 1.5) } : u)),
-      )
-    },
-    [gameState.magnumCoins, upgrades, telegramId],
-  )
-
-  const renderHomeScreen = () => (
-    <div className="flex-1 flex flex-col mobile-safe-area mobile-compact space-y-4 relative touch-optimized no-overscroll">
-      <div className="flex justify-end pt-2 px-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mobile-button w-10 h-10 rounded-full bg-card/50 backdrop-blur-md border border-border/50 hover:bg-accent/20 touch-optimized"
-          onClick={() => setShowProfile(true)}
-        >
-          <User className="w-5 h-5 text-foreground" />
-        </Button>
-      </div>
-
-      <Card className="card-gradient p-4 hw-accelerated mx-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <Zap className={`w-5 h-5 text-energy ${gameState.energyAnimating ? "energy-drain" : ""}`} />
-            <span className="text-sm font-medium text-foreground">Энергия</span>
-          </div>
-          <span className="text-sm font-bold text-energy">
-            {gameState.energy}/{gameState.maxEnergy}
-          </span>
-        </div>
-        <Progress value={(gameState.energy / gameState.maxEnergy) * 100} className="h-2 bg-muted" />
-        <p className="text-xs text-muted-foreground mt-1">Восстанавливается: 1 энергия / 30 сек</p>
-      </Card>
-
-      <div className="grid grid-cols-2 mobile-grid-compact px-4">
-        <Card className="card-gradient p-4 text-center hw-accelerated">
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <Coins className="w-5 h-5 text-accent" />
-            <h3 className="text-sm font-bold text-foreground">Magnum</h3>
-          </div>
-          <p className="text-xl font-bold text-accent">{formatNumber(gameState.magnumCoins)}</p>
-        </Card>
-
-        <Card className="card-gradient p-4 text-center hw-accelerated">
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <Star className="w-5 h-5 text-yellow-500" />
-            <h3 className="text-sm font-bold text-foreground">Stars</h3>
-          </div>
-          <p className="text-xl font-bold text-yellow-500">{formatNumber(gameState.stars)}</p>
-        </Card>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center px-4">
-        <div className="relative">
-          <Button
-            onClick={handleClick}
-            disabled={gameState.energy <= 0}
-            className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 border-4 border-amber-300 shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-              gameState.clickAnimating ? "scale-95" : "scale-100"
-            }`}
-            size="lg"
-          >
-            <div className="text-6xl">🪙</div>
-          </Button>
-        </div>
-      </div>
-
-      <div className="px-4">
-        <Button
-          onClick={() => setShowUpgrades(true)}
-          className="w-full bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary h-14 text-lg font-bold"
-        >
-          <ArrowUp className="w-6 h-6 mr-2" />
-          Улучшения
-        </Button>
-      </div>
-
-      {showUpgrades && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="card-gradient p-6 max-w-md w-full max-h-[80vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground flex items-center space-x-2">
-                <ArrowUp className="w-6 h-6 text-primary" />
-                <span>Улучшения</span>
-              </h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowUpgrades(false)} className="w-8 h-8 rounded-full">
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-center space-x-2 p-3 rounded-lg bg-accent/10">
-              <Coins className="w-5 h-5 text-accent" />
-              <span className="text-foreground">Баланс:</span>
-              <span className="font-bold text-accent">{formatNumber(gameState.magnumCoins)} MC</span>
-            </div>
-
-            <div className="space-y-3">
-              {upgrades.map((upgrade) => (
-                <Card key={upgrade.id} className="p-4 bg-card/50 border border-border/50">
-                  <div className="flex items-start space-x-3">
-                    <div className="text-2xl">{upgrade.icon}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-bold text-foreground">{upgrade.name}</h3>
-                        <span className="text-xs text-muted-foreground">
-                          Ур. {upgrade.level}/{upgrade.maxLevel}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{upgrade.description}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-accent">{upgrade.effect}</span>
-                        <Button
-                          size="sm"
-                          onClick={() => buyUpgrade(upgrade.id)}
-                          disabled={gameState.magnumCoins < upgrade.price || upgrade.level >= upgrade.maxLevel}
-                          className="bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary"
-                        >
-                          {upgrade.level >= upgrade.maxLevel ? "МАКС" : `${upgrade.price} MC`}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Progress value={(upgrade.level / upgrade.maxLevel) * 100} className="h-1 bg-muted" />
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="flex items-center space-x-2 mb-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Совет</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Улучшайте силу клика для быстрого заработка монет, а затем увеличивайте энергию для долгой игры!
-              </p>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {showProfile && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <Card className="card-gradient p-6 max-w-sm mx-4 w-full space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">Профиль игрока</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowProfile(false)} className="w-8 h-8 rounded-full">
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="text-center space-y-4">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl mx-auto">
-                👤
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-foreground">
-                  {(() => {
-                    console.log('Profile display - userInfo:', userInfo)
-                    console.log('Profile display - telegramId:', telegramId)
-                    
-                    if (userInfo.firstName && userInfo.lastName) {
-                      return `${userInfo.firstName} ${userInfo.lastName}`
-                    } else if (userInfo.firstName) {
-                      return userInfo.firstName
-                    } else if (userInfo.username) {
-                      return `@${userInfo.username}`
-                    } else {
-                      return `Игрок #${telegramId?.toString().slice(-4) || '0000'}`
-                    }
-                  })()}
-                </h3>
-                <p className="text-sm text-muted-foreground">Уровень {gameState.level}</p>
-                {userInfo.username && (userInfo.firstName || userInfo.lastName) && (
-                  <p className="text-xs text-muted-foreground">@{userInfo.username}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10">
-                <div className="flex items-center space-x-2">
-                  <Coins className="w-5 h-5 text-accent" />
-                  <span className="text-foreground">Всего заработано</span>
-                </div>
-                <span className="font-bold text-accent">{formatNumber(gameState.magnumCoins)}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10">
-                <div className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-yellow-500" />
-                  <span className="text-foreground">Звезды</span>
-                </div>
-                <span className="font-bold text-yellow-500">{formatNumber(gameState.stars)}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
-                <div className="flex items-center space-x-2">
-                  <BarChart3 className="w-5 h-5 text-primary" />
-                  <span className="text-foreground">Всего кликов</span>
-                </div>
-                <span className="font-bold text-primary">{formatNumber(gameState.totalClicks)}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-lg bg-purple-500/10">
-                <div className="flex items-center space-x-2">
-                  <Award className="w-5 h-5 text-purple-400" />
-                  <span className="text-foreground">Сила клика</span>
-                </div>
-                <span className="font-bold text-purple-400">{gameState.clickPower}</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Button className="w-full bg-gradient-to-r from-primary to-accent" disabled>
-                <Settings className="w-4 h-4 mr-2" />
-                Настройки (скоро)
-              </Button>
-              <Button variant="outline" className="w-full bg-transparent" disabled>
-                <Trophy className="w-4 h-4 mr-2" />
-                Достижения (скоро)
-              </Button>
-            </div>
-
-            <div className="text-center pt-4 border-t border-border/50">
-              <p className="text-xs text-muted-foreground">Играет с {new Date().toLocaleDateString("ru-RU")}</p>
-            </div>
-          </Card>
-        </div>
-      )}
-    </div>
-  )
-
-  const renderCasesScreen = () => (
-    <div className="flex-1 flex flex-col mobile-safe-area mobile-compact overflow-hidden">
-      <div className="text-center space-y-2 p-4">
-        <h1 className="text-2xl font-bold text-foreground flex items-center justify-center space-x-2">
-          <Package className="w-6 h-6 text-primary" />
-          <span>Магазин кейсов</span>
-        </h1>
-        <p className="text-sm text-muted-foreground">Откройте кейсы и получите награды!</p>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto mobile-scroll no-overscroll px-4 space-y-4 pb-4">
-
-      <Card className="card-gradient p-4 hw-accelerated">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Coins className="w-5 h-5 text-accent" />
-            <span className="text-sm font-medium text-foreground">Ваш баланс:</span>
-          </div>
-          <span className="text-lg font-bold text-accent">{formatNumber(gameState.magnumCoins)} MC</span>
-        </div>
-      </Card>
-
-      <div className="space-y-3">
-        {cases.map((caseItem, index) => (
-          <Card
-            key={caseItem.id}
-            className={`case-card p-4 cursor-pointer transition-all duration-300 hover:scale-105 touch-optimized mobile-button ${
-              caseItem.rarity === "legendary" || caseItem.rarity === "mythic" ? "case-glow" : ""
-            }`}
-            onClick={() => openCase(caseItem)}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl border border-border/50">
-                {caseItem.image}
-              </div>
-
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-1">
-                  <h3 className="font-bold text-foreground">{caseItem.name}</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full bg-muted/20 ${getRarityColor(caseItem.rarity)}`}>
-                    {caseItem.rarity.toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Возможные награды:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {caseItem.rewards.map((reward, idx) => (
-                      <span key={idx} className="text-xs px-2 py-1 rounded bg-accent/10 text-accent">
-                        {reward.type === "coins" && "🪙"}
-                        {reward.type === "stars" && "⭐"}
-                        {reward.type === "energy" && "⚡"}
-                        {reward.min}-{reward.max}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-right space-y-2">
-                <div className="text-lg font-bold text-accent">{caseItem.price} MC</div>
-                <Button
-                  size="sm"
-                  disabled={gameState.magnumCoins < caseItem.price}
-                  className="bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary"
-                >
-                  {gameState.magnumCoins >= caseItem.price ? "Открыть" : "Недостаточно"}
-                </Button>
-              </div>
-            </div>
-
-            <div
-              className="mt-3 h-1 rounded-full bg-gradient-to-r from-transparent via-current to-transparent opacity-30"
-              style={{ color: caseItem.glowColor.replace("0.5", "1") }}
-            />
-          </Card>
-        ))}
-      </div>
-
-      {openingCase && selectedCase && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <Card className="card-gradient p-8 text-center space-y-6 max-w-sm mx-4">
-            <div className="relative">
-              <div
-                className={`text-6xl transition-transform duration-500 ${caseOpeningProgress > 50 ? "animate-bounce" : "animate-pulse"}`}
-              >
-                {selectedCase.image}
-              </div>
-              {caseOpeningProgress > 75 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-4xl animate-spin">✨</div>
-                </div>
-              )}
-            </div>
-            <h2 className="text-xl font-bold text-foreground">Открываем {selectedCase.name}...</h2>
-            <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-primary via-accent to-primary h-3 rounded-full transition-all duration-100 ease-out relative"
-                style={{ width: `${caseOpeningProgress}%` }}
-              >
-                <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full"></div>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {caseOpeningProgress < 30 && "Подготавливаем кейс..."}
-              {caseOpeningProgress >= 30 && caseOpeningProgress < 70 && "Открываем замок..."}
-              {caseOpeningProgress >= 70 && caseOpeningProgress < 95 && "Извлекаем награды..."}
-              {caseOpeningProgress >= 95 && "Почти готово!"}
-            </p>
-          </Card>
-        </div>
-      )}
-
-      {caseResult && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <Card className="card-gradient p-8 text-center space-y-6 max-w-sm mx-4">
-            <div className="text-4xl animate-bounce">🎉</div>
-            <h2 className="text-xl font-bold text-foreground">Поздравляем!</h2>
-            <div className="space-y-2">
-              {caseResult.map((reward: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-2 rounded bg-accent/10 animate-fade-in"
-                  style={{ animationDelay: `${idx * 0.1}s` }}
-                >
-                  <span className="text-foreground">
-                    {reward.type === "coins" && "🪙 Монеты"}
-                    {reward.type === "stars" && "⭐ Звезды"}
-                    {reward.type === "energy" && "⚡ Энергия"}
-                  </span>
-                  <span className="font-bold text-accent">+{formatNumber(reward.amount)}</span>
-                </div>
-              ))}
-            </div>
-            <Button onClick={() => setCaseResult(null)} className="w-full">
-              Забрать награды
-            </Button>
-          </Card>
-        </div>
-      )}
-
-      <Card className="card-gradient p-4 hw-accelerated">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-foreground flex items-center space-x-2">
-            <Gift className="w-5 h-5 text-primary" />
-            <span>Ежедневные кейсы</span>
-          </h3>
-          <span className="text-xs text-muted-foreground">Обновление через 12:34:56</span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { name: "Утренний", claimed: true, reward: "50 MC" },
-            { name: "Дневной", claimed: false, reward: "100 MC" },
-            { name: "Вечерний", claimed: false, reward: "200 MC" },
-          ].map((daily, idx) => (
-            <div
-              key={idx}
-              className={`p-3 rounded-lg border text-center ${
-                daily.claimed
-                  ? "bg-muted/20 border-muted text-muted-foreground"
-                  : "bg-accent/10 border-accent/30 text-accent cursor-pointer hover:bg-accent/20"
-              }`}
-            >
-              <div className="text-2xl mb-1">{daily.claimed ? "✅" : "🎁"}</div>
-              <div className="text-xs font-medium">{daily.name}</div>
-              <div className="text-xs">{daily.reward}</div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="card-gradient p-4 hw-accelerated">
-        <h3 className="font-bold text-foreground mb-4 flex items-center space-x-2">
-          <Sparkles className="w-5 h-5 text-yellow-400" />
-          <span>Специальные предложения</span>
-        </h3>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20">
-            <div>
-              <div className="font-medium text-foreground">Мега пакет</div>
-              <div className="text-xs text-muted-foreground">5 кейсов + бонус энергии</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm line-through text-muted-foreground">5000 MC</div>
-              <div className="font-bold text-yellow-400">3500 MC</div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-            <div>
-              <div className="font-medium text-foreground">Стартовый набор</div>
-              <div className="text-xs text-muted-foreground">3 кейса для новичков</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm line-through text-muted-foreground">1500 MC</div>
-              <div className="font-bold text-purple-400">999 MC</div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="card-gradient p-4 hw-accelerated">
-        <h3 className="font-bold text-foreground mb-4 flex items-center space-x-2">
-          <TrendingUp className="w-5 h-5 text-accent" />
-          <span>Статистика кейсов</span>
-        </h3>
-
-        <div className="grid grid-cols-2 mobile-grid-compact text-center">
-          <div>
-            <div className="text-2xl font-bold text-foreground">0</div>
-            <div className="text-xs text-muted-foreground">Открыто кейсов</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-accent">0</div>
-            <div className="text-xs text-muted-foreground">Лучшая награда</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-yellow-400">0%</div>
-            <div className="text-xs text-muted-foreground">Шанс легендарки</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-primary">0</div>
-            <div className="text-xs text-muted-foreground">Потрачено MC</div>
-          </div>
-        </div>
-      </Card>
-      </div>
-    </div>
-  )
-
-  const renderEventsScreen = () => (
-    <div className="flex-1 flex items-center justify-center mobile-safe-area mobile-compact coming-soon-bg">
-      <Card className="coming-soon-card p-8 text-center space-y-6 max-w-md mx-auto coming-soon-float hw-accelerated">
-        <div className="text-6xl mb-4">🎯</div>
-        <h1 className="text-3xl font-bold text-foreground">События</h1>
-        <p className="text-muted-foreground">Захватывающие события и турниры уже скоро! Следите за обновлениями.</p>
-
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-accent/10">
-            <Trophy className="w-6 h-6 text-yellow-400" />
-            <div className="text-left">
-              <div className="font-medium text-foreground">Турниры кликеров</div>
-              <div className="text-xs text-muted-foreground">Соревнуйтесь с другими игроками</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-primary/10">
-            <Target className="w-6 h-6 text-primary" />
-            <div className="text-left">
-              <div className="font-medium text-foreground">Ежедневные задания</div>
-              <div className="text-xs text-muted-foreground">Выполняйте задания за награды</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-purple-500/10">
-            <Clock className="w-6 h-6 text-purple-400" />
-            <div className="text-left">
-              <div className="font-medium text-foreground">Временные события</div>
-              <div className="text-xs text-muted-foreground">Особые бонусы и награды</div>
-            </div>
-          </div>
-        </div>
-
-        <Button className="w-full bg-gradient-to-r from-primary to-accent">Уведомить о запуске</Button>
-      </Card>
-    </div>
-  )
-
-  const renderWalletScreen = () => (
-    <div className="flex-1 flex items-center justify-center mobile-safe-area mobile-compact coming-soon-bg">
-      <Card className="coming-soon-card p-8 text-center space-y-6 max-w-md mx-auto coming-soon-float hw-accelerated">
-        <div className="text-6xl mb-4">💳</div>
-        <h1 className="text-3xl font-bold text-foreground">Кошелек</h1>
-        <p className="text-muted-foreground">Система вывода средств и обмена валют находится в разработке.</p>
-
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-accent/10">
-            <Coins className="w-6 h-6 text-accent" />
-            <div className="text-left">
-              <div className="font-medium text-foreground">Обмен валют</div>
-              <div className="text-xs text-muted-foreground">MC ↔ Stars ↔ TON</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-primary/10">
-            <TrendingUp className="w-6 h-6 text-primary" />
-            <div className="text-left">
-              <div className="font-medium text-foreground">Вывод средств</div>
-              <div className="text-xs text-muted-foreground">На внешние кошельки</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-yellow-500/10">
-            <Star className="w-6 h-6 text-yellow-400" />
-            <div className="text-left">
-              <div className="font-medium text-foreground">Стейкинг</div>
-              <div className="text-xs text-muted-foreground">Заморозьте токены за проценты</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-lg bg-muted/10 border border-border/50">
-          <div className="text-sm text-muted-foreground mb-2">Текущий баланс:</div>
-          <div className="space-y-1">
-            <div className="flex justify-between">
-              <span className="text-foreground">Magnum Coins:</span>
-              <span className="font-bold text-accent">{formatNumber(gameState.magnumCoins)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-foreground">Stars:</span>
-              <span className="font-bold text-yellow-500">{formatNumber(gameState.stars)}</span>
-            </div>
-          </div>
-        </div>
-
-        <Button className="w-full bg-gradient-to-r from-primary to-accent">Уведомить о запуске</Button>
-      </Card>
-    </div>
-  )
 
   const renderContent = () => {
+    if (showCaseOpening) {
+      return (
+        <CaseOpeningScreen
+          selectedCase={selectedCase}
+          rouletteItems={rouletteItems}
+          rouletteSpinning={rouletteSpinning}
+          rouletteOffset={rouletteOffset}
+          roulettePhase={roulettePhase}
+          caseResult={caseResult}
+          onClose={closeCaseOpening}
+          spinRoulette={spinRoulette}
+        />
+      )
+    }
+
     switch (activeTab) {
       case "home":
-        return renderHomeScreen()
+        return (
+          <HomePage
+            gameState={gameState}
+            setGameState={setGameState}
+            upgrades={upgrades}
+            setUpgrades={setUpgrades}
+            showProfile={showProfile}
+            setShowProfile={setShowProfile}
+            showUpgrades={showUpgrades}
+            setShowUpgrades={setShowUpgrades}
+          />
+        )
       case "cases":
-        return renderCasesScreen()
+        return (
+          <CasesPage
+            gameState={gameState}
+            cases={cases}
+            recentDrops={recentDrops}
+            historyScrollIndex={historyScrollIndex}
+            setHistoryScrollIndex={setHistoryScrollIndex}
+            openCase={openCase}
+          />
+        )
       case "events":
-        return renderEventsScreen()
+        return <EventsPage gameState={gameState} />
       case "wallet":
-        return renderWalletScreen()
+        return <WalletPage gameState={gameState} />
       default:
-        return renderHomeScreen()
+        return (
+          <HomePage
+            gameState={gameState}
+            setGameState={setGameState}
+            upgrades={upgrades}
+            setUpgrades={setUpgrades}
+            showProfile={showProfile}
+            setShowProfile={setShowProfile}
+            showUpgrades={showUpgrades}
+            setShowUpgrades={setShowUpgrades}
+          />
+        )
     }
-  }
-
-  // Show loading screen while initializing
-  if (loading) {
-    return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <Card className="card-gradient p-8 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl mx-auto animate-spin">
-            🪙
-          </div>
-          <h2 className="text-xl font-bold text-foreground">Загрузка...</h2>
-          <p className="text-sm text-muted-foreground">Инициализация игры</p>
-        </Card>
-      </div>
-    )
   }
 
   return (
     <div className="min-h-screen gradient-bg flex flex-col relative touch-optimized no-overscroll">
-      <div className="flex-1 overflow-hidden">{renderContent()}</div>
+      {renderContent()}
 
-      <nav className="border-t border-border bg-card/50 backdrop-blur-md mobile-nav">
-        <div className="grid grid-cols-4 gap-1">
-          {[
-            { id: "home", icon: Home, label: "Главная" },
-            { id: "cases", icon: Package, label: "Кейсы" },
-            { id: "events", icon: Calendar, label: "События" },
-            { id: "wallet", icon: Wallet, label: "Кошелек" },
-          ].map((tab) => (
-            <Button
-              key={tab.id}
-              variant="ghost"
-              className={`flex flex-col items-center space-y-1 p-3 h-auto transition-all duration-200 mobile-button touch-optimized ${
-                activeTab === tab.id
-                  ? "text-accent bg-accent/10 scale-105"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/10"
-              }`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <tab.icon className="w-5 h-5" />
-              <span className="text-xs font-medium">{tab.label}</span>
-            </Button>
-          ))}
+      {/* Bottom Navigation */}
+      {!showCaseOpening && (
+        <div className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-md border-t border-border/50 mobile-safe-area-bottom">
+          <div className="flex items-center justify-around py-2 px-4">
+            {[
+              { id: "home", icon: Home, label: "Главная" },
+              { id: "cases", icon: Package, label: "Кейсы" },
+              { id: "events", icon: Calendar, label: "События" },
+              { id: "wallet", icon: Wallet, label: "Кошелек" },
+            ].map((tab) => (
+              <Button
+                key={tab.id}
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center space-y-1 h-auto py-2 px-3 mobile-button touch-optimized ${
+                  activeTab === tab.id
+                    ? "text-white bg-primary/20 border border-primary/30"
+                    : "text-slate-300 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <tab.icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{tab.label}</span>
+              </Button>
+            ))}
+          </div>
         </div>
-      </nav>
+      )}
     </div>
   )
 }
