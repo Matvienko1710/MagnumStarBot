@@ -14,6 +14,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Telegram ID is required' }, { status: 400 })
     }
 
+    // Validate Telegram ID format
+    const telegramIdNum = parseInt(telegramId)
+    if (isNaN(telegramIdNum) || telegramIdNum < 100000000 || telegramIdNum > 999999999) {
+      console.log('Invalid Telegram ID format:', telegramId)
+      return NextResponse.json({ error: 'Invalid Telegram ID format' }, { status: 400 })
+    }
+
     // Try to connect to MongoDB
     try {
       await connectDB()
@@ -38,14 +45,14 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    let user = await User.findOne({ telegramId: parseInt(telegramId) })
+    let user = await User.findOne({ telegramId: telegramIdNum })
     console.log('Found user in database:', user ? { telegramId: user.telegramId, magnumCoins: user.magnumCoins } : 'No user found')
     
     if (!user) {
       console.log('Creating new user with telegramId:', telegramId)
       // Create new user
       user = new User({
-        telegramId: parseInt(telegramId),
+        telegramId: telegramIdNum,
         magnumCoins: 100, // Starting coins
         stars: 0,
         energy: 100,
@@ -96,7 +103,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Telegram ID is required' }, { status: 400 })
     }
 
-    let user = await User.findOne({ telegramId })
+    // Validate Telegram ID format
+    const telegramIdNum = parseInt(telegramId)
+    if (isNaN(telegramIdNum) || telegramIdNum < 100000000 || telegramIdNum > 999999999) {
+      console.log('Invalid Telegram ID format in POST:', telegramId)
+      return NextResponse.json({ error: 'Invalid Telegram ID format' }, { status: 400 })
+    }
+
+    let user = await User.findOne({ telegramId: telegramIdNum })
     console.log('Found user for POST:', user ? { telegramId: user.telegramId, magnumCoins: user.magnumCoins } : 'No user found')
     
     if (user) {
@@ -111,7 +125,7 @@ export async function POST(request: NextRequest) {
       console.log('Creating new user via POST:', telegramId)
       // Create new user
       user = new User({
-        telegramId,
+        telegramId: telegramIdNum,
         username,
         firstName,
         lastName,

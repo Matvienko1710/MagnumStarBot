@@ -14,16 +14,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Telegram ID is required' }, { status: 400 })
     }
 
+    // Validate Telegram ID format
+    const telegramIdNum = parseInt(telegramId)
+    if (isNaN(telegramIdNum) || telegramIdNum < 100000000 || telegramIdNum > 999999999) {
+      console.log('Invalid Telegram ID format:', telegramId)
+      return NextResponse.json({ error: 'Invalid Telegram ID format' }, { status: 400 })
+    }
+
     // Connect to MongoDB first
     await connectDB()
 
-    let user = await User.findOne({ telegramId })
+    let user = await User.findOne({ telegramId: telegramIdNum })
     
     if (!user) {
       console.log('User not found, creating new user with telegramId:', telegramId)
       // Create new user
       user = new User({
-        telegramId: parseInt(telegramId),
+        telegramId: telegramIdNum,
         magnumCoins: 100,
         stars: 0,
         energy: 100,

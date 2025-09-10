@@ -128,14 +128,30 @@ export default function TelegramClickerApp() {
             tgId = parseInt(savedId)
             console.log('✅ Using saved Telegram ID from localStorage:', tgId)
           } else {
-            tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
-            localStorage.setItem('telegram-user-id', tgId.toString())
-            console.log('⚠️ Using fallback ID and saving to localStorage:', tgId)
+            // Only create fallback ID if we're not in Telegram WebApp
+            const isInTelegram = typeof window !== 'undefined' && window.Telegram?.WebApp
+            if (!isInTelegram) {
+              tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
+              localStorage.setItem('telegram-user-id', tgId.toString())
+              console.log('⚠️ Using fallback ID for non-Telegram environment:', tgId)
+            } else {
+              console.log('❌ No Telegram ID available and we are in Telegram WebApp - this should not happen')
+              // Don't create a user if we can't get Telegram ID in Telegram WebApp
+              setLoading(false)
+              return
+            }
           }
         } else {
           // Save the ID to localStorage for consistency
           localStorage.setItem('telegram-user-id', tgId.toString())
           console.log('💾 Saved Telegram ID to localStorage:', tgId)
+        }
+        
+        // Validate Telegram ID
+        if (!tgId || tgId < 100000000 || tgId > 999999999) {
+          console.error('❌ Invalid Telegram ID:', tgId, '- must be a 9-digit number')
+          setLoading(false)
+          return
         }
         
         console.log('=== FINAL TELEGRAM ID:', tgId, '===')
