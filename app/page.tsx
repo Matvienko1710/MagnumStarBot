@@ -595,7 +595,8 @@ export default function TelegramClickerApp() {
 
       // Генерируем 100 предметов для рулетки
       for (let i = 0; i < 100; i++) {
-        let reward, rarity
+        let reward: { type: string; min: number; max: number; chance: number; itemId?: string } = { type: "coins", min: 10, max: 100, chance: 50 }
+        let rarity: string = "common"
 
         if (i === winningIndex) {
           // Выигрышный предмет
