@@ -257,6 +257,16 @@ export default function TelegramClickerApp() {
           
           if (data.success && data.user) {
             console.log('✅ Loaded data from MongoDB:', data.user)
+            console.log('User stats:', {
+              magnumCoins: data.user.magnumCoins,
+              stars: data.user.stars,
+              energy: data.user.energy,
+              maxEnergy: data.user.maxEnergy,
+              totalClicks: data.user.totalClicks,
+              level: data.user.level,
+              clickPower: data.user.clickPower
+            })
+            
             setGameState({
               magnumCoins: data.user.magnumCoins || 0,
               stars: data.user.stars || 0,
@@ -278,16 +288,20 @@ export default function TelegramClickerApp() {
             })
             
             // Load upgrades from API and apply effects
-            if (data.user.upgrades) {
+            if (data.user.upgrades && data.user.upgrades.length > 0) {
+              console.log('Loading upgrades from API:', data.user.upgrades)
               setUpgrades(prev => prev.map(upgrade => {
                 const savedUpgrade = data.user.upgrades.find((u: any) => u.id === upgrade.id)
                 if (savedUpgrade) {
                   // Update price based on level
                   const newPrice = Math.floor(upgrade.price * Math.pow(1.5, savedUpgrade.level))
+                  console.log(`Upgrade ${upgrade.id}: level ${savedUpgrade.level}, price ${newPrice}`)
                   return { ...upgrade, level: savedUpgrade.level, price: newPrice }
                 }
                 return upgrade
               }))
+            } else {
+              console.log('No upgrades found in API data')
             }
           } else {
             console.log('❌ No user data from API, creating new user')
@@ -326,7 +340,17 @@ export default function TelegramClickerApp() {
         console.log('📡 Create user API response:', data)
         
         if (data.success && data.user) {
-          console.log('✅ Created new user in MongoDB:', data.user)
+          console.log('✅ Created/Found user in MongoDB:', data.user)
+          console.log('User stats from createNewUser:', {
+            magnumCoins: data.user.magnumCoins,
+            stars: data.user.stars,
+            energy: data.user.energy,
+            maxEnergy: data.user.maxEnergy,
+            totalClicks: data.user.totalClicks,
+            level: data.user.level,
+            clickPower: data.user.clickPower
+          })
+          
           setGameState({
             magnumCoins: data.user.magnumCoins || 100,
             stars: data.user.stars || 0,
@@ -348,15 +372,19 @@ export default function TelegramClickerApp() {
           })
           
           // Load upgrades from API
-          if (data.user.upgrades) {
+          if (data.user.upgrades && data.user.upgrades.length > 0) {
+            console.log('Loading upgrades from createNewUser:', data.user.upgrades)
             setUpgrades(prev => prev.map(upgrade => {
               const savedUpgrade = data.user.upgrades.find((u: any) => u.id === upgrade.id)
               if (savedUpgrade) {
                 const newPrice = Math.floor(upgrade.price * Math.pow(1.5, savedUpgrade.level))
+                console.log(`Upgrade ${upgrade.id}: level ${savedUpgrade.level}, price ${newPrice}`)
                 return { ...upgrade, level: savedUpgrade.level, price: newPrice }
               }
               return upgrade
             }))
+          } else {
+            console.log('No upgrades found in createNewUser')
           }
         } else {
           console.error('❌ Failed to create user - API returned error:', data)

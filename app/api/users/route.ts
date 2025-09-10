@@ -21,29 +21,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Telegram ID format' }, { status: 400 })
     }
 
-    // Try to connect to MongoDB
-    try {
-      await connectDB()
-    } catch (error) {
-      console.warn('MongoDB connection failed, using test data:', error)
-      // Return test data when MongoDB is not available
-      return NextResponse.json({
-        success: true,
-        user: {
-          telegramId: parseInt(telegramId),
-          username: 'test_user',
-          firstName: 'Test',
-          lastName: 'User',
-          magnumCoins: 1000,
-          stars: 0.5,
-          energy: 100,
-          maxEnergy: 100,
-          totalClicks: 0,
-          level: 1,
-          lastEnergyRestore: new Date().toISOString()
-        }
-      })
-    }
+      // Try to connect to MongoDB
+      try {
+        await connectDB()
+      } catch (error) {
+        console.error('MongoDB connection failed:', error)
+        return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
+      }
 
     let user = await User.findOne({ telegramId: telegramIdNum })
     console.log('Found user in database:', user ? { telegramId: user.telegramId, magnumCoins: user.magnumCoins } : 'No user found')
