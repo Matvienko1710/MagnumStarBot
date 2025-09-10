@@ -84,6 +84,7 @@ export default function TelegramClickerApp() {
   const [showUpgrades, setShowUpgrades] = useState(false)
   const [loading, setLoading] = useState(true)
   const [telegramId, setTelegramId] = useState<number | null>(null)
+  const [isClicking, setIsClicking] = useState(false)
   const [userInfo, setUserInfo] = useState<{
     username?: string
     firstName?: string
@@ -490,11 +491,15 @@ export default function TelegramClickerApp() {
   ]
 
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-      if (gameState.energy <= 0) return
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (gameState.energy <= 0 || isClicking) return
 
-      // Prevent default touch behavior
+      // Prevent double clicks
+      setIsClicking(true)
+
+      // Prevent default behavior
       event.preventDefault()
+      event.stopPropagation()
 
       // Haptic feedback for mobile devices
       if ("vibrate" in navigator) {
@@ -513,10 +518,11 @@ export default function TelegramClickerApp() {
         level: Math.floor((prev.totalClicks + 1) / 100) + 1,
       }))
 
-      // Reset animation quickly
+      // Reset animation and clicking state
       setTimeout(() => {
         setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
-      }, 150)
+        setIsClicking(false)
+      }, 200)
 
       // Sync with API in background (non-blocking)
       if (telegramId) {
@@ -531,7 +537,7 @@ export default function TelegramClickerApp() {
         })
       }
     },
-    [gameState.energy, telegramId, upgrades],
+    [gameState.energy, telegramId, upgrades, isClicking],
   )
 
   const openCase = useCallback(
@@ -700,7 +706,6 @@ export default function TelegramClickerApp() {
         <div className="relative">
           <Button
             onClick={handleClick}
-            onTouchStart={handleClick}
             disabled={gameState.energy <= 0}
             className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 border-4 border-amber-300 shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
               gameState.clickAnimating ? "scale-95" : "scale-100"
