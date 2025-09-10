@@ -162,12 +162,14 @@ export default function TelegramClickerApp() {
             console.log('✅ Using Telegram ID from user data:', tgId)
             
             // Save user info from Telegram
-            setUserInfo({
+            const userInfoData = {
               username: userData.username,
               firstName: userData.first_name,
               lastName: userData.last_name
-            })
-            console.log('✅ Telegram user info:', { username: userData.username, firstName: userData.first_name, lastName: userData.last_name })
+            }
+            setUserInfo(userInfoData)
+            console.log('✅ Telegram user info:', userInfoData)
+            console.log('✅ Full userData object:', userData)
           } else {
             console.log('❌ No user data or ID found in initDataUnsafe')
             
@@ -190,12 +192,14 @@ export default function TelegramClickerApp() {
                     console.log('✅ Using Telegram ID from parsed initData:', tgId)
                     
                     // Save user info from parsed initData
-                    setUserInfo({
+                    const parsedUserInfo = {
                       username: userObj.username,
                       firstName: userObj.first_name,
                       lastName: userObj.last_name
-                    })
-                    console.log('✅ Parsed user info:', { username: userObj.username, firstName: userObj.first_name, lastName: userObj.last_name })
+                    }
+                    setUserInfo(parsedUserInfo)
+                    console.log('✅ Parsed user info:', parsedUserInfo)
+                    console.log('✅ Full parsed userObj:', userObj)
                   }
                 }
               }
@@ -808,15 +812,23 @@ export default function TelegramClickerApp() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-foreground">
-                  {userInfo.firstName && userInfo.lastName 
-                    ? `${userInfo.firstName} ${userInfo.lastName}`
-                    : userInfo.username 
-                    ? `@${userInfo.username}`
-                    : `Игрок #${telegramId?.toString().slice(-4) || '0000'}`
-                  }
+                  {(() => {
+                    console.log('Profile display - userInfo:', userInfo)
+                    console.log('Profile display - telegramId:', telegramId)
+                    
+                    if (userInfo.firstName && userInfo.lastName) {
+                      return `${userInfo.firstName} ${userInfo.lastName}`
+                    } else if (userInfo.firstName) {
+                      return userInfo.firstName
+                    } else if (userInfo.username) {
+                      return `@${userInfo.username}`
+                    } else {
+                      return `Игрок #${telegramId?.toString().slice(-4) || '0000'}`
+                    }
+                  })()}
                 </h3>
                 <p className="text-sm text-muted-foreground">Уровень {gameState.level}</p>
-                {userInfo.username && (
+                {userInfo.username && (userInfo.firstName || userInfo.lastName) && (
                   <p className="text-xs text-muted-foreground">@{userInfo.username}</p>
                 )}
               </div>
