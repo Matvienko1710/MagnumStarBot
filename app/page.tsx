@@ -865,14 +865,16 @@ export default function TelegramClickerApp() {
   )
 
   const renderCasesScreen = () => (
-    <div className="flex-1 mobile-safe-area mobile-compact space-y-4 overflow-y-auto mobile-scroll no-overscroll pb-4">
-      <div className="text-center space-y-2">
+    <div className="flex-1 flex flex-col mobile-safe-area mobile-compact overflow-hidden">
+      <div className="text-center space-y-2 p-4">
         <h1 className="text-2xl font-bold text-foreground flex items-center justify-center space-x-2">
           <Package className="w-6 h-6 text-primary" />
           <span>Магазин кейсов</span>
         </h1>
         <p className="text-sm text-muted-foreground">Откройте кейсы и получите награды!</p>
       </div>
+      
+      <div className="flex-1 overflow-y-auto mobile-scroll no-overscroll px-4 space-y-4 pb-4">
 
       <Card className="card-gradient p-4 hw-accelerated">
         <div className="flex items-center justify-between">
@@ -1090,6 +1092,7 @@ export default function TelegramClickerApp() {
           </div>
         </div>
       </Card>
+      </div>
     </div>
   )
 
@@ -1215,7 +1218,7 @@ export default function TelegramClickerApp() {
 
   return (
     <div className="min-h-screen gradient-bg flex flex-col relative touch-optimized no-overscroll">
-      <div className="flex-1 mobile-scroll">{renderContent()}</div>
+      <div className="flex-1 overflow-hidden">{renderContent()}</div>
 
       <nav className="border-t border-border bg-card/50 backdrop-blur-md mobile-nav">
         <div className="grid grid-cols-4 gap-1">
