@@ -11,10 +11,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Telegram ID is required' }, { status: 400 })
     }
 
-    // Check if MongoDB is available
-    const dbConnection = await connectDB()
-    
-    if (!dbConnection) {
+    // Try to connect to MongoDB
+    try {
+      await connectDB()
+    } catch (error) {
+      console.warn('MongoDB connection failed, using test data:', error)
       // Return test response when MongoDB is not available
       return NextResponse.json({
         success: true,

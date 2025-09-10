@@ -2,9 +2,10 @@ import mongoose from 'mongoose'
 
 const MONGODB_URI = process.env.MONGODB_URI
 
-// For testing without MongoDB
 if (!MONGODB_URI) {
   console.warn('MONGODB_URI not found - running in test mode without database')
+} else {
+  console.log('MongoDB URI found - connecting to database')
 }
 
 /**
