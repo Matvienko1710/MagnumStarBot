@@ -29,6 +29,9 @@ app.use('/api/recent-wins', recentWinsRoutes);
 // Serve static files from webapp/dist
 app.use(express.static(path.join(__dirname, '../webapp/dist')));
 
+// Serve static assets
+app.use('/assets', express.static(path.join(__dirname, '../webapp/dist/assets')));
+
 // Catch all handler for SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../webapp/dist/index.html'));
