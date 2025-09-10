@@ -7,35 +7,37 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { telegramId } = body
 
+    console.log('Click API called with telegramId:', telegramId)
+
     if (!telegramId) {
+      console.log('No telegramId provided')
       return NextResponse.json({ error: 'Telegram ID is required' }, { status: 400 })
     }
 
-    // Try to connect to MongoDB
-    try {
-      await connectDB()
-    } catch (error) {
-      console.warn('MongoDB connection failed, using test data:', error)
-      // Return test response when MongoDB is not available
-      return NextResponse.json({
-        success: true,
-        user: {
-          magnumCoins: 1001,
-          stars: 0.5,
-          energy: 99,
-          totalClicks: 1,
-          level: 1
-        }
-      })
-    }
+    // Connect to MongoDB first
+    await connectDB()
 
-    const user = await User.findOne({ telegramId })
+    let user = await User.findOne({ telegramId })
     
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      console.log('User not found, creating new user with telegramId:', telegramId)
+      // Create new user
+      user = new User({
+        telegramId: parseInt(telegramId),
+        magnumCoins: 100,
+        stars: 0,
+        energy: 100,
+        maxEnergy: 100,
+        totalClicks: 0,
+        level: 1,
+        lastEnergyRestore: new Date()
+      })
+      await user.save()
+      console.log('New user created:', user)
     }
 
     if (user.energy <= 0) {
+      console.log('User has no energy left')
       return NextResponse.json({ error: 'No energy left' }, { status: 400 })
     }
 
@@ -46,6 +48,7 @@ export async function POST(request: NextRequest) {
     user.level = Math.floor(user.totalClicks / 100) + 1
 
     await user.save()
+    console.log('User updated:', { magnumCoins: user.magnumCoins, energy: user.energy, totalClicks: user.totalClicks })
 
     return NextResponse.json({
       success: true,

@@ -77,14 +77,18 @@ export default function TelegramClickerApp() {
           tg.expand()
           
           const userData = tg.initDataUnsafe?.user
-          if (userData) {
+          console.log('Telegram user data:', userData)
+          
+          if (userData && userData.id) {
             tgId = userData.id
+            console.log('Using Telegram ID:', tgId)
           }
         }
         
         // Fallback for development/testing
         if (!tgId) {
-          tgId = 123456789
+          tgId = Math.floor(Math.random() * 1000000000) + 100000000 // Random 9-digit number
+          console.log('Using fallback ID:', tgId)
         }
         
         setTelegramId(tgId)
