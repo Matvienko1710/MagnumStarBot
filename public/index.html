@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnum Star Bot - Тест</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .status {
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .button {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #5a6fd8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Magnum Star Bot</h1>
+        <div class="status">
+            ✅ Сайт работает!
+        </div>
+        <div class="info">
+            <p><strong>Статус:</strong> Vercel деплой успешен</p>
+            <p><strong>Время:</strong> <span id="time"></span></p>
+            <p><strong>URL:</strong> <span id="url"></span></p>
+        </div>
+        <a href="/api/bot/health" class="button">🔍 Проверить API</a>
+        <a href="/api/balance/123" class="button">💰 Тест баланса</a>
+        <div class="info">
+            <p><strong>Следующий шаг:</strong> Настроить webhook для бота</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('time').textContent = new Date().toLocaleString('ru-RU');
+        document.getElementById('url').textContent = window.location.href;
+    </script>
+</body>
+</html>
