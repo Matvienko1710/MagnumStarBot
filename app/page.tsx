@@ -95,6 +95,7 @@ export default function TelegramClickerApp() {
           const data = await response.json()
           
           if (data.success && data.user) {
+            console.log('Loaded data from MongoDB:', data.user)
             setGameState({
               magnumCoins: data.user.magnumCoins || 0,
               stars: data.user.stars || 0,
@@ -107,8 +108,9 @@ export default function TelegramClickerApp() {
               lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
             })
           } else {
-            // Load from localStorage as fallback
-            loadFromLocalStorage()
+            console.log('No user data from API, creating new user')
+            // Create new user in API
+            await createNewUser(tgId)
           }
         } catch (error) {
           console.warn('API not available, loading from localStorage:', error)
@@ -119,6 +121,44 @@ export default function TelegramClickerApp() {
         loadFromLocalStorage()
       } finally {
         setLoading(false)
+      }
+    }
+
+    const createNewUser = async (tgId: number) => {
+      try {
+        const response = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            telegramId: tgId,
+            username: 'user',
+            firstName: 'User',
+            lastName: 'User',
+          }),
+        })
+        
+        const data = await response.json()
+        if (data.success && data.user) {
+          console.log('Created new user in MongoDB:', data.user)
+          setGameState({
+            magnumCoins: data.user.magnumCoins || 100,
+            stars: data.user.stars || 0,
+            energy: data.user.energy || 100,
+            maxEnergy: data.user.maxEnergy || 100,
+            clickAnimating: false,
+            energyAnimating: false,
+            rewardPopups: [],
+            totalClicks: data.user.totalClicks || 0,
+            lastEnergyRestore: data.user.lastEnergyRestore ? new Date(data.user.lastEnergyRestore).getTime() : Date.now(),
+          })
+        } else {
+          throw new Error('Failed to create user')
+        }
+      } catch (error) {
+        console.error('Failed to create user in API:', error)
+        loadFromLocalStorage()
       }
     }
 
@@ -289,13 +329,26 @@ export default function TelegramClickerApp() {
       // Try to sync with API in background
       if (telegramId) {
         try {
-          await fetch('/api/click', {
+          const response = await fetch('/api/click', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ telegramId }),
           })
+          
+          const data = await response.json()
+          if (data.success && data.user) {
+            // Update with server data to ensure consistency
+            setGameState(prev => ({
+              ...prev,
+              magnumCoins: data.user.magnumCoins,
+              stars: data.user.stars,
+              energy: data.user.energy,
+              totalClicks: data.user.totalClicks,
+              level: data.user.level,
+            }))
+          }
         } catch (error) {
           console.warn('Failed to sync click with API:', error)
         }
@@ -316,14 +369,14 @@ export default function TelegramClickerApp() {
   )
 
   const openCase = useCallback(
-    (caseItem: CaseItem) => {
+    async (caseItem: CaseItem) => {
       if (gameState.magnumCoins < caseItem.price) return
 
       setOpeningCase(true)
       setSelectedCase(caseItem)
 
       // Simulate case opening animation
-      setTimeout(() => {
+      setTimeout(async () => {
         const rewards = caseItem.rewards.map((reward) => ({
           type: reward.type,
           amount: Math.random() * (reward.max - reward.min) + reward.min,
@@ -339,6 +392,7 @@ export default function TelegramClickerApp() {
           if (reward.type === "energy") newEnergy = Math.min(gameState.maxEnergy, newEnergy + Math.floor(reward.amount))
         })
 
+        // Update local state
         setGameState((prev) => ({
           ...prev,
           magnumCoins: newCoins,
@@ -346,11 +400,33 @@ export default function TelegramClickerApp() {
           energy: newEnergy,
         }))
 
+        // Sync with API if available
+        if (telegramId) {
+          try {
+            // Update user data in API
+            await fetch('/api/users', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                telegramId,
+                magnumCoins: newCoins,
+                stars: newStars,
+                energy: newEnergy,
+                totalClicks: gameState.totalClicks,
+              }),
+            })
+          } catch (error) {
+            console.warn('Failed to sync case opening with API:', error)
+          }
+        }
+
         setCaseResult(rewards)
         setOpeningCase(false)
       }, 2000)
     },
-    [gameState],
+    [gameState, telegramId],
   )
 
   const formatNumber = (num: number) => {
