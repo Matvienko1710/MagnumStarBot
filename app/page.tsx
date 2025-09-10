@@ -504,8 +504,8 @@ export default function TelegramClickerApp() {
       // Update local state immediately for maximum responsiveness
       setGameState((prev) => ({
         ...prev,
-        magnumCoins: prev.magnumCoins + prev.clickPower,
-        stars: prev.stars + 0.0001 * (1 + (upgrades.find((u) => u.id === "star_multiplier")?.level || 0)),
+        magnumCoins: prev.magnumCoins + 1, // +1 Magnum Coin per click
+        stars: prev.stars + 0.0001 * (1 + (upgrades.find((u) => u.id === "star_multiplier")?.level || 0)), // +0.0001 stars per click
         energy: prev.energy - 1,
         clickAnimating: true,
         energyAnimating: true,
