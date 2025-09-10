@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
       })
       await user.save()
       console.log('New user created:', user)
+    } else {
+      console.log('Found existing user:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins, energy: user.energy })
     }
 
     if (user.energy <= 0) {

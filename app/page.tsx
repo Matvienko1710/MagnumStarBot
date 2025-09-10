@@ -63,6 +63,7 @@ export default function TelegramClickerApp() {
   const [caseResult, setCaseResult] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [telegramId, setTelegramId] = useState<number | null>(null)
+  const [isClicking, setIsClicking] = useState(false)
 
   // Initialize app and load user data
   useEffect(() => {
@@ -293,8 +294,11 @@ export default function TelegramClickerApp() {
 
   const handleClick = useCallback(
     async (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-      if (gameState.energy <= 0) return
+      if (gameState.energy <= 0 || isClicking) return
 
+      // Prevent multiple rapid clicks
+      setIsClicking(true)
+      
       // Prevent default touch behavior
       event.preventDefault()
 
@@ -329,7 +333,7 @@ export default function TelegramClickerApp() {
         rewardPopups: [...prev.rewardPopups, { id: Date.now(), x, y }],
       }))
 
-      // Try to sync with API in background
+      // Try to sync with API in background (but don't update state to avoid double counting)
       if (telegramId) {
         try {
           const response = await fetch('/api/click', {
@@ -342,15 +346,26 @@ export default function TelegramClickerApp() {
           
           const data = await response.json()
           if (data.success && data.user) {
-            // Update with server data to ensure consistency
-            setGameState(prev => ({
-              ...prev,
-              magnumCoins: data.user.magnumCoins,
-              stars: data.user.stars,
-              energy: data.user.energy,
-              totalClicks: data.user.totalClicks,
-              level: data.user.level,
-            }))
+            // Only update if there's a significant difference (API error recovery)
+            setGameState(prev => {
+              const apiCoins = data.user.magnumCoins
+              const localCoins = prev.magnumCoins
+              const difference = Math.abs(apiCoins - localCoins)
+              
+              // Only sync if difference is more than 1 (indicating API error)
+              if (difference > 1) {
+                console.log('Syncing with API due to significant difference:', { apiCoins, localCoins })
+                return {
+                  ...prev,
+                  magnumCoins: data.user.magnumCoins,
+                  stars: data.user.stars,
+                  energy: data.user.energy,
+                  totalClicks: data.user.totalClicks,
+                  level: data.user.level,
+                }
+              }
+              return prev
+            })
           }
         } catch (error) {
           console.warn('Failed to sync click with API:', error)
@@ -359,6 +374,7 @@ export default function TelegramClickerApp() {
 
       setTimeout(() => {
         setGameState((prev) => ({ ...prev, clickAnimating: false, energyAnimating: false }))
+        setIsClicking(false) // Reset clicking state
       }, 800)
 
       setTimeout(() => {
@@ -368,7 +384,7 @@ export default function TelegramClickerApp() {
         }))
       }, 1200)
     },
-    [gameState.energy, telegramId],
+    [gameState.energy, telegramId, isClicking],
   )
 
   const openCase = useCallback(
