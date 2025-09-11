@@ -34,7 +34,7 @@ export interface IUser extends Document {
 }
 
 const UserSchema = new Schema<IUser>({
-  telegramId: { type: Number, required: true, unique: true, index: true },
+  telegramId: { type: Number, required: true, unique: true },
   username: { type: String },
   firstName: { type: String },
   lastName: { type: String },

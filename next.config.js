@@ -9,7 +9,6 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['mongoose'],
-    optimizeCss: true,
   },
   compress: true,
   poweredByHeader: false,
