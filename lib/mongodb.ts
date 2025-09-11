@@ -1,36 +1,38 @@
-import mongoose from 'mongoose'
+import { MongoClient, type Db } from "mongodb"
 
-const MONGODB_URI = process.env.MONGODB_URI
-
-// Global variable to track connection status
-let isConnected = false
-
-async function connectDB() {
-  if (!MONGODB_URI) {
-    console.warn('MongoDB connection skipped - running in test mode')
-    return null
-  }
-
-  if (isConnected) {
-    console.log('MongoDB already connected')
-    return mongoose
-  }
-
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      bufferCommands: false,
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    })
-    isConnected = true
-    console.log('MongoDB connected successfully')
-    return mongoose
-  } catch (error) {
-    console.error('MongoDB connection error:', error)
-    isConnected = false
-    throw error
-  }
+if (!process.env.MONGODB_URI) {
+  throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
 }
 
-export default connectDB
+const uri = process.env.MONGODB_URI
+const options = {}
+
+let client: MongoClient
+let clientPromise: Promise<MongoClient>
+
+if (process.env.NODE_ENV === "development") {
+  // In development mode, use a global variable so that the value
+  // is preserved across module reloads caused by HMR (Hot Module Replacement).
+  const globalWithMongo = global as typeof globalThis & {
+    _mongoClientPromise?: Promise<MongoClient>
+  }
+
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, options)
+    globalWithMongo._mongoClientPromise = client.connect()
+  }
+  clientPromise = globalWithMongo._mongoClientPromise
+} else {
+  // In production mode, it's best to not use a global variable.
+  client = new MongoClient(uri, options)
+  clientPromise = client.connect()
+}
+
+// Export a module-scoped MongoClient promise. By doing this in a
+// separate module, the client can be shared across functions.
+export default clientPromise
+
+export async function getDatabase(): Promise<Db> {
+  const client = await clientPromise
+  return client.db("magnum_clicker")
+}

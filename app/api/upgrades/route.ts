@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Connect to MongoDB
-    await connectDB()
+    await connectDB
 
     let user = await User.findOne({ telegramId: telegramIdNum })
     
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Connect to MongoDB
-    await connectDB()
+    await connectDB
 
     let user = await User.findOne({ telegramId: telegramIdNum })
     

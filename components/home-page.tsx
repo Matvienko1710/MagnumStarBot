@@ -6,11 +6,48 @@ import { useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { StatsCard } from "@/components/ui/stats-card"
-import { LevelProgress } from "@/components/ui/level-progress"
-import { Coins, Zap, ArrowUp, User, X, Settings, Trophy, BarChart3, Award, Star } from "lucide-react"
+import { Coins, Zap, ArrowUp, User, X, Settings, Trophy, BarChart3, Award } from "lucide-react"
 
-import type { HomePageProps } from "@/lib/types"
+interface GameState {
+  magnumCoins: number
+  stars: number
+  energy: number
+  maxEnergy: number
+  clickAnimating: boolean
+  energyAnimating: boolean
+  totalClicks: number
+  lastEnergyRestore: number
+  clickPower: number
+  level: number
+  experience: number
+  experienceToNext: number
+  boosts: { type: string; multiplier: number; remaining: number; icon: string; name: string }[]
+  autoClicker: { level: number; clicksPerSecond: number }
+  statistics: { totalEarned: number; totalSpent: number; currentClickStreak: number; maxClickStreak: number }
+}
+
+interface Upgrade {
+  id: string
+  name: string
+  description: string
+  price: number
+  level: number
+  maxLevel: number
+  effect: string
+  icon: string
+  multiplier: number
+}
+
+interface HomePageProps {
+  gameState: GameState
+  setGameState: React.Dispatch<React.SetStateAction<GameState>>
+  upgrades: Upgrade[]
+  setUpgrades: React.Dispatch<React.SetStateAction<Upgrade[]>>
+  showProfile: boolean
+  setShowProfile: (show: boolean) => void
+  showUpgrades: boolean
+  setShowUpgrades: (show: boolean) => void
+}
 
 export default function HomePage({
   gameState,
@@ -29,9 +66,7 @@ export default function HomePage({
       event.preventDefault()
 
       // Тактильная обратная связь
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium')
-      } else if ("vibrate" in navigator) {
+      if ("vibrate" in navigator) {
         navigator.vibrate(50)
       }
 
@@ -125,21 +160,25 @@ export default function HomePage({
     <div className="flex-1 flex flex-col mobile-safe-area mobile-compact space-y-4 relative touch-optimized no-overscroll">
       <div className="px-4 pt-2">
         <div className="flex items-center justify-between mb-2">
-          <LevelProgress
-            level={gameState.level}
-            experience={gameState.experience % gameState.experienceToNext}
-            experienceToNext={gameState.experienceToNext}
-            className="flex-1"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mobile-button w-10 h-10 rounded-full bg-card/50 backdrop-blur-md border border-border/50 hover:bg-accent/20 touch-optimized ml-2"
-            onClick={() => setShowProfile(true)}
-          >
-            <User className="w-5 h-5 text-foreground" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-foreground">Уровень {gameState.level}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mobile-button w-10 h-10 rounded-full bg-card/50 backdrop-blur-md border border-border/50 hover:bg-accent/20 touch-optimized ml-auto"
+              onClick={() => setShowProfile(true)}
+            >
+              <User className="w-5 h-5 text-foreground" />
+            </Button>
+          </div>
         </div>
+        <Progress
+          value={((gameState.experience % gameState.experienceToNext) / gameState.experienceToNext) * 100}
+          className="h-2 bg-muted"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Опыт: {gameState.experience % gameState.experienceToNext}/{gameState.experienceToNext}
+        </p>
       </div>
 
       {gameState.boosts.length > 0 && (
@@ -176,21 +215,21 @@ export default function HomePage({
 
       <div className="px-4">
         <div className="grid grid-cols-2 gap-3">
-          <StatsCard
-            title="Magnum Coins"
-            value={formatNumber(gameState.magnumCoins)}
-            description="Валюта игры"
-            icon={<Coins className="w-6 h-6 text-accent" />}
-            className="hw-accelerated"
-          />
+          <Card className="card-gradient p-4 text-center hw-accelerated">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <Coins className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-bold text-foreground">Magnum Coins</h3>
+            </div>
+            <p className="text-2xl font-bold text-accent">{formatNumber(gameState.magnumCoins)}</p>
+          </Card>
 
-          <StatsCard
-            title="Звезды"
-            value={formatNumber(gameState.stars)}
-            description="Премиум валюта"
-            icon={<span className="text-yellow-400 text-2xl">⭐</span>}
-            className="hw-accelerated"
-          />
+          <Card className="card-gradient p-4 text-center hw-accelerated">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <span className="text-yellow-400 text-lg">⭐</span>
+              <h3 className="text-sm font-bold text-foreground">Звезды</h3>
+            </div>
+            <p className="text-2xl font-bold text-yellow-400">{formatNumber(gameState.stars)}</p>
+          </Card>
         </div>
       </div>
 
@@ -200,12 +239,20 @@ export default function HomePage({
             onClick={handleClick}
             onTouchStart={handleClick}
             disabled={gameState.energy <= 0}
-            className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 border-4 border-amber-300 shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mobile-optimized touch-optimized mobile-clicker ${
+            className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:via-yellow-400 hover:to-orange-400 border-4 border-amber-300 shadow-2xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden ${
               gameState.clickAnimating ? "scale-95" : "scale-100"
             }`}
             size="lg"
           >
-            <div className="text-6xl no-select">🪙</div>
+            <div className="relative w-full h-full flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-yellow-200 shadow-inner flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 to-yellow-500 border border-yellow-300 flex items-center justify-center">
+                  <span className="text-yellow-800 font-bold text-lg">MC</span>
+                </div>
+              </div>
+              {/* Блик на монете */}
+              <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-white/30 blur-sm"></div>
+            </div>
           </Button>
 
           <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
@@ -219,7 +266,7 @@ export default function HomePage({
       <div className="px-4 pb-20">
         <Button
           onClick={() => setShowUpgrades(true)}
-          className="w-full bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary h-14 text-lg font-bold"
+          className="w-full bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary h-14 text-lg font-bold text-white"
         >
           <ArrowUp className="w-6 h-6 mr-2" />
           Улучшения
@@ -334,9 +381,9 @@ export default function HomePage({
                 <Settings className="w-4 h-4 mr-2" />
                 Настройки (скоро)
               </Button>
-              <Button variant="outline" className="w-full bg-transparent">
+              <Button variant="outline" className="w-full bg-transparent" disabled>
                 <Trophy className="w-4 h-4 mr-2" />
-                Достижения
+                Достижения (скоро)
               </Button>
             </div>
 

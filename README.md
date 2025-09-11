@@ -109,7 +109,7 @@ NODE_ENV=production
 1. Создайте бота через @BotFather
 2. Получите токен бота
 3. Настройте webhook:
-   ```bash
+```bash
    npm run setup-webhook
    ```
 

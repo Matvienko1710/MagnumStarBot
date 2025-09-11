@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   try {
     // Try to connect to MongoDB
     try {
-      await connectDB()
+      await connectDB
     } catch (error) {
       console.warn('MongoDB connection failed, using test data:', error)
       // Return test response when MongoDB is not available

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
       // Try to connect to MongoDB
       try {
-        await connectDB()
+        await connectDB
       } catch (error) {
         console.error('MongoDB connection failed:', error)
         return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
+    await connectDB
     
     const body = await request.json()
     const { telegramId, username, firstName, lastName } = body
