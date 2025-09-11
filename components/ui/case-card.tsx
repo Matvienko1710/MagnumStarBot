@@ -26,7 +26,7 @@ export function CaseCard({
     <Card className={`p-4 transition-all duration-200 hover:shadow-lg ${
       isAvailable 
         ? "hover:scale-105 cursor-pointer" 
-        "opacity-50 cursor-not-allowed"
+        : "opacity-50 cursor-not-allowed"
     } ${className}`}>
       <div className="text-center">
         {image && (

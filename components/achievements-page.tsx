@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { AchievementBadge } from "@/components/ui/achievement-badge"
-import { Trophy, Target, Zap, Coins, Star, Award, Crown, Gem } from "lucide-react"
+import { Trophy, Target, Zap, Coins, Star, Award, Crown, Sparkles } from "lucide-react"
 
 import type { GameState } from "@/lib/types"
 
@@ -61,7 +61,7 @@ export default function AchievementsPage({ gameState }: AchievementsPageProps) {
       id: "rare_hunter",
       title: "Охотник за редкостями",
       description: "Найдите 10 редких предметов",
-      icon: <Gem className="w-5 h-5" />,
+      icon: <Sparkles className="w-5 h-5" />,
       isUnlocked: gameState.statistics.rareItemsFound >= 10,
       progress: gameState.statistics.rareItemsFound,
       maxProgress: 10,
