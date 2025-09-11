@@ -6,7 +6,9 @@ import { useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Coins, Zap, ArrowUp, User, X, Settings, Trophy, BarChart3, Award } from "lucide-react"
+import { StatsCard } from "@/components/ui/stats-card"
+import { LevelProgress } from "@/components/ui/level-progress"
+import { Coins, Zap, ArrowUp, User, X, Settings, Trophy, BarChart3, Award, Star } from "lucide-react"
 
 import type { HomePageProps } from "@/lib/types"
 
@@ -123,25 +125,21 @@ export default function HomePage({
     <div className="flex-1 flex flex-col mobile-safe-area mobile-compact space-y-4 relative touch-optimized no-overscroll">
       <div className="px-4 pt-2">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-foreground">Уровень {gameState.level}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mobile-button w-10 h-10 rounded-full bg-card/50 backdrop-blur-md border border-border/50 hover:bg-accent/20 touch-optimized ml-auto"
-              onClick={() => setShowProfile(true)}
-            >
-              <User className="w-5 h-5 text-foreground" />
-            </Button>
-          </div>
+          <LevelProgress
+            level={gameState.level}
+            experience={gameState.experience % gameState.experienceToNext}
+            experienceToNext={gameState.experienceToNext}
+            className="flex-1"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mobile-button w-10 h-10 rounded-full bg-card/50 backdrop-blur-md border border-border/50 hover:bg-accent/20 touch-optimized ml-2"
+            onClick={() => setShowProfile(true)}
+          >
+            <User className="w-5 h-5 text-foreground" />
+          </Button>
         </div>
-        <Progress
-          value={((gameState.experience % gameState.experienceToNext) / gameState.experienceToNext) * 100}
-          className="h-2 bg-muted"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Опыт: {gameState.experience % gameState.experienceToNext}/{gameState.experienceToNext}
-        </p>
       </div>
 
       {gameState.boosts.length > 0 && (
@@ -178,21 +176,21 @@ export default function HomePage({
 
       <div className="px-4">
         <div className="grid grid-cols-2 gap-3">
-          <Card className="card-gradient p-4 text-center hw-accelerated">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <Coins className="w-5 h-5 text-accent" />
-              <h3 className="text-sm font-bold text-foreground">Magnum Coins</h3>
-            </div>
-            <p className="text-2xl font-bold text-accent">{formatNumber(gameState.magnumCoins)}</p>
-          </Card>
+          <StatsCard
+            title="Magnum Coins"
+            value={formatNumber(gameState.magnumCoins)}
+            description="Валюта игры"
+            icon={<Coins className="w-6 h-6 text-accent" />}
+            className="hw-accelerated"
+          />
 
-          <Card className="card-gradient p-4 text-center hw-accelerated">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <span className="text-yellow-400 text-lg">⭐</span>
-              <h3 className="text-sm font-bold text-foreground">Звезды</h3>
-            </div>
-            <p className="text-2xl font-bold text-yellow-400">{formatNumber(gameState.stars)}</p>
-          </Card>
+          <StatsCard
+            title="Звезды"
+            value={formatNumber(gameState.stars)}
+            description="Премиум валюта"
+            icon={<span className="text-yellow-400 text-2xl">⭐</span>}
+            className="hw-accelerated"
+          />
         </div>
       </div>
 
@@ -336,9 +334,9 @@ export default function HomePage({
                 <Settings className="w-4 h-4 mr-2" />
                 Настройки (скоро)
               </Button>
-              <Button variant="outline" className="w-full bg-transparent" disabled>
+              <Button variant="outline" className="w-full bg-transparent">
                 <Trophy className="w-4 h-4 mr-2" />
-                Достижения (скоро)
+                Достижения
               </Button>
             </div>
 

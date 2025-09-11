@@ -1,6 +1,7 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { CaseCard } from "@/components/ui/case-card"
 import { Package, Coins, Sparkles, ChevronLeft, ChevronRight, BarChart3 } from "lucide-react"
 
 import type { CasesPageProps } from "@/lib/types"
@@ -146,75 +147,18 @@ export default function CasesPage({
 
       <div className="space-y-3 px-4">
         {cases.map((caseItem, index) => (
-          <Card
+          <CaseCard
             key={caseItem.id}
-            className={`case-card p-4 cursor-pointer transition-all duration-300 hover:scale-105 touch-optimized mobile-button relative overflow-hidden ${
+            name={caseItem.name}
+            price={caseItem.price}
+            description={caseItem.description}
+            image={caseItem.image}
+            isAvailable={gameState.magnumCoins >= caseItem.price}
+            onOpen={() => openCase(caseItem)}
+            className={`${
               caseItem.rarity === "legendary" || caseItem.rarity === "mythic" ? "case-glow" : ""
             } ${caseItem.specialOffer ? "border-2 border-green-400/50" : ""}`}
-            onClick={() => openCase(caseItem)}
-          >
-            {caseItem.specialOffer && (
-              <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-                АКЦИЯ!
-              </div>
-            )}
-
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl border border-border/50">
-                  {caseItem.image}
-                </div>
-                {caseItem.dailyLimit && (
-                  <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                    3
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-1">
-                  <h3 className="font-bold text-foreground">{caseItem.name}</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full bg-muted/20 ${getRarityColor(caseItem.rarity)}`}>
-                    {caseItem.rarity.toUpperCase()}
-                  </span>
-                </div>
-
-                <p className="text-xs text-muted-foreground mb-2">{caseItem.description}</p>
-
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Возможные награды:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {caseItem.rewards.map((reward, idx) => (
-                      <span key={idx} className="text-xs px-2 py-1 rounded bg-accent/10 text-accent">
-                        🪙 {formatNumber(reward.min)}-{formatNumber(reward.max)} ({reward.chance}%)
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-right space-y-2">
-                <div className="text-lg font-bold text-accent">
-                  {caseItem.price} MC
-                  {caseItem.dailyLimit && (
-                    <div className="text-xs text-blue-400">Лимит: {caseItem.dailyLimit}/день</div>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  disabled={gameState.magnumCoins < caseItem.price}
-                  className="bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary"
-                >
-                  {gameState.magnumCoins >= caseItem.price ? "Открыть" : "Недостаточно"}
-                </Button>
-              </div>
-            </div>
-
-            <div
-              className="mt-3 h-1 rounded-full bg-gradient-to-r from-transparent via-current to-transparent opacity-30"
-              style={{ color: caseItem.glowColor.replace("0.5", "1") }}
-            />
-          </Card>
+          />
         ))}
       </div>
 
