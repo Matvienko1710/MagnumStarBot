@@ -37,9 +37,21 @@ export async function POST(request: NextRequest) {
           maxEnergy: 100,
           totalClicks: 0,
           level: 1,
+          experience: 0,
+          experienceToNext: 100,
           lastEnergyRestore: new Date(),
           clickPower: 1,
-          upgrades: []
+          upgrades: [],
+          statistics: {
+            totalEarned: 0,
+            totalSpent: 0,
+            casesOpened: 0,
+            rareItemsFound: 0,
+            daysPlayed: 1,
+            maxClickStreak: 0,
+            currentClickStreak: 0,
+            prestigeCount: 0
+          }
         })
       await user.save()
       console.log('New user created:', user)
@@ -52,15 +64,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No energy left' }, { status: 400 })
     }
 
-    // Update user stats - give +1 Magnum Coin and +0.0001 stars per click
-    user.magnumCoins += 1
+    // Update user stats
+    const coinsEarned = user.clickPower
+    user.magnumCoins += coinsEarned
     user.stars += 0.0001
     user.energy -= 1
     user.totalClicks += 1
-    user.level = Math.floor(user.totalClicks / 100) + 1
+    user.experience += 1
+    
+    // Level up logic
+    if (user.experience >= user.experienceToNext) {
+      user.level += 1
+      user.experience = 0
+      user.experienceToNext = Math.floor(user.experienceToNext * 1.2) // Increase exp requirement
+    }
+    
+    // Update statistics
+    user.statistics.totalEarned += coinsEarned
+    user.statistics.currentClickStreak += 1
+    user.statistics.maxClickStreak = Math.max(user.statistics.maxClickStreak, user.statistics.currentClickStreak)
 
     await user.save()
-    console.log('User updated:', { magnumCoins: user.magnumCoins, energy: user.energy, totalClicks: user.totalClicks })
+    console.log('User updated:', { 
+      magnumCoins: user.magnumCoins, 
+      energy: user.energy, 
+      totalClicks: user.totalClicks, 
+      level: user.level,
+      experience: user.experience 
+    })
 
     return NextResponse.json({
       success: true,
@@ -69,7 +100,11 @@ export async function POST(request: NextRequest) {
         stars: user.stars,
         energy: user.energy,
         totalClicks: user.totalClicks,
-        level: user.level
+        level: user.level,
+        experience: user.experience,
+        experienceToNext: user.experienceToNext,
+        clickPower: user.clickPower,
+        statistics: user.statistics
       }
     })
   } catch (error) {

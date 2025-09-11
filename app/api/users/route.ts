@@ -42,15 +42,27 @@ export async function GET(request: NextRequest) {
       // Create new user
       user = new User({
         telegramId: telegramIdNum,
-        magnumCoins: 100, // Starting coins
+        magnumCoins: 100,
         stars: 0,
         energy: 100,
         maxEnergy: 100,
         totalClicks: 0,
         level: 1,
+        experience: 0,
+        experienceToNext: 100,
         lastEnergyRestore: new Date(),
         clickPower: 1,
-        upgrades: []
+        upgrades: [],
+        statistics: {
+          totalEarned: 0,
+          totalSpent: 0,
+          casesOpened: 0,
+          rareItemsFound: 0,
+          daysPlayed: 1,
+          maxClickStreak: 0,
+          currentClickStreak: 0,
+          prestigeCount: 0
+        }
       })
       await user.save()
       console.log('New user created:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
@@ -71,9 +83,12 @@ export async function GET(request: NextRequest) {
         maxEnergy: user.maxEnergy,
         totalClicks: user.totalClicks,
         level: user.level,
+        experience: user.experience,
+        experienceToNext: user.experienceToNext,
         lastEnergyRestore: user.lastEnergyRestore,
-        clickPower: user.clickPower || 1,
-        upgrades: user.upgrades || []
+        clickPower: user.clickPower,
+        upgrades: user.upgrades,
+        statistics: user.statistics
       }
     })
   } catch (error) {
@@ -128,9 +143,21 @@ export async function POST(request: NextRequest) {
         maxEnergy: 100,
         totalClicks: 0,
         level: 1,
+        experience: 0,
+        experienceToNext: 100,
         lastEnergyRestore: new Date(),
         clickPower: 1,
-        upgrades: []
+        upgrades: [],
+        statistics: {
+          totalEarned: 0,
+          totalSpent: 0,
+          casesOpened: 0,
+          rareItemsFound: 0,
+          daysPlayed: 1,
+          maxClickStreak: 0,
+          currentClickStreak: 0,
+          prestigeCount: 0
+        }
       })
       await user.save()
       console.log('New user created via POST:', { telegramId: user.telegramId, magnumCoins: user.magnumCoins })
@@ -149,9 +176,12 @@ export async function POST(request: NextRequest) {
         maxEnergy: user.maxEnergy,
         totalClicks: user.totalClicks,
         level: user.level,
+        experience: user.experience,
+        experienceToNext: user.experienceToNext,
         lastEnergyRestore: user.lastEnergyRestore,
-        clickPower: user.clickPower || 1,
-        upgrades: user.upgrades || []
+        clickPower: user.clickPower,
+        upgrades: user.upgrades,
+        statistics: user.statistics
       }
     })
   } catch (error) {

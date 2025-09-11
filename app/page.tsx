@@ -94,6 +94,12 @@ export default function TelegramClickerApp() {
         const tg = window.Telegram.WebApp
         tg.ready()
         tg.expand()
+        
+        // Enable haptic feedback
+        if (tg.HapticFeedback) {
+          tg.HapticFeedback.impactOccurred('light')
+        }
+        
         const userData = tg.initDataUnsafe?.user
         
         console.log('Telegram user data:', userData)
@@ -137,6 +143,13 @@ export default function TelegramClickerApp() {
 
   const handleClick = async () => {
     if (gameState.energy <= 0) return
+
+    // Haptic feedback
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred('medium')
+    } else if ('vibrate' in navigator) {
+      navigator.vibrate(50)
+    }
 
     try {
       const response = await fetch('/api/click', {

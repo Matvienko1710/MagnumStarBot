@@ -346,6 +346,10 @@
   }
 }
 
+.mobile-safe-area-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
 /* Touch optimizations */
 .touch-optimized {
   -webkit-tap-highlight-color: transparent;
@@ -529,4 +533,36 @@
 /* Adding animate-fade-in utility class */
 .animate-fade-in {
   animation: fade-in 0.5s ease-out forwards;
+}
+
+/* Performance optimizations for mobile */
+.mobile-optimized {
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Smooth scrolling for mobile */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Prevent text selection on mobile */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Optimize animations for mobile */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

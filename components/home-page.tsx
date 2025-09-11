@@ -27,7 +27,9 @@ export default function HomePage({
       event.preventDefault()
 
       // Тактильная обратная связь
-      if ("vibrate" in navigator) {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium')
+      } else if ("vibrate" in navigator) {
         navigator.vibrate(50)
       }
 
@@ -200,12 +202,12 @@ export default function HomePage({
             onClick={handleClick}
             onTouchStart={handleClick}
             disabled={gameState.energy <= 0}
-            className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 border-4 border-amber-300 shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 border-4 border-amber-300 shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mobile-optimized touch-optimized mobile-clicker ${
               gameState.clickAnimating ? "scale-95" : "scale-100"
             }`}
             size="lg"
           >
-            <div className="text-6xl">🪙</div>
+            <div className="text-6xl no-select">🪙</div>
           </Button>
 
           <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
