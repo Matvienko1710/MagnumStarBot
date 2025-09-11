@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuthContext } from "./auth-provider"
-import { RotateCcw } from "lucide-react"
+import { LoaderCircle } from "lucide-react"
 
 export function LoginScreen() {
   const { login, loading, error } = useAuthContext()
@@ -25,7 +25,7 @@ export function LoginScreen() {
           <Button onClick={login} disabled={loading} className="w-full" size="lg">
             {loading ? (
               <>
-                <RotateCcw className="w-4 h-4 mr-2 animate-spin" />
+                <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
                 Вход...
               </>
             ) : (
