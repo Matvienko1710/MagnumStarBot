@@ -21,12 +21,16 @@ interface CaseItem {
   name: string
   price: number
   rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
-  rewards: Array<{ type: "coins" | "stars" | "energy"; min: number; max: number; chance: number }>
+  rewards: Array<{ type: "coins" | "stars" | "energy" | "boost" | "item"; min: number; max: number; chance: number; itemId?: string }>
   image: string
   glowColor: string
   description: string
   dailyLimit?: number
   specialOffer?: boolean
+  category: "standard" | "premium" | "event" | "seasonal"
+  unlockLevel: number
+  tags: string[]
+  animation: string
 }
 
 interface HistoryItem {

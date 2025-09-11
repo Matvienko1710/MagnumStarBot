@@ -21,9 +21,16 @@ interface GameState {
   level: number
   experience: number
   experienceToNext: number
-  boosts: { type: string; multiplier: number; remaining: number; icon: string; name: string }[]
-  autoClicker: { level: number; clicksPerSecond: number }
-  statistics: { totalEarned: number; totalSpent: number; currentClickStreak: number; maxClickStreak: number }
+  prestigeLevel: number
+  dailyStreak: number
+  lastLoginDate: string
+  achievements: string[]
+  inventory: any[]
+  dailyRewards: any[]
+  lastDailyReward: string
+  autoClicker: any
+  boosts: any[]
+  statistics: any
 }
 
 interface Upgrade {
@@ -36,6 +43,8 @@ interface Upgrade {
   effect: string
   icon: string
   multiplier: number
+  category: "click" | "energy" | "auto" | "prestige" | "passive" | "special"
+  unlockLevel: number
 }
 
 interface HomePageProps {
@@ -47,6 +56,7 @@ interface HomePageProps {
   setShowProfile: (show: boolean) => void
   showUpgrades: boolean
   setShowUpgrades: (show: boolean) => void
+  onClick: () => Promise<void>
 }
 
 export default function HomePage({
@@ -58,6 +68,7 @@ export default function HomePage({
   setShowProfile,
   showUpgrades,
   setShowUpgrades,
+  onClick,
 }: HomePageProps) {
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
@@ -236,7 +247,7 @@ export default function HomePage({
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="relative">
           <Button
-            onClick={handleClick}
+            onClick={onClick}
             onTouchStart={handleClick}
             disabled={gameState.energy <= 0}
             className={`w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:via-yellow-400 hover:to-orange-400 border-4 border-amber-300 shadow-2xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden ${

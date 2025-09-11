@@ -70,7 +70,7 @@ interface Upgrade {
   maxLevel: number
   effect: string
   icon: string
-  category: "click" | "energy" | "passive" | "special"
+  category: "click" | "energy" | "passive" | "special" | "auto" | "prestige"
   unlockLevel: number
   prerequisite?: string
   multiplier: number
@@ -313,14 +313,16 @@ export function TelegramClickerApp() {
             }
           }
 
-          const amount = Math.floor(Math.random() * (reward.max - reward.min + 1)) + reward.min
-          items.push({
-            type: reward.type,
-            amount,
-            rarity,
-            isWinning: i === winningIndex,
-            itemId: reward.itemId,
-          })
+          if (reward) {
+            const amount = Math.floor(Math.random() * (reward.max - reward.min + 1)) + reward.min
+            items.push({
+              type: reward.type,
+              amount,
+              rarity,
+              isWinning: i === winningIndex,
+              itemId: reward.itemId,
+            })
+          }
         }
 
         setRouletteItems(items)
